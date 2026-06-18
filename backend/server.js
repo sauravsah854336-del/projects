@@ -1,15 +1,81 @@
 require("dotenv").config();
-const express = require('express');
-const PORT = process.env.PORT ||  5000;
-const connectDB  = require('./config/db')
+const express = require("express");
+const cors = require("cors");
+const morgan = require("morgan");
+const helmet = require("helmet");
+const path = require("path");
+
+const connectDB = require("./config/db");
+const authRouter = require("./routes/auth");
+const customerRouter = require("./routes/customer");
+const setupRouter = require("./routes/setup");
+const adminRouter = require("./routes/admin");
+const vendorRouter = require("./routes/vendor");
+const categoryRouter = require("./routes/category");
+const productRouter = require("./routes/product");
+const cartRouter = require("./routes/cart");
+const orderRouter = require("./routes/order");
+const uploadRouter = require("./routes/upload");
+const searchRouter = require("./routes/search");
+
+const PORT = process.env.PORT || 5005;
+
 const app = express();
 
 connectDB();
 
-app.get("/", (req,res) => {
-res.send("Server is running")
-})
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
+
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+  })
+);
+
+app.use(morgan("dev"));
+app.use(express.json());
+
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+app.get("/", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Server is running ✅",
+  });
+});
+
+app.use("/api/auth", authRouter);
+app.use("/api/customer", customerRouter);
+app.use("/api/setup", setupRouter);
+app.use("/api/admin", adminRouter);
+app.use("/api/vendor", vendorRouter);
+app.use("/api/categories", categoryRouter);
+app.use("/api/products", productRouter);
+app.use("/api/cart", cartRouter);
+app.use("/api/orders", orderRouter);
+app.use("/api/upload", uploadRouter);
+app.use("/api/search", searchRouter);
+
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: "API not found",
+  });
+});
+
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(err.statusCode || 500).json({
+    success: false,
+    message: err.message || "Something went wrong",
+  });
+});
 
 app.listen(PORT, () => {
-  console.log(`Server is running at http://localhost:${PORT}/`)
-})
+  console.log(`Server running at http://localhost:${PORT}`);
+});

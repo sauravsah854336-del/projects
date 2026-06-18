@@ -13,10 +13,13 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
 
+    dateOfBirth: {
+      type: Date,
+    },
+
     email: {
       type: String,
       required: true,
-      unique: true,
       lowercase: true,
       trim: true,
     },
@@ -24,12 +27,21 @@ const userSchema = new mongoose.Schema(
     phone: {
       type: String,
       required: true,
-      unique: true,
     },
 
     password: {
       type: String,
       required: true,
+      select: false,
+    },
+    provider: {
+      type: String,
+      enum: ["local", "google", "apple"],
+      default: "local",
+    },
+
+    providerId: {
+      type: String,
     },
 
     role: {
@@ -59,14 +71,47 @@ const userSchema = new mongoose.Schema(
       default: "active",
     },
 
+    addresses: [
+      {
+        fullName: String,
+        phone: String,
+        street: String,
+        city: String,
+        state: String,
+        country: String,
+        postalCode: String,
+        isDefault: { type: Boolean, default: false },
+      },
+    ],
+
+    wishlist: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Product",
+      },
+    ],
+
+    refreshTokens: [
+      {
+        token: String,
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
+
     lastLogin: {
       type: Date,
       default: null,
     },
+
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true },
 );
+
+userSchema.index({ email: 1 }, { unique: true });
+userSchema.index({ phone: 1 }, { unique: true });
 
 module.exports = mongoose.model("User", userSchema);
