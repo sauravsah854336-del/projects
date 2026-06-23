@@ -17,6 +17,7 @@ const cartRouter = require("./routes/cart");
 const orderRouter = require("./routes/order");
 const uploadRouter = require("./routes/upload");
 const searchRouter = require("./routes/search");
+const reviewRouter = require("./routes/review");
 
 const PORT = process.env.PORT || 5005;
 
@@ -60,6 +61,7 @@ app.use("/api/cart", cartRouter);
 app.use("/api/orders", orderRouter);
 app.use("/api/upload", uploadRouter);
 app.use("/api/search", searchRouter);
+app.use("/api/reviews", reviewRouter);
 
 app.use((req, res) => {
   res.status(404).json({

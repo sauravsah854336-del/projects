@@ -35,3 +35,24 @@ export const uploadToLocal = async (files = []) => {
 
   return uploadedUrls;
 };
+
+export const uploadDocumentPublic = async (file) => {
+  const formData = new FormData();
+  formData.append("image", file);
+
+  const response = await fetch(`${BASE_URL}/document`, {
+    method: "POST",
+    body: formData,
+  });
+
+  const data = await response.json();
+
+  if (!data.success) {
+    throw new Error(data.message || "Upload failed");
+  }
+
+  return {
+    url: data.data.url,
+    filename: data.data.filename,
+  };
+};

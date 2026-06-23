@@ -6,7 +6,6 @@ import { useLocation } from "react-router-dom";
 const Layout = ({ children }) => {
   const location = useLocation();
 
-  // Hide sidebar on these pages
   const hideSidebarPaths = [
     "/login",
     "/signup",
@@ -16,10 +15,7 @@ const Layout = ({ children }) => {
     "/checkout",
   ];
 
-  const hideSidebar =
-    hideSidebarPaths.includes(location.pathname) ||
-    location.pathname.startsWith("/admin/") ||
-    location.pathname.startsWith("/vendor/dashboard");
+  const hideSidebar = hideSidebarPaths.includes(location.pathname);
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "#EAEDED" }}>

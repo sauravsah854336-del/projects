@@ -16,7 +16,6 @@ const createAdmin = async (req, res) => {
     const normalizedEmail = email.toLowerCase().trim();
 
     const existUser = await User.findOne({ email: normalizedEmail });
-
     if (existUser) {
       return res.status(409).json({
         success: false,
@@ -38,9 +37,7 @@ const createAdmin = async (req, res) => {
     return res.status(201).json({
       success: true,
       message: "Admin account created successfully.",
-      data: {
-        adminId: user._id,
-      },
+      data: { adminId: user._id },
     });
   } catch (err) {
     return res.status(500).json({
@@ -52,10 +49,9 @@ const createAdmin = async (req, res) => {
 
 const getPendingVendors = async (req, res) => {
   try {
-    const vendors = await Vendor.find({ approvalStatus: "pending" }).populate(
-      "userId",
-      "firstName lastName email phone"
-    );
+    const vendors = await Vendor.find({ approvalStatus: "pending" })
+      .populate("userId", "firstName lastName email phone createdAt")
+      .sort({ createdAt: -1 });
 
     return res.status(200).json({
       success: true,
@@ -71,10 +67,9 @@ const getPendingVendors = async (req, res) => {
 
 const getAllVendors = async (req, res) => {
   try {
-    const vendors = await Vendor.find().populate(
-      "userId",
-      "firstName lastName email phone status"
-    );
+    const vendors = await Vendor.find()
+      .populate("userId", "firstName lastName email phone status createdAt")
+      .sort({ createdAt: -1 });
 
     return res.status(200).json({
       success: true,
@@ -93,7 +88,6 @@ const approveVendor = async (req, res) => {
     const { vendorId } = req.params;
 
     const vendor = await Vendor.findById(vendorId);
-
     if (!vendor) {
       return res.status(404).json({
         success: false,
@@ -134,7 +128,6 @@ const rejectVendor = async (req, res) => {
     const { reason } = req.body;
 
     const vendor = await Vendor.findById(vendorId);
-
     if (!vendor) {
       return res.status(404).json({
         success: false,

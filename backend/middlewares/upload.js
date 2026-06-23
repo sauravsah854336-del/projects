@@ -19,7 +19,7 @@ const storage = multer.diskStorage({
   },
 });
 
-const fileFilter = (req, file, cb) => {
+const imageFileFilter = (req, file, cb) => {
   const allowedTypes = [
     "image/jpeg",
     "image/jpg",
@@ -27,7 +27,6 @@ const fileFilter = (req, file, cb) => {
     "image/webp",
     "image/gif",
   ];
-
   if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
@@ -35,12 +34,35 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
+const documentFileFilter = (req, file, cb) => {
+  const allowedTypes = [
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/webp",
+    "application/pdf",
+  ];
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error("Only JPEG, PNG, WebP or PDF files are allowed"), false);
+  }
+};
+
 const upload = multer({
   storage,
-  fileFilter,
+  fileFilter: imageFileFilter,
   limits: {
     fileSize: 5 * 1024 * 1024,
   },
 });
 
-module.exports = upload;
+const uploadDocument = multer({
+  storage,
+  fileFilter: documentFileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+});
+
+module.exports = { upload, uploadDocument };

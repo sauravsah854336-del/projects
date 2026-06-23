@@ -332,10 +332,96 @@ const clearCart = async (req, res) => {
   }
 };
 
+const mergeGuestCart = async (req, res) => {
+  try {
+    const { items } = req.body;
+
+    if (!Array.isArray(items) || items.length === 0) {
+      const existing = await Cart.findOne({ user: req.user.id }).populate(
+        "items.product",
+        "name price comparePrice images stock vendor brand slug"
+      );
+      return res.status(200).json({
+        success: true,
+        message: "No items to merge",
+        data: existing,
+      });
+    }
+
+    let cart = await Cart.findOne({ user: req.user.id });
+
+    if (!cart) {
+      cart = await Cart.create({
+        user: req.user.id,
+        items: [],
+        totalItems: 0,
+        subtotal: 0,
+        total: 0,
+      });
+    }
+
+    for (const guestItem of items) {
+      const product = await Product.findById(guestItem.productId);
+
+      if (!product || product.status !== "approved" || product.stock <= 0) {
+        continue;
+      }
+
+      const existingItemIndex = cart.items.findIndex(
+        (item) => item.product.toString() === guestItem.productId
+      );
+
+      if (existingItemIndex > -1) {
+        const newQty = cart.items[existingItemIndex].quantity + (guestItem.quantity || 1);
+        cart.items[existingItemIndex].quantity = Math.min(newQty, product.stock);
+        cart.items[existingItemIndex].price = product.price;
+        cart.items[existingItemIndex].comparePrice = product.comparePrice || 0;
+        cart.items[existingItemIndex].maxQuantity = product.stock;
+      } else {
+        cart.items.push({
+          product: guestItem.productId,
+          quantity: Math.min(guestItem.quantity || 1, product.stock),
+          price: product.price,
+          comparePrice: product.comparePrice || 0,
+          name: product.name,
+          image: product.images?.[0]?.url || "",
+          vendor: product.vendor,
+          storeName: product.vendorStore?.storeName || "",
+          maxQuantity: product.stock,
+        });
+      }
+    }
+
+    cart.totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0);
+    cart.subtotal = cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    cart.total = cart.subtotal - cart.coupon.discount;
+    if (cart.total < 0) cart.total = 0;
+
+    await cart.save();
+
+    const populated = await Cart.findById(cart._id).populate(
+      "items.product",
+      "name price comparePrice images stock vendor brand slug"
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: `Merged ${items.length} items from guest cart`,
+      data: populated,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
 module.exports = {
   getCart,
   addToCart,
   updateCartItem,
   removeCartItem,
   clearCart,
+  mergeGuestCart,
 };

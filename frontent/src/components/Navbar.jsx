@@ -3,10 +3,10 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../features/auth/authSlice";
 import { authApi, useLogoutMutation } from "../features/auth/authApi";
-import { useGetCartQuery } from "../features/cart/cartApi";
 import { useSearchSuggestionsQuery } from "../features/search/searchApi";
 import { useGetCategoryTreeQuery } from "../features/category/categoryApi";
 import { useDebounce } from "../hooks/useDebounce";
+import { useCart } from "../hooks/useCart";
 import { PLACEHOLDER_TINY } from "../utils/placeholder";
 
 const formatRupee = (amount) =>
@@ -30,6 +30,14 @@ const Navbar = () => {
   const [highlightIndex, setHighlightIndex] = useState(-1);
   const [searchQuery, setSearchQuery] = useState("");
 
+  const [locationOpen, setLocationOpen] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState(() => {
+    return localStorage.getItem("deliveryLocation") || "India";
+  });
+  const [pincodeInput, setPincodeInput] = useState("");
+  const [locationError, setLocationError] = useState("");
+  const [detectingLocation, setDetectingLocation] = useState(false);
+
   const accountTimer = useRef(null);
   const searchBoxRef = useRef(null);
   const inputRef = useRef(null);
@@ -37,24 +45,26 @@ const Navbar = () => {
   const trimmedQuery = searchQuery.trim();
   const debouncedQuery = useDebounce(trimmedQuery, 250);
 
-  const { data: cartData } = useGetCartQuery(undefined, {
-    skip: !user || user.role !== "customer",
-  });
+  const isCustomer = user?.role === "customer";
+  const isVendor = user?.role === "vendor";
+  const isAdmin = user?.role === "admin";
+  const isGuest = !user;
+
+  const { cart } = useCart();
+  const cartCount = cart?.totalItems || 0;
 
   const { data: sugData, isFetching, isLoading } = useSearchSuggestionsQuery(
     debouncedQuery,
     {
-      skip: debouncedQuery.length < 1,
+      skip: debouncedQuery.length < 1 || (!isCustomer && !isGuest),
       refetchOnMountOrArgChange: true,
     }
   );
 
-  const { data: categoryData } = useGetCategoryTreeQuery();
+  const { data: categoryData } = useGetCategoryTreeQuery(undefined, {
+    skip: !isCustomer && !isGuest,
+  });
 
-  const cartCount = cartData?.data?.totalItems || 0;
-  const isCustomer = user?.role === "customer";
-  const isVendor = user?.role === "vendor";
-  const isAdmin = user?.role === "admin";
   const categories = categoryData?.data || [];
 
   const suggestions = sugData?.data || {
@@ -64,8 +74,7 @@ const Navbar = () => {
   };
 
   const allSuggestions = [
-    ...(suggestions.categories?.map((c) => ({ type: "category", data: c })) ||
-      []),
+    ...(suggestions.categories?.map((c) => ({ type: "category", data: c })) || []),
     ...(suggestions.vendors?.map((v) => ({ type: "vendor", data: v })) || []),
     ...(suggestions.products?.map((p) => ({ type: "product", data: p })) || []),
   ];
@@ -77,12 +86,15 @@ const Navbar = () => {
     isLoading ||
     (trimmedQuery !== debouncedQuery && trimmedQuery.length >= 1);
 
+  const showShoppingFeatures = isCustomer || isGuest;
+
   useEffect(() => {
     setMobileOpen(false);
     setAccountOpen(false);
     setSearchFocus(false);
     setSearchQuery("");
     setHighlightIndex(-1);
+    setLocationOpen(false);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -105,6 +117,7 @@ const Navbar = () => {
     setMobileOpen(false);
     setSearchFocus(false);
     setSearchQuery("");
+    setLocationOpen(false);
     navigate(path);
   };
 
@@ -124,8 +137,7 @@ const Navbar = () => {
 
   const handleSuggestionClick = (item) => {
     if (item.type === "category") go(`/products?category=${item.data._id}`);
-    else if (item.type === "vendor")
-      go(`/products?search=${item.data.storeName}`);
+    else if (item.type === "vendor") go(`/products?search=${item.data.storeName}`);
     else if (item.type === "product") go(`/products/${item.data.slug}`);
   };
 
@@ -160,6 +172,57 @@ const Navbar = () => {
     navigate("/login");
   };
 
+  const handleSetLocation = (loc) => {
+    setCurrentLocation(loc);
+    localStorage.setItem("deliveryLocation", loc);
+    setLocationOpen(false);
+    setPincodeInput("");
+    setLocationError("");
+  };
+
+  const handlePincodeSubmit = () => {
+    const pin = pincodeInput.trim();
+    if (!pin || pin.length !== 6 || !/^\d{6}$/.test(pin)) {
+      setLocationError("Enter a valid 6-digit PIN code");
+      return;
+    }
+    handleSetLocation(`PIN ${pin}`);
+  };
+
+  const handleDetectLocation = () => {
+    setDetectingLocation(true);
+    setLocationError("");
+
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation not supported by your browser");
+      setDetectingLocation(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+          );
+          const data = await res.json();
+          const city = data.address?.city || data.address?.town || data.address?.village || data.address?.state || "Unknown";
+          const country = data.address?.country || "India";
+          handleSetLocation(`${city}, ${country}`);
+        } catch {
+          setLocationError("Failed to detect location. Try entering PIN instead.");
+        } finally {
+          setDetectingLocation(false);
+        }
+      },
+      () => {
+        setLocationError("Location access denied. Enter PIN manually.");
+        setDetectingLocation(false);
+      }
+    );
+  };
+
   const highlightText = (text, query) => {
     if (!query || !text) return text;
     const regex = new RegExp(
@@ -182,6 +245,7 @@ const Navbar = () => {
     <>
       <style>{`
         @keyframes ddIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes modalIn { from { opacity:0; transform: translate(-50%, -48%) scale(0.96); } to { opacity:1; transform: translate(-50%, -50%) scale(1); } }
         @keyframes spin { to { transform:rotate(360deg); } }
         @keyframes slideRight { from { transform: translateX(-100%); } to { transform: translateX(0); } }
 
@@ -196,6 +260,9 @@ const Navbar = () => {
           z-index: 9000;
           overflow: visible;
         }
+        .nav-vendor { background: linear-gradient(180deg, #1e1b4b, #312e81); }
+        .nav-admin { background: linear-gradient(180deg, #7F1D1D, #991B1B); }
+
         .nav-logo {
           display: flex;
           align-items: center;
@@ -214,9 +281,19 @@ const Navbar = () => {
           display: flex; align-items: center; justify-content: center;
           color: white; font-weight: 900; font-size: 15px;
         }
-        .nav-logo-text {
-          color: white; font-weight: 800; font-size: 18px;
+        .nav-logo-text { color: white; font-weight: 800; font-size: 18px; }
+        .nav-role-badge {
+          font-size: 9px;
+          background: rgba(255,255,255,0.15);
+          color: white;
+          padding: 2px 8px;
+          border-radius: 99px;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          margin-left: 6px;
         }
+
         .search-wrapper {
           flex: 1;
           display: flex;
@@ -348,6 +425,7 @@ const Navbar = () => {
           font-size: 13px;
           font-weight: 600;
         }
+
         .nav-link {
           padding: 8px 10px;
           border: 1px solid transparent;
@@ -360,10 +438,12 @@ const Navbar = () => {
           text-align: left;
           flex-shrink: 0;
           line-height: 1.2;
+          font-family: inherit;
         }
         .nav-link:hover { border-color: white; }
         .nav-link-top { color: #CCC; font-size: 11px; }
         .nav-link-bottom { color: white; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 3px; }
+
         .nav-cart {
           padding: 8px 10px;
           border: 1px solid transparent;
@@ -375,6 +455,7 @@ const Navbar = () => {
           gap: 4px;
           background: transparent;
           flex-shrink: 0;
+          font-family: inherit;
         }
         .nav-cart:hover { border-color: white; }
         .nav-cart-icon-wrap { position: relative; display: flex; align-items: center; }
@@ -391,6 +472,7 @@ const Navbar = () => {
           padding: 0 6px;
           border: 2px solid #131921;
         }
+
         .account-dd {
           position: absolute;
           top: calc(100% + 8px);
@@ -418,8 +500,10 @@ const Navbar = () => {
           cursor: pointer;
           text-align: left;
           width: 100%;
+          font-family: inherit;
         }
         .account-dd-link:hover { color: #E47911; text-decoration: underline; }
+
         .slide-overlay {
           position: fixed;
           top: 0; left: 0; right: 0; bottom: 0;
@@ -460,8 +544,25 @@ const Navbar = () => {
           background: transparent;
           width: 100%;
           text-align: left;
+          font-family: inherit;
         }
         .slide-item:hover { background: #F2F2F2; }
+
+        .loc-modal {
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 100%;
+          max-width: 460px;
+          background: white;
+          border-radius: 16px;
+          z-index: 99999;
+          box-shadow: 0 25px 80px rgba(0,0,0,0.4);
+          overflow: hidden;
+          animation: modalIn 0.2s ease both;
+        }
+
         .mobile-only { display: none; }
         .desktop-only { display: flex; }
         @media (max-width: 1024px) { .nav-logo-text { display: none; } }
@@ -475,6 +576,7 @@ const Navbar = () => {
           .mobile-only { display: flex !important; }
           .nav-main { padding: 8px 10px; gap: 8px; }
           .search-container { height: 40px; }
+          .loc-modal { max-width: 92vw; }
         }
         .mobile-menu-btn {
           padding: 8px;
@@ -485,393 +587,254 @@ const Navbar = () => {
           cursor: pointer;
         }
         .mobile-menu-btn:hover { border-color: white; }
+
+        .vendor-action-btn {
+          background: rgba(255,255,255,0.1);
+          color: white;
+          padding: 8px 14px;
+          border-radius: 6px;
+          font-size: 13px;
+          font-weight: 700;
+          border: 1px solid rgba(255,255,255,0.2);
+          cursor: pointer;
+          font-family: inherit;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          flex-shrink: 0;
+        }
+        .vendor-action-btn:hover { background: rgba(255,255,255,0.2); }
       `}</style>
 
-      <nav className="nav-main">
+      <nav className={`nav-main ${isVendor ? "nav-vendor" : ""} ${isAdmin ? "nav-admin" : ""}`}>
         <button
           onClick={() => setMobileOpen(true)}
           className="mobile-menu-btn mobile-only"
         >
-          <svg
-            width="22"
-            height="22"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-          >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
             <path d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
 
-        <div className="nav-logo" onClick={() => go("/")}>
+        <div className="nav-logo" onClick={() => go(user ? dash(user.role) : "/")}>
           <div className="nav-logo-icon">E</div>
           <span className="nav-logo-text">Commerce</span>
+          {isVendor && <span className="nav-role-badge">Vendor</span>}
+          {isAdmin && <span className="nav-role-badge">Admin</span>}
         </div>
 
-        <div className="nav-link desktop-only" onClick={() => go("/products")}>
-          <span className="nav-link-top">Deliver to</span>
-          <span className="nav-link-bottom">
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-            >
-              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
-            </svg>
-            India
-          </span>
-        </div>
-
-        {/* SEARCH */}
-        <div className="search-wrapper">
-          <div
-            className={`search-container ${searchFocus ? "focused" : ""}`}
-            ref={searchBoxRef}
+        {showShoppingFeatures && (
+          <button
+            className="nav-link desktop-only"
+            onClick={() => setLocationOpen(true)}
           >
-            <select
-              className="search-cat-select"
-              value={searchCategory}
-              onChange={(e) => setSearchCategory(e.target.value)}
-            >
-              <option value="all">All</option>
-              {categories.map((cat) => (
-                <option key={cat._id} value={cat._id}>
-                  {cat.name}
-                </option>
-              ))}
-            </select>
-
-            <input
-              ref={inputRef}
-              type="text"
-              placeholder="Search E-Commerce"
-              className="search-input"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setSearchFocus(true);
-              }}
-              onFocus={() => setSearchFocus(true)}
-              onKeyDown={handleKeyDown}
-              autoComplete="off"
-              spellCheck="false"
-            />
-
-            <button onClick={() => doSearch()} className="search-btn">
-              <svg
-                width="22"
-                height="22"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-              >
-                <circle cx="11" cy="11" r="7" />
-                <path d="M21 21l-4.35-4.35" />
+            <span className="nav-link-top">
+              {user ? `Deliver to ${user.firstName}` : "Deliver to"}
+            </span>
+            <span className="nav-link-bottom">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
               </svg>
-            </button>
+              {currentLocation}
+            </span>
+          </button>
+        )}
 
-            {/* SEARCH DROPDOWN */}
-            {showDropdown && (
-              <div
-                className="search-dd"
-                onMouseDown={(e) => e.preventDefault()}
+        {showShoppingFeatures && (
+          <div className="search-wrapper">
+            <div className={`search-container ${searchFocus ? "focused" : ""}`} ref={searchBoxRef}>
+              <select
+                className="search-cat-select"
+                value={searchCategory}
+                onChange={(e) => setSearchCategory(e.target.value)}
               >
-                {isSearching && (
-                  <div className="sd-loading">
-                    <div className="sd-spinner"></div>
-                    <p style={{ fontSize: 12, color: "#888" }}>Searching...</p>
-                  </div>
-                )}
+                <option value="all">All</option>
+                {categories.map((cat) => (
+                  <option key={cat._id} value={cat._id}>{cat.name}</option>
+                ))}
+              </select>
 
-                {!isSearching && !hasResults && debouncedQuery && (
-                  <div className="sd-empty">
-                    <div className="sd-empty-icon">🔍</div>
-                    <p
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 700,
-                        color: "#111",
-                        marginBottom: 4,
-                      }}
-                    >
-                      No results found
-                    </p>
-                    <p style={{ fontSize: 12, color: "#888" }}>
-                      Nothing matches "<strong>{searchQuery}</strong>"
-                    </p>
-                    <button
-                      onClick={() => doSearch()}
-                      style={{
-                        marginTop: 12,
-                        padding: "8px 16px",
-                        background: "#FFD814",
-                        border: "1px solid #FCD200",
-                        borderRadius: 6,
-                        fontSize: 12,
-                        fontWeight: 600,
-                        cursor: "pointer",
-                      }}
-                    >
-                      Search anyway
-                    </button>
-                  </div>
-                )}
+              <input
+                ref={inputRef}
+                type="text"
+                placeholder="Search products, brands, stores..."
+                className="search-input"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setSearchFocus(true);
+                }}
+                onFocus={() => setSearchFocus(true)}
+                onKeyDown={handleKeyDown}
+                autoComplete="off"
+                spellCheck="false"
+              />
 
-                {!isSearching && hasResults && (
-                  <>
-                    {suggestions.categories?.length > 0 && (
-                      <div className="sd-section">
-                        <div className="sd-label">
-                          <span>Categories</span>
-                          <span className="sd-count">
-                            {suggestions.categories.length}
-                          </span>
-                        </div>
-                        {suggestions.categories.map((c, idx) => (
-                          <button
-                            key={c._id}
-                            onClick={() =>
-                              handleSuggestionClick({
-                                type: "category",
-                                data: c,
-                              })
-                            }
-                            onMouseEnter={() => setHighlightIndex(idx)}
-                            className={`sd-item ${
-                              highlightIndex === idx ? "highlight" : ""
-                            }`}
-                          >
-                            <div
-                              style={{
-                                width: 32,
-                                height: 32,
-                                background: "#FFF5F0",
-                                borderRadius: 6,
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                flexShrink: 0,
-                              }}
+              <button onClick={() => doSearch()} className="search-btn">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="M21 21l-4.35-4.35" />
+                </svg>
+              </button>
+
+              {showDropdown && (
+                <div className="search-dd" onMouseDown={(e) => e.preventDefault()}>
+                  {isSearching && (
+                    <div className="sd-loading">
+                      <div className="sd-spinner"></div>
+                      <p style={{ fontSize: 12, color: "#888" }}>Searching...</p>
+                    </div>
+                  )}
+
+                  {!isSearching && !hasResults && debouncedQuery && (
+                    <div className="sd-empty">
+                      <div className="sd-empty-icon">🔍</div>
+                      <p style={{ fontSize: 14, fontWeight: 700, color: "#111", marginBottom: 4 }}>
+                        No results found
+                      </p>
+                      <p style={{ fontSize: 12, color: "#888" }}>
+                        Nothing matches "<strong>{searchQuery}</strong>"
+                      </p>
+                      <button
+                        onClick={() => doSearch()}
+                        style={{
+                          marginTop: 12, padding: "8px 16px",
+                          background: "#FFD814", border: "1px solid #FCD200",
+                          borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer",
+                        }}
+                      >
+                        Search anyway
+                      </button>
+                    </div>
+                  )}
+
+                  {!isSearching && hasResults && (
+                    <>
+                      {suggestions.categories?.length > 0 && (
+                        <div className="sd-section">
+                          <div className="sd-label">
+                            <span>Categories</span>
+                            <span className="sd-count">{suggestions.categories.length}</span>
+                          </div>
+                          {suggestions.categories.map((c, idx) => (
+                            <button
+                              key={c._id}
+                              onClick={() => handleSuggestionClick({ type: "category", data: c })}
+                              onMouseEnter={() => setHighlightIndex(idx)}
+                              className={`sd-item ${highlightIndex === idx ? "highlight" : ""}`}
                             >
-                              <svg
-                                width="16"
-                                height="16"
-                                fill="none"
-                                stroke="#D85A30"
-                                strokeWidth="2"
-                              >
-                                <path
-                                  d="M4 6h16M4 12h16M4 18h7"
-                                  strokeLinecap="round"
-                                />
+                              <div style={{ width: 32, height: 32, background: "#FFF5F0", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                <svg width="16" height="16" fill="none" stroke="#D85A30" strokeWidth="2">
+                                  <path d="M4 6h16M4 12h16M4 18h7" strokeLinecap="round" />
+                                </svg>
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <p style={{ fontSize: 13, fontWeight: 600, color: "#111" }}>
+                                  {highlightText(c.name, debouncedQuery)}
+                                </p>
+                                <p style={{ fontSize: 11, color: "#888" }}>in Categories</p>
+                              </div>
+                              <svg width="14" height="14" fill="none" stroke="#999" strokeWidth="2.5" strokeLinecap="round">
+                                <path d="M9 5l7 7-7 7" />
                               </svg>
-                            </div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <p
-                                style={{
-                                  fontSize: 13,
-                                  fontWeight: 600,
-                                  color: "#111",
-                                }}
-                              >
-                                {highlightText(c.name, debouncedQuery)}
-                              </p>
-                              <p style={{ fontSize: 11, color: "#888" }}>
-                                in Categories
-                              </p>
-                            </div>
-                            <svg
-                              width="14"
-                              height="14"
-                              fill="none"
-                              stroke="#999"
-                              strokeWidth="2.5"
-                              strokeLinecap="round"
-                            >
-                              <path d="M9 5l7 7-7 7" />
-                            </svg>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {suggestions.vendors?.length > 0 && (
-                      <div className="sd-section">
-                        <div className="sd-label">
-                          <span>Stores</span>
-                          <span className="sd-count">
-                            {suggestions.vendors.length}
-                          </span>
-                        </div>
-                        {suggestions.vendors.map((v, idx) => {
-                          const gIdx =
-                            (suggestions.categories?.length || 0) + idx;
-                          return (
-                            <button
-                              key={v._id}
-                              onClick={() =>
-                                handleSuggestionClick({
-                                  type: "vendor",
-                                  data: v,
-                                })
-                              }
-                              onMouseEnter={() => setHighlightIndex(gIdx)}
-                              className={`sd-item ${
-                                highlightIndex === gIdx ? "highlight" : ""
-                              }`}
-                            >
-                              <div
-                                style={{
-                                  width: 32,
-                                  height: 32,
-                                  background: "#EFF6FF",
-                                  borderRadius: 6,
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  color: "#3B82F6",
-                                  fontSize: 13,
-                                  fontWeight: 800,
-                                  flexShrink: 0,
-                                }}
-                              >
-                                {v.storeName?.charAt(0)?.toUpperCase()}
-                              </div>
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <p
-                                  style={{
-                                    fontSize: 13,
-                                    fontWeight: 600,
-                                    color: "#111",
-                                  }}
-                                >
-                                  {highlightText(v.storeName, debouncedQuery)}
-                                </p>
-                                <p style={{ fontSize: 11, color: "#888" }}>
-                                  Store
-                                </p>
-                              </div>
                             </button>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {suggestions.products?.length > 0 && (
-                      <div className="sd-section">
-                        <div className="sd-label">
-                          <span>Products</span>
-                          <span className="sd-count">
-                            {suggestions.products.length}
-                          </span>
+                          ))}
                         </div>
-                        {suggestions.products.map((p, idx) => {
-                          const gIdx =
-                            (suggestions.categories?.length || 0) +
-                            (suggestions.vendors?.length || 0) +
-                            idx;
-                          return (
-                            <button
-                              key={p._id}
-                              onClick={() =>
-                                handleSuggestionClick({
-                                  type: "product",
-                                  data: p,
-                                })
-                              }
-                              onMouseEnter={() => setHighlightIndex(gIdx)}
-                              className={`sd-item ${
-                                highlightIndex === gIdx ? "highlight" : ""
-                              }`}
-                            >
-                              <img
-                                src={p.images?.[0]?.url || PLACEHOLDER_TINY}
-                                alt=""
-                                style={{
-                                  width: 44,
-                                  height: 44,
-                                  borderRadius: 6,
-                                  objectFit: "cover",
-                                  flexShrink: 0,
-                                  border: "1px solid #EEE",
-                                }}
-                                onError={(e) => {
-                                  e.target.onerror = null;
-                                  e.target.src = PLACEHOLDER_TINY;
-                                }}
-                              />
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <p
-                                  style={{
-                                    fontSize: 13,
-                                    color: "#111",
-                                    overflow: "hidden",
-                                    textOverflow: "ellipsis",
-                                    whiteSpace: "nowrap",
-                                    fontWeight: 500,
-                                  }}
-                                >
-                                  {highlightText(p.name, debouncedQuery)}
-                                </p>
-                                <div
-                                  style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 6,
-                                    marginTop: 2,
-                                  }}
-                                >
-                                  <span
-                                    style={{
-                                      fontSize: 13,
-                                      fontWeight: 700,
-                                      color: "#B12704",
-                                    }}
-                                  >
-                                    {formatRupee(p.price)}
-                                  </span>
-                                  {p.comparePrice > p.price && (
-                                    <span
-                                      style={{
-                                        fontSize: 11,
-                                        color: "#999",
-                                        textDecoration: "line-through",
-                                      }}
-                                    >
-                                      {formatRupee(p.comparePrice)}
-                                    </span>
-                                  )}
-                                  {p.brand && (
-                                    <span
-                                      style={{ fontSize: 11, color: "#888" }}
-                                    >
-                                      • {p.brand}
-                                    </span>
-                                  )}
+                      )}
+
+                      {suggestions.vendors?.length > 0 && (
+                        <div className="sd-section">
+                          <div className="sd-label">
+                            <span>Stores</span>
+                            <span className="sd-count">{suggestions.vendors.length}</span>
+                          </div>
+                          {suggestions.vendors.map((v, idx) => {
+                            const gIdx = (suggestions.categories?.length || 0) + idx;
+                            return (
+                              <button
+                                key={v._id}
+                                onClick={() => handleSuggestionClick({ type: "vendor", data: v })}
+                                onMouseEnter={() => setHighlightIndex(gIdx)}
+                                className={`sd-item ${highlightIndex === gIdx ? "highlight" : ""}`}
+                              >
+                                <div style={{ width: 32, height: 32, background: "#EFF6FF", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", color: "#3B82F6", fontSize: 13, fontWeight: 800, flexShrink: 0 }}>
+                                  {v.storeName?.charAt(0)?.toUpperCase()}
                                 </div>
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <p style={{ fontSize: 13, fontWeight: 600, color: "#111" }}>
+                                    {highlightText(v.storeName, debouncedQuery)}
+                                  </p>
+                                  <p style={{ fontSize: 11, color: "#888" }}>Store</p>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
 
-                    <button onClick={() => doSearch()} className="sd-see-all">
-                      See all results for "{searchQuery}" →
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
+                      {suggestions.products?.length > 0 && (
+                        <div className="sd-section">
+                          <div className="sd-label">
+                            <span>Products</span>
+                            <span className="sd-count">{suggestions.products.length}</span>
+                          </div>
+                          {suggestions.products.map((p, idx) => {
+                            const gIdx =
+                              (suggestions.categories?.length || 0) +
+                              (suggestions.vendors?.length || 0) +
+                              idx;
+                            return (
+                              <button
+                                key={p._id}
+                                onClick={() => handleSuggestionClick({ type: "product", data: p })}
+                                onMouseEnter={() => setHighlightIndex(gIdx)}
+                                className={`sd-item ${highlightIndex === gIdx ? "highlight" : ""}`}
+                              >
+                                <img
+                                  src={p.images?.[0]?.url || PLACEHOLDER_TINY}
+                                  alt=""
+                                  style={{ width: 44, height: 44, borderRadius: 6, objectFit: "cover", flexShrink: 0, border: "1px solid #EEE" }}
+                                  onError={(e) => { e.target.onerror = null; e.target.src = PLACEHOLDER_TINY; }}
+                                />
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <p style={{ fontSize: 13, color: "#111", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 500 }}>
+                                    {highlightText(p.name, debouncedQuery)}
+                                  </p>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
+                                    <span style={{ fontSize: 13, fontWeight: 700, color: "#B12704" }}>
+                                      {formatRupee(p.price)}
+                                    </span>
+                                    {p.comparePrice > p.price && (
+                                      <span style={{ fontSize: 11, color: "#999", textDecoration: "line-through" }}>
+                                        {formatRupee(p.comparePrice)}
+                                      </span>
+                                    )}
+                                    {p.brand && (
+                                      <span style={{ fontSize: 11, color: "#888" }}>• {p.brand}</span>
+                                    )}
+                                  </div>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      <button onClick={() => doSearch()} className="sd-see-all">
+                        See all results for "{searchQuery}" →
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Account */}
+        {(isVendor || isAdmin) && (
+          <div style={{ flex: 1 }}></div>
+        )}
+
         <div
           style={{ position: "relative" }}
           className="desktop-only"
@@ -889,12 +852,7 @@ const Navbar = () => {
             </span>
             <span className="nav-link-bottom">
               Account & Lists
-              <svg
-                width="10"
-                height="10"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M7 10l5 5 5-5z" />
               </svg>
             </span>
@@ -908,13 +866,9 @@ const Navbar = () => {
                     onClick={() => go("/login")}
                     style={{
                       background: "linear-gradient(180deg, #FFD814, #F7CA00)",
-                      color: "#111",
-                      padding: "8px 24px",
-                      border: "1px solid #FCD200",
-                      borderRadius: 6,
-                      fontSize: 13,
-                      fontWeight: 600,
-                      cursor: "pointer",
+                      color: "#111", padding: "8px 24px",
+                      border: "1px solid #FCD200", borderRadius: 6,
+                      fontSize: 13, fontWeight: 600, cursor: "pointer",
                       marginBottom: 8,
                     }}
                   >
@@ -924,13 +878,7 @@ const Navbar = () => {
                     New customer?{" "}
                     <button
                       onClick={() => go("/signup")}
-                      style={{
-                        color: "#0066C0",
-                        background: "transparent",
-                        border: "none",
-                        cursor: "pointer",
-                        fontSize: 12,
-                      }}
+                      style={{ color: "#0066C0", background: "transparent", border: "none", cursor: "pointer", fontSize: 12 }}
                     >
                       Start here.
                     </button>
@@ -938,284 +886,493 @@ const Navbar = () => {
                 </div>
               )}
 
-              <div className="account-dd-body">
-                <div className="account-dd-col">
-                  <p className="account-dd-col-title">Your Account</p>
-                  {user && (
-                    <>
-                      <button
-                        onClick={() => go(dash(user.role))}
-                        className="account-dd-link"
-                      >
-                        Your Account
-                      </button>
-                      {isCustomer && (
-                        <button
-                          onClick={() => go("/orders")}
-                          className="account-dd-link"
-                        >
-                          Your Orders
-                        </button>
-                      )}
-                      {isCustomer && (
-                        <button
-                          onClick={() => go("/cart")}
-                          className="account-dd-link"
-                        >
-                          Your Cart
-                        </button>
-                      )}
-                      {isVendor && (
-                        <button
-                          onClick={() => go("/vendor/dashboard")}
-                          className="account-dd-link"
-                        >
-                          Your Store
-                        </button>
-                      )}
-                      {isAdmin && (
-                        <button
-                          onClick={() => go("/admin/dashboard")}
-                          className="account-dd-link"
-                        >
-                          Admin Panel
-                        </button>
-                      )}
-                      <button
-                        onClick={doLogout}
-                        className="account-dd-link"
-                        style={{ color: "#0066C0", marginTop: 8 }}
-                      >
-                        Sign Out
-                      </button>
-                    </>
-                  )}
-                  {!user && (
-                    <>
-                      <button
-                        onClick={() => go("/orders")}
-                        className="account-dd-link"
-                      >
-                        Your Orders
-                      </button>
-                      <button
-                        onClick={() => go("/cart")}
-                        className="account-dd-link"
-                      >
-                        Your Cart
-                      </button>
-                    </>
-                  )}
-                </div>
+              {isCustomer && (
+                <div className="account-dd-body">
+                  <div className="account-dd-col">
+                    <p className="account-dd-col-title">Your Account</p>
+                    <button onClick={() => go("/dashboard")} className="account-dd-link">Dashboard</button>
+                    <button onClick={() => go("/profile")} className="account-dd-link">Profile & Addresses</button>
+                    <button onClick={() => go("/orders")} className="account-dd-link">Your Orders</button>
+                    <button onClick={() => go("/cart")} className="account-dd-link">Your Cart</button>
+                    <button onClick={() => go("/wishlist")} className="account-dd-link">Your Wishlist</button>
+                    <button onClick={doLogout} className="account-dd-link" style={{ color: "#0066C0", marginTop: 8 }}>
+                      Sign Out
+                    </button>
+                  </div>
 
-                <div className="account-dd-col">
-                  <p className="account-dd-col-title">Sell on E-Commerce</p>
-                  <button
-                    onClick={() => go("/vendor/signup")}
-                    className="account-dd-link"
-                  >
-                    Become a Seller
-                  </button>
-                  <button
-                    onClick={() => go("/vendor/login")}
-                    className="account-dd-link"
-                  >
-                    Seller Login
-                  </button>
-                  <button
-                    onClick={() => go("/policy/seller-guidelines")}
-                    className="account-dd-link"
-                  >
-                    Seller Guidelines
-                  </button>
-                  <button
-                    onClick={() => go("/policy/commission-policy")}
-                    className="account-dd-link"
-                  >
-                    Commission
-                  </button>
+                  <div className="account-dd-col">
+                    <p className="account-dd-col-title">Help & Settings</p>
+                    <button onClick={() => go("/help")} className="account-dd-link">Customer Service</button>
+                    <button onClick={() => go("/contact")} className="account-dd-link">Contact Us</button>
+                    <button onClick={() => go("/policy/returns")} className="account-dd-link">Returns Policy</button>
+                    <button onClick={() => go("/policy/shipping-info")} className="account-dd-link">Shipping Info</button>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {isVendor && (
+                <div className="account-dd-body">
+                  <div className="account-dd-col">
+                    <p className="account-dd-col-title">Vendor Panel</p>
+                    <button onClick={() => go("/vendor/dashboard")} className="account-dd-link">Dashboard</button>
+                    <button onClick={() => go("/vendor/dashboard?tab=products")} className="account-dd-link">My Products</button>
+                    <button onClick={() => go("/vendor/dashboard?tab=orders")} className="account-dd-link">Orders</button>
+                    <button onClick={() => go("/vendor/dashboard?tab=reviews")} className="account-dd-link">Reviews</button>
+                    <button onClick={doLogout} className="account-dd-link" style={{ color: "#0066C0", marginTop: 8 }}>
+                      Sign Out
+                    </button>
+                  </div>
+
+                  <div className="account-dd-col">
+                    <p className="account-dd-col-title">Resources</p>
+                    <button onClick={() => go("/policy/seller-guidelines")} className="account-dd-link">Seller Guidelines</button>
+                    <button onClick={() => go("/policy/commission-policy")} className="account-dd-link">Commission</button>
+                    <button onClick={() => go("/policy/vendor-agreement")} className="account-dd-link">Vendor Agreement</button>
+                    <button onClick={() => go("/help")} className="account-dd-link">Support</button>
+                  </div>
+                </div>
+              )}
+
+              {isAdmin && (
+                <div className="account-dd-body">
+                  <div className="account-dd-col">
+                    <p className="account-dd-col-title">Admin Panel</p>
+                    <button onClick={() => go("/admin/dashboard")} className="account-dd-link">Dashboard</button>
+                    <button onClick={() => go("/admin/dashboard?tab=vendors")} className="account-dd-link">Vendors</button>
+                    <button onClick={() => go("/admin/dashboard?tab=categories")} className="account-dd-link">Categories</button>
+                    <button onClick={() => go("/admin/dashboard?tab=products")} className="account-dd-link">Products</button>
+                    <button onClick={() => go("/admin/dashboard?tab=orders")} className="account-dd-link">Orders</button>
+                    <button onClick={() => go("/admin/dashboard?tab=reviews")} className="account-dd-link">Reviews</button>
+                    <button onClick={doLogout} className="account-dd-link" style={{ color: "#0066C0", marginTop: 8 }}>
+                      Sign Out
+                    </button>
+                  </div>
+
+                  <div className="account-dd-col">
+                    <p className="account-dd-col-title">Quick Links</p>
+                    <button onClick={() => go("/")} className="account-dd-link">View Storefront</button>
+                    <button onClick={() => go("/products")} className="account-dd-link">All Products</button>
+                    <button onClick={() => go("/help")} className="account-dd-link">Help Center</button>
+                  </div>
+                </div>
+              )}
+
+              {isGuest && (
+                <div className="account-dd-body">
+                  <div className="account-dd-col">
+                    <p className="account-dd-col-title">Your Account</p>
+                    <button onClick={() => go("/orders")} className="account-dd-link">Your Orders</button>
+                    <button onClick={() => go("/cart")} className="account-dd-link">Your Cart {cartCount > 0 && `(${cartCount})`}</button>
+                  </div>
+
+                  <div className="account-dd-col">
+                    <p className="account-dd-col-title">Sell on E-Commerce</p>
+                    <button onClick={() => go("/vendor/signup")} className="account-dd-link">Become a Seller</button>
+                    <button onClick={() => go("/vendor/login")} className="account-dd-link">Seller Login</button>
+                    <button onClick={() => go("/policy/seller-guidelines")} className="account-dd-link">Seller Guidelines</button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
 
-        {user && isCustomer && (
-          <button
-            onClick={() => go("/orders")}
-            className="nav-link desktop-only"
-          >
+        {isCustomer && (
+          <button onClick={() => go("/orders")} className="nav-link desktop-only">
             <span className="nav-link-top">Returns</span>
             <span className="nav-link-bottom">& Orders</span>
           </button>
         )}
 
-        <button onClick={() => go("/cart")} className="nav-cart">
-          <div className="nav-cart-icon-wrap">
-            {cartCount > 0 && (
-              <span className="cart-count">
-                {cartCount > 99 ? "99+" : cartCount}
-              </span>
-            )}
-            <svg
-              width="32"
-              height="32"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-            </svg>
-          </div>
-          <span
-            style={{ fontSize: 13, fontWeight: 700, marginTop: 10 }}
-            className="desktop-only"
+        {showShoppingFeatures && (
+          <button onClick={() => go("/cart")} className="nav-cart">
+            <div className="nav-cart-icon-wrap">
+              {cartCount > 0 && (
+                <span className="cart-count">
+                  {cartCount > 99 ? "99+" : cartCount}
+                </span>
+              )}
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+              </svg>
+            </div>
+            <span style={{ fontSize: 13, fontWeight: 700, marginTop: 10 }} className="desktop-only">
+              Cart
+            </span>
+          </button>
+        )}
+
+        {(isVendor || isAdmin) && (
+          <button
+            onClick={doLogout}
+            className="vendor-action-btn desktop-only"
+            style={{ background: "rgba(239,68,68,0.2)", borderColor: "rgba(239,68,68,0.4)" }}
           >
-            Cart
-          </span>
-        </button>
+            🚪 Sign Out
+          </button>
+        )}
       </nav>
 
-      {mobileOpen && (
+      {locationOpen && (
         <>
           <div
             className="slide-overlay"
-            onClick={() => setMobileOpen(false)}
+            onClick={() => { setLocationOpen(false); setPincodeInput(""); setLocationError(""); }}
           ></div>
+          <div className="loc-modal">
+            <div style={{ background: "linear-gradient(135deg, #131921, #232F3E)", padding: "20px 24px", color: "white" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div>
+                  <h2 style={{ fontSize: 18, fontWeight: 900, margin: 0 }}>Choose Your Location</h2>
+                  <p style={{ fontSize: 12, color: "#94A3B8", margin: "3px 0 0" }}>
+                    Select delivery location to see accurate prices and availability
+                  </p>
+                </div>
+                <button
+                  onClick={() => { setLocationOpen(false); setPincodeInput(""); setLocationError(""); }}
+                  style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)", color: "white", borderRadius: 8, width: 32, height: 32, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                >
+                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div style={{ padding: "24px" }}>
+              <div style={{ background: "linear-gradient(135deg, #FFF5F0, #FFFBF9)", border: "1px solid #FDBA74", borderRadius: 12, padding: "14px 16px", marginBottom: 20, display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ width: 36, height: 36, background: "white", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
+                  📍
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 11, color: "#6B7280", margin: 0, textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.05em" }}>
+                    Current Location
+                  </p>
+                  <p style={{ fontSize: 14, fontWeight: 800, color: "#111", margin: "2px 0 0" }}>
+                    {currentLocation}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={handleDetectLocation}
+                disabled={detectingLocation}
+                style={{
+                  width: "100%",
+                  background: detectingLocation ? "#9CA3AF" : "linear-gradient(135deg, #D85A30, #FF8C5A)",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 12,
+                  padding: "13px",
+                  fontSize: 14,
+                  fontWeight: 800,
+                  cursor: detectingLocation ? "not-allowed" : "pointer",
+                  boxShadow: detectingLocation ? "none" : "0 4px 16px rgba(216,90,48,0.3)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 10,
+                  marginBottom: 16,
+                  fontFamily: "inherit",
+                }}
+              >
+                {detectingLocation ? (
+                  <>
+                    <span style={{ width: 16, height: 16, border: "2px solid white", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.6s linear infinite" }}></span>
+                    Detecting your location...
+                  </>
+                ) : (
+                  <>
+                    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="10" />
+                      <circle cx="12" cy="12" r="4" />
+                      <path d="M12 2v2M12 20v2M2 12h2M20 12h2" strokeLinecap="round" />
+                    </svg>
+                    Use Current Location
+                  </>
+                )}
+              </button>
+
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                <div style={{ flex: 1, height: 1, background: "#E5E7EB" }}></div>
+                <span style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>OR</span>
+                <div style={{ flex: 1, height: 1, background: "#E5E7EB" }}></div>
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: "#374151", display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  Enter PIN Code
+                </label>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input
+                    type="text"
+                    placeholder="e.g. 400001"
+                    value={pincodeInput}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                      setPincodeInput(val);
+                      setLocationError("");
+                    }}
+                    onKeyDown={(e) => e.key === "Enter" && handlePincodeSubmit()}
+                    maxLength={6}
+                    style={{
+                      flex: 1,
+                      border: `1.5px solid ${locationError ? "#FCA5A5" : "#E5E7EB"}`,
+                      borderRadius: 10,
+                      padding: "11px 14px",
+                      fontSize: 14,
+                      color: "#111",
+                      background: "#FAFAFA",
+                      outline: "none",
+                      fontFamily: "monospace",
+                      letterSpacing: "0.1em",
+                      fontWeight: 700,
+                      boxSizing: "border-box",
+                    }}
+                  />
+                  <button
+                    onClick={handlePincodeSubmit}
+                    disabled={pincodeInput.length !== 6}
+                    style={{
+                      background: pincodeInput.length === 6 ? "#111" : "#E5E7EB",
+                      color: pincodeInput.length === 6 ? "white" : "#9CA3AF",
+                      border: "none",
+                      borderRadius: 10,
+                      padding: "0 24px",
+                      fontSize: 13,
+                      fontWeight: 800,
+                      cursor: pincodeInput.length === 6 ? "pointer" : "not-allowed",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    Apply
+                  </button>
+                </div>
+                {locationError && (
+                  <p style={{ fontSize: 11, color: "#EF4444", marginTop: 6, fontWeight: 600 }}>
+                    ⚠️ {locationError}
+                  </p>
+                )}
+              </div>
+
+              <div style={{ borderTop: "1px solid #F3F4F6", paddingTop: 16 }}>
+                <p style={{ fontSize: 11, color: "#6B7280", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
+                  Popular Cities
+                </p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {[
+                    "Mumbai", "Delhi", "Bangalore", "Hyderabad", "Chennai",
+                    "Kolkata", "Pune", "Ahmedabad", "Jaipur", "Lucknow",
+                  ].map((city) => (
+                    <button
+                      key={city}
+                      onClick={() => handleSetLocation(`${city}, India`)}
+                      style={{
+                        background: currentLocation.includes(city) ? "#FFF5F0" : "#F9FAFB",
+                        color: currentLocation.includes(city) ? "#D85A30" : "#374151",
+                        border: `1px solid ${currentLocation.includes(city) ? "#FDBA74" : "#E5E7EB"}`,
+                        borderRadius: 99,
+                        padding: "7px 14px",
+                        fontSize: 12,
+                        fontWeight: currentLocation.includes(city) ? 800 : 600,
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                      }}
+                    >
+                      {currentLocation.includes(city) && "✓ "}{city}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {user && (
+                <div style={{ marginTop: 20, padding: "14px 16px", background: "#F0FDF4", border: "1px solid #86EFAC", borderRadius: 12, display: "flex", alignItems: "center", gap: 12 }}>
+                  <span style={{ fontSize: 20 }}>💡</span>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 12, color: "#166534", fontWeight: 700, margin: 0 }}>
+                      Save delivery addresses
+                    </p>
+                    <p style={{ fontSize: 11, color: "#16A34A", margin: 0 }}>
+                      Add addresses to your profile for faster checkout
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => { setLocationOpen(false); go("/profile"); }}
+                    style={{
+                      background: "#22C55E",
+                      color: "white",
+                      border: "none",
+                      borderRadius: 8,
+                      padding: "7px 14px",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    Go to Profile
+                  </button>
+                </div>
+              )}
+
+              {!user && (
+                <div style={{ marginTop: 20, padding: "14px 16px", background: "#EFF6FF", border: "1px solid #93C5FD", borderRadius: 12, display: "flex", alignItems: "center", gap: 12 }}>
+                  <span style={{ fontSize: 20 }}>🔐</span>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 12, color: "#1E40AF", fontWeight: 700, margin: 0 }}>
+                      Sign in for better experience
+                    </p>
+                    <p style={{ fontSize: 11, color: "#2563EB", margin: 0 }}>
+                      Save addresses and get faster delivery
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => { setLocationOpen(false); go("/login"); }}
+                    style={{
+                      background: "#2563EB",
+                      color: "white",
+                      border: "none",
+                      borderRadius: 8,
+                      padding: "7px 14px",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    Sign In
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {mobileOpen && (
+        <>
+          <div className="slide-overlay" onClick={() => setMobileOpen(false)}></div>
           <div className="slide-panel">
             <div className="slide-header">
               {user && (
-                <div
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: "50%",
-                    background: "linear-gradient(135deg, #D85A30, #FF8C5A)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "white",
-                    fontWeight: 800,
-                  }}
-                >
+                <div style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg, #D85A30, #FF8C5A)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 800 }}>
                   {user.firstName?.charAt(0)?.toUpperCase()}
                 </div>
               )}
               <span>Hello, {user ? user.firstName : "Sign in"}</span>
               <button
                 onClick={() => setMobileOpen(false)}
-                style={{
-                  marginLeft: "auto",
-                  background: "transparent",
-                  border: "none",
-                  color: "white",
-                  cursor: "pointer",
-                }}
+                style={{ marginLeft: "auto", background: "transparent", border: "none", color: "white", cursor: "pointer" }}
               >
-                <svg
-                  width="22"
-                  height="22"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                   <path d="M18 6L6 18M6 6l12 12" />
                 </svg>
               </button>
             </div>
-            <div className="slide-section">
-              <p className="slide-section-title">Shop by Category</p>
-              {categories.map((cat) => (
+
+            {showShoppingFeatures && (
+              <div className="slide-section">
                 <button
-                  key={cat._id}
-                  onClick={() => go(`/products?category=${cat._id}`)}
+                  onClick={() => { setMobileOpen(false); setLocationOpen(true); }}
                   className="slide-item"
+                  style={{ background: "#FFF5F0", fontWeight: 700 }}
                 >
-                  <span>{cat.name}</span>
-                  {cat.children?.length > 0 && (
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path d="M9 5l7 7-7 7" strokeLinecap="round" />
-                    </svg>
-                  )}
+                  <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    📍 Deliver to {currentLocation}
+                  </span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M9 5l7 7-7 7" strokeLinecap="round" />
+                  </svg>
                 </button>
-              ))}
-            </div>
-            <div className="slide-section">
-              <p className="slide-section-title">Account</p>
-              {user ? (
-                <>
+              </div>
+            )}
+
+            {showShoppingFeatures && (
+              <div className="slide-section">
+                <p className="slide-section-title">Shop by Category</p>
+                {categories.map((cat) => (
                   <button
-                    onClick={() => go(dash(user.role))}
+                    key={cat._id}
+                    onClick={() => go(`/products?category=${cat._id}`)}
                     className="slide-item"
                   >
-                    Your Account
+                    <span>{cat.name}</span>
+                    {cat.children?.length > 0 && (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M9 5l7 7-7 7" strokeLinecap="round" />
+                      </svg>
+                    )}
                   </button>
-                  {isCustomer && (
-                    <button
-                      onClick={() => go("/orders")}
-                      className="slide-item"
-                    >
-                      Your Orders
-                    </button>
-                  )}
-                  {isCustomer && (
-                    <button onClick={() => go("/cart")} className="slide-item">
-                      Cart ({cartCount})
-                    </button>
-                  )}
-                  <button
-                    onClick={doLogout}
-                    className="slide-item"
-                    style={{ color: "#0066C0" }}
-                  >
-                    Sign Out
+                ))}
+              </div>
+            )}
+
+            {isCustomer && (
+              <div className="slide-section">
+                <p className="slide-section-title">My Account</p>
+                <button onClick={() => go("/dashboard")} className="slide-item">Dashboard</button>
+                <button onClick={() => go("/profile")} className="slide-item">Profile</button>
+                <button onClick={() => go("/orders")} className="slide-item">Your Orders</button>
+                <button onClick={() => go("/cart")} className="slide-item">Cart ({cartCount})</button>
+                <button onClick={() => go("/wishlist")} className="slide-item">Wishlist</button>
+                <button onClick={doLogout} className="slide-item" style={{ color: "#0066C0" }}>
+                  Sign Out
+                </button>
+              </div>
+            )}
+
+            {isVendor && (
+              <div className="slide-section">
+                <p className="slide-section-title">Vendor Panel</p>
+                <button onClick={() => go("/vendor/dashboard")} className="slide-item">Dashboard</button>
+                <button onClick={() => go("/vendor/dashboard?tab=products")} className="slide-item">My Products</button>
+                <button onClick={() => go("/vendor/dashboard?tab=orders")} className="slide-item">Orders</button>
+                <button onClick={() => go("/vendor/dashboard?tab=reviews")} className="slide-item">Reviews</button>
+                <button onClick={doLogout} className="slide-item" style={{ color: "#0066C0" }}>
+                  Sign Out
+                </button>
+              </div>
+            )}
+
+            {isAdmin && (
+              <div className="slide-section">
+                <p className="slide-section-title">Admin Panel</p>
+                <button onClick={() => go("/admin/dashboard")} className="slide-item">Dashboard</button>
+                <button onClick={() => go("/admin/dashboard?tab=vendors")} className="slide-item">Vendors</button>
+                <button onClick={() => go("/admin/dashboard?tab=categories")} className="slide-item">Categories</button>
+                <button onClick={() => go("/admin/dashboard?tab=products")} className="slide-item">Products</button>
+                <button onClick={() => go("/admin/dashboard?tab=orders")} className="slide-item">Orders</button>
+                <button onClick={() => go("/admin/dashboard?tab=reviews")} className="slide-item">Reviews</button>
+                <button onClick={doLogout} className="slide-item" style={{ color: "#0066C0" }}>
+                  Sign Out
+                </button>
+              </div>
+            )}
+
+            {isGuest && (
+              <div className="slide-section">
+                <p className="slide-section-title">Account</p>
+                <button onClick={() => go("/login")} className="slide-item" style={{ color: "#0066C0", fontWeight: 600 }}>
+                  Sign In
+                </button>
+                <button onClick={() => go("/signup")} className="slide-item">Create Account</button>
+                {cartCount > 0 && (
+                  <button onClick={() => go("/cart")} className="slide-item">
+                    Cart ({cartCount})
                   </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    onClick={() => go("/login")}
-                    className="slide-item"
-                    style={{ color: "#0066C0", fontWeight: 600 }}
-                  >
-                    Sign In
-                  </button>
-                  <button
-                    onClick={() => go("/signup")}
-                    className="slide-item"
-                  >
-                    Create Account
-                  </button>
-                </>
-              )}
-            </div>
-            <div className="slide-section">
-              <p className="slide-section-title">Sell with Us</p>
-              <button
-                onClick={() => go("/vendor/signup")}
-                className="slide-item"
-              >
-                Become a Seller
-              </button>
-              <button
-                onClick={() => go("/vendor/login")}
-                className="slide-item"
-              >
-                Seller Login
-              </button>
-            </div>
+                )}
+              </div>
+            )}
+
+            {(isGuest || isCustomer) && (
+              <div className="slide-section">
+                <p className="slide-section-title">Sell with Us</p>
+                <button onClick={() => go("/vendor/signup")} className="slide-item">Become a Seller</button>
+                <button onClick={() => go("/vendor/login")} className="slide-item">Seller Login</button>
+              </div>
+            )}
           </div>
         </>
       )}

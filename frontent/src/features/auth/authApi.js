@@ -63,6 +63,13 @@ tagTypes: [
   "Orders",
   "AdminOrders",
   "VendorOrders",
+  "Reviews",
+  "CanReview",
+  "MyReviews",
+  "AdminReviews",
+  "VendorReviews",
+  "Profile", 
+  "Wishlist",
 ],
   endpoints: (builder) => ({
     signup: builder.mutation({

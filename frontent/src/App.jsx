@@ -13,10 +13,13 @@ import ProductDetailPage from "./pages/ProductDetailPage";
 import CartPage from "./pages/CartPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import OrdersPage from "./pages/OrdersPage";
+import ProfilePage from "./pages/ProfilePage";
+import WishlistPage from "./pages/WishlistPage";
 import AboutPage from "./pages/AboutPage";
 import ContactPage from "./pages/ContactPage";
 import HelpPage from "./pages/HelpPage";
 import PolicyPage from "./pages/PolicyPage";
+import NotFoundPage from "./pages/NotFoundPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AuthVerifier from "./components/AuthVerifier";
 import Layout from "./components/Layout";
@@ -37,19 +40,12 @@ function App() {
             <Route path="/unauthorized" element={<Unauthorized />} />
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/products/:slug" element={<ProductDetailPage />} />
+            <Route path="/cart" element={<CartPage />} />
+            <Route path="/wishlist" element={<WishlistPage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/help" element={<HelpPage />} />
             <Route path="/policy/:slug" element={<PolicyPage />} />
-
-            <Route
-              path="/cart"
-              element={
-                <ProtectedRoute allowedRoles={["customer"]}>
-                  <CartPage />
-                </ProtectedRoute>
-              }
-            />
 
             <Route
               path="/checkout"
@@ -79,6 +75,15 @@ function App() {
             />
 
             <Route
+              path="/profile"
+              element={
+                <ProtectedRoute allowedRoles={["customer"]}>
+                  <ProfilePage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
               path="/admin/dashboard"
               element={
                 <ProtectedRoute allowedRoles={["admin"]}>
@@ -95,6 +100,8 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </Layout>
       </AuthVerifier>

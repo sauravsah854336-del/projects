@@ -3,29 +3,31 @@ import { authApi } from "../auth/authApi";
 const uploadApi = authApi.injectEndpoints({
   endpoints: (builder) => ({
     uploadSingleImage: builder.mutation({
-      query: ({ file, folder }) => {
+      query: ({ file }) => {
         const formData = new FormData();
         formData.append("image", file);
         return {
-          url: `/upload/single?folder=${folder}`,
+          url: "/upload/single",
           method: "POST",
           body: formData,
         };
       },
     }),
+
     uploadMultipleImages: builder.mutation({
-      query: ({ files, folder }) => {
+      query: ({ files }) => {
         const formData = new FormData();
         files.forEach((file) => {
           formData.append("images", file);
         });
         return {
-          url: `/upload/multiple?folder=${folder}`,
+          url: "/upload/multiple",
           method: "POST",
           body: formData,
         };
       },
     }),
+
     deleteImage: builder.mutation({
       query: (key) => ({
         url: "/upload/delete",

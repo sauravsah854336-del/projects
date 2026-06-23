@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { useGetSingleProductQuery } from "../features/product/productApi";
 import { useAddToCartMutation } from "../features/cart/cartApi";
 import { useSelector } from "react-redux";
+import ReviewList from "../components/reviews/ReviewList";
 
 const formatRupee = (amount) =>
   new Intl.NumberFormat("en-IN", {
@@ -19,6 +20,8 @@ const ProductDetailPage = () => {
   const [addToCart, { isLoading: addingToCart }] = useAddToCartMutation();
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const [actionType, setActionType] = useState(null);
+  const [addedSuccess, setAddedSuccess] = useState(false);
 
   if (isLoading) {
     return (
@@ -53,27 +56,29 @@ const ProductDetailPage = () => {
   const discount =
     product.comparePrice > product.price
       ? Math.round(
-          ((product.comparePrice - product.price) / product.comparePrice) * 100
+          ((product.comparePrice - product.price) / product.comparePrice) * 100,
         )
       : 0;
 
   const isCustomer = user?.role === "customer";
   const isLoggedIn = !!user;
+  const canShop = !user || isCustomer;
 
   const handleAddToCart = async () => {
     if (!isLoggedIn) {
       navigate("/login");
       return;
     }
-
+    if (!isCustomer) return;
+    setActionType("cart");
     try {
-      await addToCart({
-        productId: product._id,
-        quantity,
-      }).unwrap();
-      alert("Product added to cart!");
+      await addToCart({ productId: product._id, quantity }).unwrap();
+      setAddedSuccess(true);
+      setTimeout(() => setAddedSuccess(false), 2500);
     } catch (err) {
       alert(err?.data?.message || "Failed to add to cart");
+    } finally {
+      setActionType(null);
     }
   };
 
@@ -82,15 +87,14 @@ const ProductDetailPage = () => {
       navigate("/login");
       return;
     }
-
+    if (!isCustomer) return;
+    setActionType("buy");
     try {
-      await addToCart({
-        productId: product._id,
-        quantity,
-      }).unwrap();
+      await addToCart({ productId: product._id, quantity }).unwrap();
       navigate("/checkout");
     } catch (err) {
       alert(err?.data?.message || "Failed to add to cart");
+      setActionType(null);
     }
   };
 
@@ -129,24 +133,19 @@ const ProductDetailPage = () => {
           </div>
 
           {product.images?.length > 1 && (
-            <div className="flex gap-3">
+            <div className="flex gap-3 flex-wrap">
               {product.images.map((img, index) => (
                 <button
                   key={index}
                   onClick={() => setSelectedImage(index)}
-                  className={`w-20 h-20 rounded-xl overflow-hidden border-2 transition ${
-                    selectedImage === index
-                      ? "border-black"
-                      : "border-gray-200"
-                  }`}
+                  className={`w-20 h-20 rounded-xl overflow-hidden border-2 transition ${selectedImage === index ? "border-black" : "border-gray-200"}`}
                 >
                   <img
                     src={img.url}
                     alt={`${product.name} ${index + 1}`}
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      e.target.src =
-                        "https://via.placeholder.com/80?text=Img";
+                      e.target.src = "https://via.placeholder.com/80?text=Img";
                     }}
                   />
                 </button>
@@ -185,7 +184,10 @@ const ProductDetailPage = () => {
           </div>
 
           {product.averageRating > 0 && (
-            <div className="flex items-center gap-2 mb-4">
+            <a
+              href="#reviews"
+              className="flex items-center gap-2 mb-4 no-underline group w-fit"
+            >
               <div className="flex">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <span
@@ -200,11 +202,11 @@ const ProductDetailPage = () => {
                   </span>
                 ))}
               </div>
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-[#D85A30] group-hover:underline">
                 {product.averageRating.toFixed(1)} ({product.totalReviews}{" "}
-                reviews)
+                {product.totalReviews === 1 ? "review" : "reviews"})
               </span>
-            </div>
+            </a>
           )}
 
           {product.shortDescription && (
@@ -213,11 +215,7 @@ const ProductDetailPage = () => {
 
           <div className="flex items-center gap-3 mb-4">
             <span
-              className={`text-sm font-medium px-3 py-1 rounded-full ${
-                product.stock > 0
-                  ? "bg-green-100 text-green-700"
-                  : "bg-red-100 text-red-700"
-              }`}
+              className={`text-sm font-medium px-3 py-1 rounded-full ${product.stock > 0 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
             >
               {product.stock > 0
                 ? `In Stock (${product.stock} available)`
@@ -226,7 +224,7 @@ const ProductDetailPage = () => {
             {product.stock > 0 &&
               product.stock <= product.lowStockThreshold && (
                 <span className="text-sm text-orange-500 font-medium">
-                  Only {product.stock} left!
+                  ⚠️ Only {product.stock} left!
                 </span>
               )}
           </div>
@@ -234,9 +232,7 @@ const ProductDetailPage = () => {
           {product.brand && (
             <p className="text-sm text-gray-600 mb-2">
               Brand:{" "}
-              <span className="font-medium text-gray-900">
-                {product.brand}
-              </span>
+              <span className="font-medium text-gray-900">{product.brand}</span>
             </p>
           )}
 
@@ -247,61 +243,189 @@ const ProductDetailPage = () => {
             </span>
           </p>
 
-          {(!user || isCustomer) && product.stock > 0 && (
+          {addedSuccess && (
+            <div
+              style={{
+                background: "#F0FDF4",
+                border: "1px solid #86EFAC",
+                borderRadius: 10,
+                padding: "12px 16px",
+                marginBottom: 16,
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+              }}
+            >
+              <span style={{ fontSize: 20 }}>✅</span>
+              <div style={{ flex: 1 }}>
+                <p
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: "#166534",
+                    margin: 0,
+                  }}
+                >
+                  Added to cart successfully!
+                </p>
+                <p style={{ fontSize: 11, color: "#16A34A", margin: 0 }}>
+                  {quantity} × {product.name}
+                </p>
+              </div>
+              <button
+                onClick={() => navigate("/cart")}
+                style={{
+                  background: "#22C55E",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 8,
+                  padding: "8px 14px",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                View Cart →
+              </button>
+            </div>
+          )}
+
+          {canShop && product.stock > 0 && (
             <div className="flex items-center gap-3 mb-6">
               <p className="text-sm font-medium text-gray-700">Quantity:</p>
               <div className="flex items-center border border-gray-300 rounded-xl overflow-hidden">
                 <button
                   onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                  className="px-4 py-2 text-lg font-medium hover:bg-gray-100 transition"
+                  disabled={quantity <= 1}
+                  className="px-4 py-2 text-lg font-medium hover:bg-gray-100 transition disabled:opacity-40"
                 >
                   −
                 </button>
-                <span className="px-4 py-2 font-medium border-x border-gray-300">
+                <span className="px-4 py-2 font-medium border-x border-gray-300 min-w-[50px] text-center">
                   {quantity}
                 </span>
                 <button
                   onClick={() =>
                     setQuantity((q) => Math.min(product.stock, q + 1))
                   }
-                  className="px-4 py-2 text-lg font-medium hover:bg-gray-100 transition"
+                  disabled={quantity >= product.stock}
+                  className="px-4 py-2 text-lg font-medium hover:bg-gray-100 transition disabled:opacity-40"
                 >
                   +
                 </button>
               </div>
+              <p className="text-xs text-gray-500">
+                Total:{" "}
+                <span className="font-bold text-[#D85A30]">
+                  {formatRupee(product.price * quantity)}
+                </span>
+              </p>
             </div>
           )}
 
-          {(!user || isCustomer) && (
+          {canShop && (
             <div className="flex gap-3 mb-8">
               <button
                 disabled={product.stock <= 0 || addingToCart}
                 onClick={handleAddToCart}
                 className="flex-1 bg-black text-white py-4 rounded-xl font-semibold hover:bg-[#D85A30] transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {addingToCart
+                {actionType === "cart"
                   ? "Adding..."
                   : product.stock > 0
-                  ? "Add to Cart"
-                  : "Out of Stock"}
+                    ? "Add to Cart"
+                    : "Out of Stock"}
               </button>
               <button
                 disabled={product.stock <= 0 || addingToCart}
                 onClick={handleBuyNow}
                 className="flex-1 bg-[#D85A30] text-white py-4 rounded-xl font-semibold hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Buy Now
+                {actionType === "buy" ? "Processing..." : "Buy Now"}
+              </button>
+            </div>
+          )}
+
+          {!user && (
+            <div
+              style={{
+                background: "#EFF6FF",
+                border: "1px solid #93C5FD",
+                borderRadius: 12,
+                padding: "14px 16px",
+                marginBottom: 24,
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+              }}
+            >
+              <span style={{ fontSize: 20 }}>🔐</span>
+              <div style={{ flex: 1 }}>
+                <p
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: "#1E40AF",
+                    margin: 0,
+                  }}
+                >
+                  Sign in to purchase
+                </p>
+                <p style={{ fontSize: 11, color: "#2563EB", margin: 0 }}>
+                  Login or create account to add items to cart
+                </p>
+              </div>
+              <button
+                onClick={() => navigate("/login")}
+                style={{
+                  background: "#2563EB",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 8,
+                  padding: "8px 16px",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Sign In
               </button>
             </div>
           )}
 
           {user && !isCustomer && (
-            <div className="bg-gray-50 rounded-xl p-4 mb-8 text-center">
-              <p className="text-gray-500 text-sm">
-                {user.role === "admin"
-                  ? "Admins cannot purchase products"
-                  : "Switch to a customer account to purchase"}
-              </p>
+            <div
+              style={{
+                background: "#FEF9C3",
+                border: "1px solid #FDE68A",
+                borderRadius: 12,
+                padding: "14px 16px",
+                marginBottom: 24,
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+              }}
+            >
+              <span style={{ fontSize: 20 }}>ℹ️</span>
+              <div style={{ flex: 1 }}>
+                <p
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: "#854D0E",
+                    margin: 0,
+                  }}
+                >
+                  {user.role === "admin" ? "Admin Account" : "Vendor Account"}
+                </p>
+                <p style={{ fontSize: 11, color: "#A16207", margin: 0 }}>
+                  {user.role === "admin"
+                    ? "Admins cannot purchase products. Use a customer account."
+                    : "Vendors cannot purchase products. Use a customer account."}
+                </p>
+              </div>
             </div>
           )}
 
@@ -362,6 +486,10 @@ const ProductDetailPage = () => {
           </div>
         </div>
       )}
+
+      <div id="reviews" className="mt-16 scroll-mt-8">
+        <ReviewList product={product} />
+      </div>
     </div>
   );
 };

@@ -4,18 +4,16 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 const generateAccessToken = (user) => {
-  return jwt.sign(
-    { id: user._id, role: user.role },
-    process.env.JWT_SECRET,
-    { expiresIn: "15m" }
-  );
+  return jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
+    expiresIn: "15m",
+  });
 };
 
 const generateRefreshToken = (user) => {
   return jwt.sign(
     { id: user._id, role: user.role },
     process.env.JWT_REFRESH_SECRET,
-    { expiresIn: "7d" }
+    { expiresIn: "7d" },
   );
 };
 
@@ -29,21 +27,198 @@ const vendorSignup = async (req, res) => {
       password,
       storeName,
       storeDescription,
-      gstNumber,
+      businessType,
       panNumber,
+      panDocument,
+      gstNumber,
+      gstDocument,
+      businessRegistrationDoc,
+      cancelledCheque,
+      bankDetails,
+      businessAddress,
+      agreementsAccepted,
     } = req.body;
 
-    if (!firstName || !lastName || !email || !phone || !password || !storeName) {
+    if (
+      !firstName ||
+      !lastName ||
+      !email ||
+      !phone ||
+      !password ||
+      !storeName
+    ) {
       return res.status(400).json({
         success: false,
-        message: "First name, last name, email, phone, password and store name are required.",
+        message:
+          "First name, last name, email, phone, password and store name are required",
+      });
+    }
+
+    if (storeName.trim().length < 3) {
+      return res.status(400).json({
+        success: false,
+        message: "Store name must be at least 3 characters",
+      });
+    }
+
+    const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+    if (!panNumber || !panRegex.test(panNumber.trim().toUpperCase())) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid PAN number is required (e.g. ABCDE1234F)",
+      });
+    }
+
+    if (
+      !bankDetails?.accountHolderName ||
+      !bankDetails?.accountNumber ||
+      !bankDetails?.ifscCode ||
+      !bankDetails?.bankName
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Complete bank details are required",
+      });
+    }
+
+    const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+    if (!ifscRegex.test(bankDetails.ifscCode.trim().toUpperCase())) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid IFSC code is required (e.g. SBIN0001234)",
+      });
+    }
+
+    if (bankDetails.accountNumber.trim().length < 9) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid bank account number is required (minimum 9 digits)",
+      });
+    }
+
+    if (
+      !businessAddress?.postalCode ||
+      !/^\d{6}$/.test(businessAddress.postalCode.trim())
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid 6-digit PIN code is required",
+      });
+    }
+
+    if (
+      !businessAddress?.street ||
+      !businessAddress?.city ||
+      !businessAddress?.state
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Complete business address is required",
+      });
+    }
+
+    if (!cancelledCheque?.url) {
+      return res.status(400).json({
+        success: false,
+        message: "Cancelled cheque document is required",
+      });
+    }
+
+    if (!panDocument?.url) {
+      return res.status(400).json({
+        success: false,
+        message: "PAN card document is required",
+      });
+    }
+
+    if (!agreementsAccepted) {
+      return res.status(400).json({
+        success: false,
+        message: "You must accept the terms and vendor agreement",
+      });
+    }
+
+    if (!gstNumber || gstNumber.trim().length !== 15) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid 15-character GST number is required",
+      });
+    }
+
+    const gstRegex =
+      /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+    if (!gstRegex.test(gstNumber.trim().toUpperCase())) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid GST number format",
+      });
+    }
+
+    const stateCode = parseInt(gstNumber.trim().substring(0, 2), 10);
+    if (stateCode < 1 || stateCode > 37) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid state code in GST number",
+      });
+    }
+
+    if (panNumber) {
+      const panInGST = gstNumber.trim().toUpperCase().substring(2, 12);
+      if (panInGST !== panNumber.trim().toUpperCase()) {
+        return res.status(400).json({
+          success: false,
+          message: "PAN number in GST does not match the provided PAN",
+        });
+      }
+    }
+
+    if (!gstDocument?.url) {
+      return res.status(400).json({
+        success: false,
+        message: "GST certificate document is required",
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 6 characters",
+      });
+    }
+
+    if (!/[A-Z]/.test(password)) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must contain at least one uppercase letter",
+      });
+    }
+
+    if (!/[0-9]/.test(password)) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must contain at least one number",
+      });
+    }
+
+    const phoneRegex = /^[6-9]\d{9}$/;
+    if (!phoneRegex.test(phone.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid 10-digit Indian phone number is required",
+      });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid email address is required",
       });
     }
 
     const normalizedEmail = email.toLowerCase().trim();
 
     const existUser = await User.findOne({ email: normalizedEmail });
-
     if (existUser) {
       return res.status(409).json({
         success: false,
@@ -51,8 +226,7 @@ const vendorSignup = async (req, res) => {
       });
     }
 
-    const existPhone = await User.findOne({ phone });
-
+    const existPhone = await User.findOne({ phone: phone.trim() });
     if (existPhone) {
       return res.status(409).json({
         success: false,
@@ -60,13 +234,46 @@ const vendorSignup = async (req, res) => {
       });
     }
 
+    const existStore = await Vendor.findOne({
+      storeName: { $regex: new RegExp(`^${storeName.trim()}$`, "i") },
+      isDeleted: false,
+    });
+    if (existStore) {
+      return res.status(409).json({
+        success: false,
+        message: "Store name is already taken. Please choose a different name.",
+      });
+    }
+
+    const existPAN = await Vendor.findOne({
+      panNumber: panNumber.trim().toUpperCase(),
+      isDeleted: false,
+    });
+    if (existPAN) {
+      return res.status(409).json({
+        success: false,
+        message: "This PAN number is already registered with another vendor",
+      });
+    }
+
+    const existGST = await Vendor.findOne({
+      gstNumber: gstNumber.trim().toUpperCase(),
+      isDeleted: false,
+    });
+    if (existGST) {
+      return res.status(409).json({
+        success: false,
+        message: "This GST number is already registered with another vendor",
+      });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 12);
 
     const user = await User.create({
-      firstName,
-      lastName,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
       email: normalizedEmail,
-      phone,
+      phone: phone.trim(),
       password: hashedPassword,
       role: "vendor",
       status: "inactive",
@@ -75,14 +282,40 @@ const vendorSignup = async (req, res) => {
     await Vendor.create({
       userId: user._id,
       storeName: storeName.trim(),
-      storeDescription: storeDescription || "",
-      gstNumber: gstNumber || "",
-      panNumber: panNumber || "",
+      storeDescription: storeDescription?.trim() || "",
+      businessType: businessType || "individual",
+      panNumber: panNumber.trim().toUpperCase(),
+      panDocument: panDocument || { url: "", filename: "" },
+      gstNumber: gstNumber?.trim().toUpperCase() || "",
+      gstDocument: gstDocument || { url: "", filename: "" },
+      businessRegistrationDoc: businessRegistrationDoc || {
+        url: "",
+        filename: "",
+      },
+      cancelledCheque: cancelledCheque || { url: "", filename: "" },
+      bankDetails: {
+        accountHolderName: bankDetails.accountHolderName.trim(),
+        bankName: bankDetails.bankName.trim(),
+        accountNumber: bankDetails.accountNumber.trim(),
+        ifscCode: bankDetails.ifscCode.trim().toUpperCase(),
+        accountType: bankDetails.accountType || "savings",
+      },
+      businessAddress: {
+        street: businessAddress.street.trim(),
+        city: businessAddress.city.trim(),
+        state: businessAddress.state.trim(),
+        postalCode: businessAddress.postalCode.trim(),
+        country: "India",
+      },
+      agreementsAccepted: true,
+      agreementDate: new Date(),
+      approvalStatus: "pending",
     });
 
     return res.status(201).json({
       success: true,
-      message: "Vendor registration submitted. Please wait for admin approval.",
+      message:
+        "Vendor registration submitted successfully. Our team will review your application within 24-48 hours.",
     });
   } catch (err) {
     return res.status(500).json({
@@ -99,7 +332,7 @@ const vendorLogin = async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({
         success: false,
-        message: "Email and password are required.",
+        message: "Email and password are required",
       });
     }
 
@@ -118,7 +351,6 @@ const vendorLogin = async (req, res) => {
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
-
     if (!isMatch) {
       return res.status(401).json({
         success: false,
@@ -127,7 +359,6 @@ const vendorLogin = async (req, res) => {
     }
 
     const vendor = await Vendor.findOne({ userId: user._id });
-
     if (!vendor) {
       return res.status(404).json({
         success: false,
@@ -138,7 +369,8 @@ const vendorLogin = async (req, res) => {
     if (vendor.approvalStatus === "pending") {
       return res.status(403).json({
         success: false,
-        message: "Your account is pending admin approval",
+        message:
+          "Your account is pending admin approval. We will notify you within 24-48 hours.",
       });
     }
 
@@ -146,15 +378,22 @@ const vendorLogin = async (req, res) => {
       return res.status(403).json({
         success: false,
         message: vendor.rejectionReason
-          ? `Your account was rejected: ${vendor.rejectionReason}`
-          : "Your account was rejected by admin",
+          ? `Your application was rejected: ${vendor.rejectionReason}`
+          : "Your application was rejected. Please contact support.",
+      });
+    }
+
+    if (vendor.approvalStatus === "suspended") {
+      return res.status(403).json({
+        success: false,
+        message: "Your account has been suspended. Please contact support.",
       });
     }
 
     if (user.status !== "active") {
       return res.status(403).json({
         success: false,
-        message: "Account is not active",
+        message: "Account is not active. Please contact support.",
       });
     }
 
@@ -177,10 +416,12 @@ const vendorLogin = async (req, res) => {
       token: accessToken,
       refreshToken,
       user: {
-        id: user._id,
+        _id: user._id,
         firstName: user.firstName,
+        lastName: user.lastName,
         email: user.email,
         role: user.role,
+        avatar: user.avatar,
       },
       vendor: {
         id: vendor._id,

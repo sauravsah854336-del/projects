@@ -151,7 +151,7 @@ const productSchema = new mongoose.Schema(
       default: false,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 productSchema.index({ slug: 1 }, { unique: true });
@@ -161,4 +161,5 @@ productSchema.index({ status: 1 });
 productSchema.index({ price: 1 });
 productSchema.index({ name: "text", description: "text", tags: "text" });
 
-module.exports = mongoose.model("Product", productSchema);
+module.exports =
+  mongoose.models.Product || mongoose.model("Product", productSchema);

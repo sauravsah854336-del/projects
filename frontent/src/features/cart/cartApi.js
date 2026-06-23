@@ -14,6 +14,14 @@ const cartApi = authApi.injectEndpoints({
       }),
       invalidatesTags: ["Cart"],
     }),
+    mergeGuestCart: builder.mutation({
+      query: (data) => ({
+        url: "/cart/merge",
+        method: "POST",
+        body: data,
+      }),
+      invalidatesTags: ["Cart"],
+    }),
     updateCartItem: builder.mutation({
       query: (data) => ({
         url: "/cart/update",
@@ -42,6 +50,7 @@ const cartApi = authApi.injectEndpoints({
 export const {
   useGetCartQuery,
   useAddToCartMutation,
+  useMergeGuestCartMutation,
   useUpdateCartItemMutation,
   useRemoveCartItemMutation,
   useClearCartMutation,
