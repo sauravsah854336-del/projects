@@ -25,6 +25,44 @@ const categoryIcons = {
   office: "💼",
 };
 
+const SbTitle = ({ children }) => (
+  <p className="text-[11px] font-black uppercase tracking-[0.08em] text-gray-500 px-4 pt-3 pb-2 m-0">
+    {children}
+  </p>
+);
+
+const SbSep = () => <div className="border-t-[6px] border-gray-100 mt-3.5" />;
+
+const SbIcon = ({ children, active }) => (
+  <span className={`w-7 h-7 flex items-center justify-center rounded-[10px] border text-sm shrink-0 transition-colors ${active ? "bg-orange-50 border-orange-200" : "bg-gray-50 border-gray-200"}`}>
+    {children}
+  </span>
+);
+
+const SbItem = ({ onClick, active, children, disabled, className = "" }) => (
+  <button
+    onClick={onClick}
+    disabled={disabled}
+    className={`flex items-center gap-2.5 w-full px-4 py-2.5 border-none cursor-pointer text-left text-[13px] transition-all font-[inherit] ${
+      active
+        ? "bg-gradient-to-r from-orange-50 to-transparent text-[#D85A30] font-black border-l-[4px] border-[#D85A30] pl-3"
+        : "bg-transparent text-gray-900 hover:bg-gradient-to-r hover:from-orange-50 hover:to-transparent hover:text-[#D85A30]"
+    } ${disabled ? "opacity-50 cursor-not-allowed" : ""} ${className}`}
+  >
+    {children}
+  </button>
+);
+
+const SbName = ({ children }) => (
+  <span className="flex-1 font-bold">{children}</span>
+);
+
+const SoonBadge = () => (
+  <span className="text-[9px] bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded-full font-extrabold">
+    Soon
+  </span>
+);
+
 const CategorySidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -43,9 +81,9 @@ const CategorySidebar = () => {
   const cartCount = cartData?.data?.totalItems || 0;
   const role = user?.role;
 
-const isCustomer = role === "customer";
-const isVendor = role === "vendor";
-const isAdmin = role === "admin";
+  const isCustomer = role === "customer";
+  const isVendor = role === "vendor";
+  const isAdmin = role === "admin";
 
   const params = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const activeCategory = params.get("category");
@@ -71,587 +109,315 @@ const isAdmin = role === "admin";
     }
   };
 
+  const CategoryList = () => (
+    <>
+      <SbItem
+        onClick={() => go("/products")}
+        active={isPathActive("/products") && !activeCategory}
+      >
+        <SbIcon active={isPathActive("/products") && !activeCategory}>🛍️</SbIcon>
+        <SbName>All Products</SbName>
+      </SbItem>
+
+      {categories.map((cat) => {
+        const icon = categoryIcons[cat.name.toLowerCase()] || "📦";
+        const hasChildren = cat.children?.length > 0;
+        const isExpanded = expandedCat === cat._id;
+        const active = isActive(cat._id);
+
+        return (
+          <div key={cat._id}>
+            <div className="flex items-center">
+              <SbItem
+                onClick={() => go(`/products?category=${cat._id}`)}
+                active={active}
+                className="flex-1"
+              >
+                <SbIcon active={active}>{icon}</SbIcon>
+                <SbName>{cat.name}</SbName>
+              </SbItem>
+              {hasChildren && (
+                <button
+                  onClick={() => toggleExpand(cat._id)}
+                  className="w-7 h-7 rounded-[10px] flex items-center justify-center bg-transparent border border-transparent hover:bg-gray-50 hover:border-gray-200 cursor-pointer text-gray-400 transition-all shrink-0 mr-2"
+                >
+                  <svg
+                    width="14" height="14" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+                    style={{ transition: "transform 0.2s", transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)" }}
+                  >
+                    <path d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+              )}
+            </div>
+
+            {hasChildren && isExpanded && (
+              <div className="bg-gray-50 py-1.5 border-y border-gray-100">
+                {cat.children.map((sub) => (
+                  <button
+                    key={sub._id}
+                    onClick={() => go(`/products?category=${sub._id}`)}
+                    className={`flex items-center gap-2.5 w-full pl-[46px] pr-4 py-2 border-none cursor-pointer text-left text-[12.5px] bg-transparent transition-all font-[inherit] ${
+                      isActive(sub._id)
+                        ? "text-[#D85A30] font-black"
+                        : "text-gray-600 hover:bg-orange-50 hover:text-[#D85A30]"
+                    }`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#D85A30] shrink-0"></span>
+                    {sub.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </>
+  );
+
+  const ProgramsSection = () => (
+    <>
+      <SbSep />
+      <SbTitle>Programs & Features</SbTitle>
+      <SbItem onClick={() => go("/products?sort=newest")}>
+        <SbIcon>✨</SbIcon><SbName>New Arrivals</SbName>
+      </SbItem>
+      <SbItem onClick={() => go("/products?sort=popular")}>
+        <SbIcon>🔥</SbIcon><SbName>Best Sellers</SbName>
+      </SbItem>
+      <SbItem onClick={() => go("/products?sort=rating")}>
+        <SbIcon>⭐</SbIcon><SbName>Top Rated</SbName>
+      </SbItem>
+    </>
+  );
+
+  const LogoutBtn = () => (
+    <button
+      onClick={handleLogout}
+      className="w-[calc(100%-32px)] mx-4 mt-3 py-2.5 bg-red-100 text-red-900 border border-red-300 rounded-xl text-[13px] font-bold cursor-pointer text-center font-[inherit] hover:bg-red-300 hover:text-white transition-all"
+    >
+      🚪 Sign Out
+    </button>
+  );
+
   return (
-    <aside className="sb-root">
-      <style>{`
-        .sb-root {
-          width: 252px;
-          background: white;
-          border-right: 1px solid #E5E7EB;
-          height: calc(100vh - 64px);
-          position: sticky;
-          top: 64px;
-          overflow-y: auto;
-          flex-shrink: 0;
-        }
-        @media (max-width: 1024px) {
-          .sb-root { display: none !important; }
-        }
-        .sb-pad { padding: 16px 0; }
-        .sb-title {
-          font-size: 11px;
-          font-weight: 900;
-          text-transform: uppercase;
-          letter-spacing: 0.08em;
-          color: #6B7280;
-          padding: 12px 16px 8px;
-        }
-        .sb-item {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          width: 100%;
-          padding: 10px 16px;
-          background: transparent;
-          border: none;
-          cursor: pointer;
-          text-align: left;
-          font-size: 13px;
-          color: #111;
-          transition: all 0.12s;
-          font-family: inherit;
-        }
-        .sb-item:hover {
-          background: linear-gradient(90deg, #FFF5F0, transparent);
-          color: #D85A30;
-        }
-        .sb-item.active {
-          background: linear-gradient(90deg, #FFF5F0, transparent);
-          color: #D85A30;
-          font-weight: 900;
-          border-left: 4px solid #D85A30;
-          padding-left: 12px;
-        }
-        .sb-icon {
-          width: 28px;
-          height: 28px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 10px;
-          background: #F9FAFB;
-          border: 1px solid #E5E7EB;
-          flex-shrink: 0;
-          font-size: 14px;
-        }
-        .sb-item.active .sb-icon {
-          background: #FFF5F0;
-          border-color: #FDBA74;
-        }
-        .sb-name { flex: 1; font-weight: 700; color: inherit; }
-        .sb-badge {
-          background: #D85A30;
-          color: white;
-          font-size: 10px;
-          font-weight: 800;
-          padding: 2px 8px;
-          border-radius: 99px;
-          min-width: 18px;
-          text-align: center;
-        }
-        .sb-chevron {
-          width: 30px;
-          height: 30px;
-          border-radius: 10px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: transparent;
-          border: 1px solid transparent;
-          cursor: pointer;
-          color: #9CA3AF;
-          transition: all 0.12s;
-          flex-shrink: 0;
-        }
-        .sb-chevron:hover { background: #F9FAFB; border-color: #E5E7EB; }
-        .sb-subwrap { background: #FAFAFA; padding: 6px 0; border-top: 1px solid #F3F4F6; border-bottom: 1px solid #F3F4F6; }
-        .sb-sub-item {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          width: 100%;
-          padding: 8px 16px 8px 46px;
-          background: transparent;
-          border: none;
-          cursor: pointer;
-          text-align: left;
-          font-size: 12.5px;
-          color: #4B5563;
-          transition: all 0.12s;
-          font-family: inherit;
-        }
-        .sb-sub-item:hover { background: #FFF5F0; color: #D85A30; }
-        .sb-sub-item.active { color: #D85A30; font-weight: 900; }
-        .sb-dot { width: 6px; height: 6px; border-radius: 50%; background: #D85A30; flex-shrink: 0; }
-        .sb-sep { border-top: 6px solid #F3F4F6; margin-top: 14px; }
-        .sb-user-card {
-          padding: 16px;
-          background: linear-gradient(135deg, #FFF5F0, #FFFBF9);
-          border-bottom: 1px solid #FDBA74;
-        }
-        .sb-user-avatar {
-          width: 40px;
-          height: 40px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, #D85A30, #FF8C5A);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-          font-weight: 900;
-          font-size: 16px;
-          overflow: hidden;
-          flex-shrink: 0;
-          box-shadow: 0 4px 12px rgba(216,90,48,0.25);
-        }
-        .sb-role-badge {
-          display: inline-block;
-          font-size: 9px;
-          font-weight: 900;
-          padding: 2px 8px;
-          border-radius: 99px;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          margin-top: 2px;
-        }
-        .role-customer { background: #DBEAFE; color: #1E40AF; }
-        .role-vendor { background: #EDE9FE; color: #5B21B6; }
-        .role-admin { background: #FEE2E2; color: #7F1D1D; }
-        .sb-logout-btn {
-          width: 100%;
-          padding: 10px 16px;
-          background: #FEE2E2;
-          color: #7F1D1D;
-          border: 1px solid #FCA5A5;
-          border-radius: 10px;
-          font-size: 13px;
-          font-weight: 700;
-          cursor: pointer;
-          text-align: center;
-          font-family: inherit;
-          margin: 12px 16px 0;
-          width: calc(100% - 32px);
-          transition: all 0.15s;
-        }
-        .sb-logout-btn:hover { background: #FCA5A5; color: white; }
-      `}</style>
+    <aside className="hidden xl:block w-[252px] bg-white border-r border-gray-200 h-[calc(100vh-64px)] sticky top-16 overflow-y-auto shrink-0">
 
-{user && (
-  <div className="sb-user-card">
-    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-      <div className="sb-user-avatar">
-        {user.avatar ? (
-          <img src={user.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        ) : (
-          user.firstName?.[0]?.toUpperCase()
-        )}
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: 13, fontWeight: 800, color: "#111", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {user.firstName} {user.lastName}
-        </p>
+      {user && (
+        <div className="px-4 py-4 bg-gradient-to-br from-orange-50 to-orange-50/30 border-b border-orange-200">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D85A30] to-[#FF8C5A] flex items-center justify-center text-white font-black text-base overflow-hidden shrink-0 shadow-md shadow-orange-500/20">
+              {user.avatar ? (
+                <img src={user.avatar} alt="" className="w-full h-full object-cover" />
+              ) : (
+                user.firstName?.[0]?.toUpperCase()
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-extrabold text-gray-900 m-0 truncate">
+                {user.firstName} {user.lastName}
+              </p>
+              {isCustomer && (
+                <span className="inline-block text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide mt-0.5 bg-blue-100 text-blue-800">
+                  {role}
+                </span>
+              )}
+              {(isVendor || isAdmin) && (
+                <p className="text-[11px] text-gray-500 m-0 mt-0.5 truncate">{user.email}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="py-4">
+
         {isCustomer && (
-          <span className={`sb-role-badge role-${role}`}>
-            {role}
-          </span>
+          <>
+            <SbTitle>My Account</SbTitle>
+            <SbItem onClick={() => go("/dashboard")} active={isPathActive("/dashboard")}>
+              <SbIcon active={isPathActive("/dashboard")}>📊</SbIcon><SbName>Dashboard</SbName>
+            </SbItem>
+            <SbItem onClick={() => go("/orders")} active={isPathActive("/orders")}>
+              <SbIcon active={isPathActive("/orders")}>📦</SbIcon><SbName>My Orders</SbName>
+            </SbItem>
+            <SbItem onClick={() => go("/cart")} active={isPathActive("/cart")}>
+              <SbIcon active={isPathActive("/cart")}>🛒</SbIcon>
+              <SbName>My Cart</SbName>
+              {cartCount > 0 && (
+                <span className="bg-[#D85A30] text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full min-w-[18px] text-center">
+                  {cartCount}
+                </span>
+              )}
+            </SbItem>
+            <SbItem onClick={() => go("/wishlist")} active={isPathActive("/wishlist")}>
+              <SbIcon active={isPathActive("/wishlist")}>❤️</SbIcon><SbName>Wishlist</SbName>
+            </SbItem>
+            <SbItem onClick={() => go("/profile")} active={isPathActive("/profile")}>
+              <SbIcon active={isPathActive("/profile")}>👤</SbIcon><SbName>My Profile</SbName>
+            </SbItem>
+
+            <SbSep />
+            <SbTitle>Shop by Department</SbTitle>
+            <CategoryList />
+            <ProgramsSection />
+
+            <SbSep />
+            <SbTitle>Help & Support</SbTitle>
+            <SbItem onClick={() => go("/help")} active={isPathActive("/help")}>
+              <SbIcon active={isPathActive("/help")}>💬</SbIcon><SbName>Help Center</SbName>
+            </SbItem>
+            <SbItem onClick={() => go("/contact")} active={isPathActive("/contact")}>
+              <SbIcon active={isPathActive("/contact")}>📬</SbIcon><SbName>Contact Us</SbName>
+            </SbItem>
+            <SbItem onClick={() => go("/policy/returns")}>
+              <SbIcon>🔄</SbIcon><SbName>Returns Policy</SbName>
+            </SbItem>
+            <SbItem onClick={() => go("/policy/shipping-info")}>
+              <SbIcon>🚚</SbIcon><SbName>Shipping Info</SbName>
+            </SbItem>
+            <LogoutBtn />
+          </>
         )}
+
         {isVendor && (
-          <p style={{ fontSize: 11, color: "#6B7280", margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {user.email}
-          </p>
+          <>
+            <SbTitle>Vendor Panel</SbTitle>
+            <SbItem onClick={() => go("/vendor/dashboard")} active={isPathActive("/vendor/dashboard") && !params.get("tab")}>
+              <SbIcon active={isPathActive("/vendor/dashboard") && !params.get("tab")}>📊</SbIcon><SbName>Dashboard</SbName>
+            </SbItem>
+            <SbItem onClick={() => go("/vendor/dashboard?tab=products")} active={params.get("tab") === "products"}>
+              <SbIcon active={params.get("tab") === "products"}>📦</SbIcon><SbName>My Products</SbName>
+            </SbItem>
+            <SbItem onClick={() => go("/vendor/dashboard?tab=orders")} active={params.get("tab") === "orders"}>
+              <SbIcon active={params.get("tab") === "orders"}>🛒</SbIcon><SbName>Orders</SbName>
+            </SbItem>
+            <SbItem onClick={() => go("/vendor/dashboard?tab=reviews")} active={params.get("tab") === "reviews"}>
+              <SbIcon active={params.get("tab") === "reviews"}>⭐</SbIcon><SbName>Reviews</SbName>
+            </SbItem>
+
+            <SbSep />
+            <SbTitle>Quick Actions</SbTitle>
+            <SbItem onClick={() => go("/vendor/dashboard?tab=products&action=add")}>
+              <SbIcon>➕</SbIcon><SbName>Add Product</SbName>
+            </SbItem>
+            <SbItem onClick={() => go("/products")}>
+              <SbIcon>🛍️</SbIcon><SbName>View Store</SbName>
+            </SbItem>
+
+            <SbSep />
+            <SbTitle>Insights</SbTitle>
+            <SbItem disabled>
+              <SbIcon>📈</SbIcon><SbName>Sales Reports</SbName><SoonBadge />
+            </SbItem>
+            <SbItem disabled>
+              <SbIcon>💰</SbIcon><SbName>Earnings</SbName><SoonBadge />
+            </SbItem>
+
+            <SbSep />
+            <SbTitle>Resources</SbTitle>
+            <SbItem onClick={() => go("/policy/seller-guidelines")}>
+              <SbIcon>📋</SbIcon><SbName>Seller Guidelines</SbName>
+            </SbItem>
+            <SbItem onClick={() => go("/policy/commission-policy")}>
+              <SbIcon>💵</SbIcon><SbName>Commission Policy</SbName>
+            </SbItem>
+            <SbItem onClick={() => go("/policy/vendor-agreement")}>
+              <SbIcon>📝</SbIcon><SbName>Vendor Agreement</SbName>
+            </SbItem>
+            <SbItem onClick={() => go("/help")}>
+              <SbIcon>💬</SbIcon><SbName>Support</SbName>
+            </SbItem>
+            <LogoutBtn />
+          </>
         )}
+
         {isAdmin && (
-          <p style={{ fontSize: 11, color: "#6B7280", margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {user.email}
-          </p>
+          <>
+            <SbTitle>Admin Panel</SbTitle>
+            <SbItem onClick={() => go("/admin/dashboard")} active={isPathActive("/admin/dashboard") && !params.get("tab")}>
+              <SbIcon active={isPathActive("/admin/dashboard") && !params.get("tab")}>📊</SbIcon><SbName>Dashboard</SbName>
+            </SbItem>
+
+            <SbSep />
+            <SbTitle>Management</SbTitle>
+            <SbItem onClick={() => go("/admin/dashboard?tab=vendors")} active={params.get("tab") === "vendors"}>
+              <SbIcon active={params.get("tab") === "vendors"}>🏪</SbIcon><SbName>Vendors</SbName>
+            </SbItem>
+            <SbItem onClick={() => go("/admin/dashboard?tab=categories")} active={params.get("tab") === "categories"}>
+              <SbIcon active={params.get("tab") === "categories"}>📂</SbIcon><SbName>Categories</SbName>
+            </SbItem>
+            <SbItem onClick={() => go("/admin/dashboard?tab=products")} active={params.get("tab") === "products"}>
+              <SbIcon active={params.get("tab") === "products"}>📦</SbIcon><SbName>Products</SbName>
+            </SbItem>
+            <SbItem onClick={() => go("/admin/dashboard?tab=orders")} active={params.get("tab") === "orders"}>
+              <SbIcon active={params.get("tab") === "orders"}>🛒</SbIcon><SbName>Orders</SbName>
+            </SbItem>
+            <SbItem onClick={() => go("/admin/dashboard?tab=reviews")} active={params.get("tab") === "reviews"}>
+              <SbIcon active={params.get("tab") === "reviews"}>⭐</SbIcon><SbName>Reviews</SbName>
+            </SbItem>
+
+            <SbSep />
+            <SbTitle>Coming Soon</SbTitle>
+            <SbItem disabled><SbIcon>👥</SbIcon><SbName>Users</SbName><SoonBadge /></SbItem>
+            <SbItem disabled><SbIcon>📈</SbIcon><SbName>Analytics</SbName><SoonBadge /></SbItem>
+            <SbItem disabled><SbIcon>💳</SbIcon><SbName>Payments</SbName><SoonBadge /></SbItem>
+            <SbItem disabled><SbIcon>🎟️</SbIcon><SbName>Coupons</SbName><SoonBadge /></SbItem>
+
+            <SbSep />
+            <SbTitle>Quick Links</SbTitle>
+            <SbItem onClick={() => go("/")}>
+              <SbIcon>🏠</SbIcon><SbName>View Storefront</SbName>
+            </SbItem>
+            <SbItem onClick={() => go("/products")}>
+              <SbIcon>🛍️</SbIcon><SbName>All Products</SbName>
+            </SbItem>
+            <LogoutBtn />
+          </>
+        )}
+
+        {!user && (
+          <>
+            <SbTitle>Shop by Department</SbTitle>
+            <CategoryList />
+            <ProgramsSection />
+
+            <SbSep />
+            <SbTitle>Get Started</SbTitle>
+            <SbItem
+              onClick={() => go("/login")}
+              className="bg-gradient-to-r from-orange-50 to-transparent text-[#D85A30] font-extrabold"
+            >
+              <SbIcon>🔑</SbIcon><SbName>Sign In</SbName>
+            </SbItem>
+            <SbItem onClick={() => go("/signup")}>
+              <SbIcon>✨</SbIcon><SbName>Create Account</SbName>
+            </SbItem>
+
+            <SbSep />
+            <SbTitle>Sell with Us</SbTitle>
+            <SbItem onClick={() => go("/vendor/signup")}>
+              <SbIcon>🏪</SbIcon><SbName>Become a Seller</SbName>
+            </SbItem>
+            <SbItem onClick={() => go("/vendor/login")}>
+              <SbIcon>🔓</SbIcon><SbName>Seller Login</SbName>
+            </SbItem>
+
+            <SbSep />
+            <SbTitle>Help & Settings</SbTitle>
+            <SbItem onClick={() => go("/help")}>
+              <SbIcon>💬</SbIcon><SbName>Customer Service</SbName>
+            </SbItem>
+            <SbItem onClick={() => go("/contact")}>
+              <SbIcon>📬</SbIcon><SbName>Contact Us</SbName>
+            </SbItem>
+            <SbItem onClick={() => go("/about")}>
+              <SbIcon>ℹ️</SbIcon><SbName>About</SbName>
+            </SbItem>
+          </>
         )}
       </div>
-    </div>
-  </div>
-)}
-
-      {role === "customer" && (
-        <div className="sb-pad">
-          <p className="sb-title">My Account</p>
-          <button onClick={() => go("/dashboard")} className={`sb-item ${isPathActive("/dashboard") ? "active" : ""}`}>
-            <span className="sb-icon">📊</span>
-            <span className="sb-name">Dashboard</span>
-          </button>
-          <button onClick={() => go("/orders")} className={`sb-item ${isPathActive("/orders") ? "active" : ""}`}>
-            <span className="sb-icon">📦</span>
-            <span className="sb-name">My Orders</span>
-          </button>
-          <button onClick={() => go("/cart")} className={`sb-item ${isPathActive("/cart") ? "active" : ""}`}>
-            <span className="sb-icon">🛒</span>
-            <span className="sb-name">My Cart</span>
-            {cartCount > 0 && <span className="sb-badge">{cartCount}</span>}
-          </button>
-          <button onClick={() => go("/wishlist")} className={`sb-item ${isPathActive("/wishlist") ? "active" : ""}`}>
-            <span className="sb-icon">❤️</span>
-            <span className="sb-name">Wishlist</span>
-          </button>
-          <button onClick={() => go("/profile")} className={`sb-item ${isPathActive("/profile") ? "active" : ""}`}>
-            <span className="sb-icon">👤</span>
-            <span className="sb-name">My Profile</span>
-          </button>
-
-          <div className="sb-sep"></div>
-
-          <p className="sb-title">Shop by Department</p>
-          <button
-            onClick={() => go("/products")}
-            className={`sb-item ${isPathActive("/products") && !activeCategory ? "active" : ""}`}
-          >
-            <span className="sb-icon">🛍️</span>
-            <span className="sb-name">All Products</span>
-          </button>
-
-          {categories.map((cat) => {
-            const icon = categoryIcons[cat.name.toLowerCase()] || "📦";
-            const hasChildren = cat.children?.length > 0;
-            const isExpanded = expandedCat === cat._id;
-
-            return (
-              <div key={cat._id}>
-                <div style={{ display: "flex", alignItems: "center" }}>
-                  <button
-                    onClick={() => go(`/products?category=${cat._id}`)}
-                    className={`sb-item ${isActive(cat._id) ? "active" : ""}`}
-                    style={{ flex: 1 }}
-                  >
-                    <span className="sb-icon">{icon}</span>
-                    <span className="sb-name">{cat.name}</span>
-                  </button>
-                  {hasChildren && (
-                    <button onClick={() => toggleExpand(cat._id)} className="sb-chevron">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ transition: "transform 0.2s", transform: isExpanded ? "rotate(180deg)" : "rotate(0)" }}>
-                        <path d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
-
-                {hasChildren && isExpanded && (
-                  <div className="sb-subwrap">
-                    {cat.children.map((sub) => (
-                      <button
-                        key={sub._id}
-                        onClick={() => go(`/products?category=${sub._id}`)}
-                        className={`sb-sub-item ${isActive(sub._id) ? "active" : ""}`}
-                      >
-                        <span className="sb-dot"></span>
-                        {sub.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-
-          <div className="sb-sep"></div>
-
-          <p className="sb-title">Programs & Features</p>
-          <button onClick={() => go("/products?sort=newest")} className="sb-item">
-            <span className="sb-icon">✨</span>
-            <span className="sb-name">New Arrivals</span>
-          </button>
-          <button onClick={() => go("/products?sort=popular")} className="sb-item">
-            <span className="sb-icon">🔥</span>
-            <span className="sb-name">Best Sellers</span>
-          </button>
-          <button onClick={() => go("/products?sort=rating")} className="sb-item">
-            <span className="sb-icon">⭐</span>
-            <span className="sb-name">Top Rated</span>
-          </button>
-
-          <div className="sb-sep"></div>
-
-          <p className="sb-title">Help & Support</p>
-          <button onClick={() => go("/help")} className={`sb-item ${isPathActive("/help") ? "active" : ""}`}>
-            <span className="sb-icon">💬</span>
-            <span className="sb-name">Help Center</span>
-          </button>
-          <button onClick={() => go("/contact")} className={`sb-item ${isPathActive("/contact") ? "active" : ""}`}>
-            <span className="sb-icon">📬</span>
-            <span className="sb-name">Contact Us</span>
-          </button>
-          <button onClick={() => go("/policy/returns")} className="sb-item">
-            <span className="sb-icon">🔄</span>
-            <span className="sb-name">Returns Policy</span>
-          </button>
-          <button onClick={() => go("/policy/shipping-info")} className="sb-item">
-            <span className="sb-icon">🚚</span>
-            <span className="sb-name">Shipping Info</span>
-          </button>
-
-          <button onClick={handleLogout} className="sb-logout-btn">
-            🚪 Sign Out
-          </button>
-        </div>
-      )}
-
-{role === "vendor" && (
-  <div className="sb-pad">
-    <p className="sb-title">Vendor Panel</p>
-    <button onClick={() => go("/vendor/dashboard")} className={`sb-item ${isPathActive("/vendor/dashboard") && !params.get("tab") ? "active" : ""}`}>
-      <span className="sb-icon">📊</span>
-      <span className="sb-name">Dashboard</span>
-    </button>
-    <button onClick={() => go("/vendor/dashboard?tab=products")} className={`sb-item ${params.get("tab") === "products" ? "active" : ""}`}>
-      <span className="sb-icon">📦</span>
-      <span className="sb-name">My Products</span>
-    </button>
-    <button onClick={() => go("/vendor/dashboard?tab=orders")} className={`sb-item ${params.get("tab") === "orders" ? "active" : ""}`}>
-      <span className="sb-icon">🛒</span>
-      <span className="sb-name">Orders</span>
-    </button>
-    <button onClick={() => go("/vendor/dashboard?tab=reviews")} className={`sb-item ${params.get("tab") === "reviews" ? "active" : ""}`}>
-      <span className="sb-icon">⭐</span>
-      <span className="sb-name">Reviews</span>
-    </button>
-
-    <div className="sb-sep"></div>
-
-    <p className="sb-title">Quick Actions</p>
-    <button onClick={() => go("/vendor/dashboard?tab=products&action=add")} className="sb-item">
-      <span className="sb-icon">➕</span>
-      <span className="sb-name">Add Product</span>
-    </button>
-    <button onClick={() => go("/products")} className="sb-item">
-      <span className="sb-icon">🛍️</span>
-      <span className="sb-name">View Store</span>
-    </button>
-
-    <div className="sb-sep"></div>
-
-    <p className="sb-title">Insights</p>
-    <button className="sb-item" style={{ opacity: 0.5, cursor: "not-allowed" }}>
-      <span className="sb-icon">📈</span>
-      <span className="sb-name">Sales Reports</span>
-      <span style={{ fontSize: 9, background: "#FEF9C3", color: "#854D0E", padding: "2px 6px", borderRadius: 99, fontWeight: 800 }}>Soon</span>
-    </button>
-    <button className="sb-item" style={{ opacity: 0.5, cursor: "not-allowed" }}>
-      <span className="sb-icon">💰</span>
-      <span className="sb-name">Earnings</span>
-      <span style={{ fontSize: 9, background: "#FEF9C3", color: "#854D0E", padding: "2px 6px", borderRadius: 99, fontWeight: 800 }}>Soon</span>
-    </button>
-
-    <div className="sb-sep"></div>
-
-    <p className="sb-title">Resources</p>
-    <button onClick={() => go("/policy/seller-guidelines")} className="sb-item">
-      <span className="sb-icon">📋</span>
-      <span className="sb-name">Seller Guidelines</span>
-    </button>
-    <button onClick={() => go("/policy/commission-policy")} className="sb-item">
-      <span className="sb-icon">💵</span>
-      <span className="sb-name">Commission Policy</span>
-    </button>
-    <button onClick={() => go("/policy/vendor-agreement")} className="sb-item">
-      <span className="sb-icon">📝</span>
-      <span className="sb-name">Vendor Agreement</span>
-    </button>
-    <button onClick={() => go("/help")} className="sb-item">
-      <span className="sb-icon">💬</span>
-      <span className="sb-name">Support</span>
-    </button>
-
-    <button onClick={handleLogout} className="sb-logout-btn">
-      🚪 Sign Out
-    </button>
-  </div>
-)}
-
-{role === "admin" && (
-  <div className="sb-pad">
-    <p className="sb-title">Admin Panel</p>
-    <button onClick={() => go("/admin/dashboard")} className={`sb-item ${isPathActive("/admin/dashboard") && !params.get("tab") ? "active" : ""}`}>
-      <span className="sb-icon">📊</span>
-      <span className="sb-name">Dashboard</span>
-    </button>
-
-    <div className="sb-sep"></div>
-
-    <p className="sb-title">Management</p>
-    <button onClick={() => go("/admin/dashboard?tab=vendors")} className={`sb-item ${params.get("tab") === "vendors" ? "active" : ""}`}>
-      <span className="sb-icon">🏪</span>
-      <span className="sb-name">Vendors</span>
-    </button>
-    <button onClick={() => go("/admin/dashboard?tab=categories")} className={`sb-item ${params.get("tab") === "categories" ? "active" : ""}`}>
-      <span className="sb-icon">📂</span>
-      <span className="sb-name">Categories</span>
-    </button>
-    <button onClick={() => go("/admin/dashboard?tab=products")} className={`sb-item ${params.get("tab") === "products" ? "active" : ""}`}>
-      <span className="sb-icon">📦</span>
-      <span className="sb-name">Products</span>
-    </button>
-    <button onClick={() => go("/admin/dashboard?tab=orders")} className={`sb-item ${params.get("tab") === "orders" ? "active" : ""}`}>
-      <span className="sb-icon">🛒</span>
-      <span className="sb-name">Orders</span>
-    </button>
-    <button onClick={() => go("/admin/dashboard?tab=reviews")} className={`sb-item ${params.get("tab") === "reviews" ? "active" : ""}`}>
-      <span className="sb-icon">⭐</span>
-      <span className="sb-name">Reviews</span>
-    </button>
-
-    <div className="sb-sep"></div>
-
-    <p className="sb-title">Coming Soon</p>
-    <button className="sb-item" style={{ opacity: 0.5, cursor: "not-allowed" }}>
-      <span className="sb-icon">👥</span>
-      <span className="sb-name">Users</span>
-      <span style={{ fontSize: 9, background: "#FEF9C3", color: "#854D0E", padding: "2px 6px", borderRadius: 99, fontWeight: 800 }}>Soon</span>
-    </button>
-    <button className="sb-item" style={{ opacity: 0.5, cursor: "not-allowed" }}>
-      <span className="sb-icon">📈</span>
-      <span className="sb-name">Analytics</span>
-      <span style={{ fontSize: 9, background: "#FEF9C3", color: "#854D0E", padding: "2px 6px", borderRadius: 99, fontWeight: 800 }}>Soon</span>
-    </button>
-    <button className="sb-item" style={{ opacity: 0.5, cursor: "not-allowed" }}>
-      <span className="sb-icon">💳</span>
-      <span className="sb-name">Payments</span>
-      <span style={{ fontSize: 9, background: "#FEF9C3", color: "#854D0E", padding: "2px 6px", borderRadius: 99, fontWeight: 800 }}>Soon</span>
-    </button>
-    <button className="sb-item" style={{ opacity: 0.5, cursor: "not-allowed" }}>
-      <span className="sb-icon">🎟️</span>
-      <span className="sb-name">Coupons</span>
-      <span style={{ fontSize: 9, background: "#FEF9C3", color: "#854D0E", padding: "2px 6px", borderRadius: 99, fontWeight: 800 }}>Soon</span>
-    </button>
-
-    <div className="sb-sep"></div>
-
-    <p className="sb-title">Quick Links</p>
-    <button onClick={() => go("/")} className="sb-item">
-      <span className="sb-icon">🏠</span>
-      <span className="sb-name">View Storefront</span>
-    </button>
-    <button onClick={() => go("/products")} className="sb-item">
-      <span className="sb-icon">🛍️</span>
-      <span className="sb-name">All Products</span>
-    </button>
-
-    <button onClick={handleLogout} className="sb-logout-btn">
-      🚪 Sign Out
-    </button>
-  </div>
-)}
-
-      {!user && (
-        <div className="sb-pad">
-          <p className="sb-title">Shop by Department</p>
-          <button
-            onClick={() => go("/products")}
-            className={`sb-item ${isPathActive("/products") && !activeCategory ? "active" : ""}`}
-          >
-            <span className="sb-icon">🛍️</span>
-            <span className="sb-name">All Products</span>
-          </button>
-
-          {categories.map((cat) => {
-            const icon = categoryIcons[cat.name.toLowerCase()] || "📦";
-            const hasChildren = cat.children?.length > 0;
-            const isExpanded = expandedCat === cat._id;
-
-            return (
-              <div key={cat._id}>
-                <div style={{ display: "flex", alignItems: "center" }}>
-                  <button
-                    onClick={() => go(`/products?category=${cat._id}`)}
-                    className={`sb-item ${isActive(cat._id) ? "active" : ""}`}
-                    style={{ flex: 1 }}
-                  >
-                    <span className="sb-icon">{icon}</span>
-                    <span className="sb-name">{cat.name}</span>
-                  </button>
-                  {hasChildren && (
-                    <button onClick={() => toggleExpand(cat._id)} className="sb-chevron">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ transition: "transform 0.2s", transform: isExpanded ? "rotate(180deg)" : "rotate(0)" }}>
-                        <path d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
-
-                {hasChildren && isExpanded && (
-                  <div className="sb-subwrap">
-                    {cat.children.map((sub) => (
-                      <button
-                        key={sub._id}
-                        onClick={() => go(`/products?category=${sub._id}`)}
-                        className={`sb-sub-item ${isActive(sub._id) ? "active" : ""}`}
-                      >
-                        <span className="sb-dot"></span>
-                        {sub.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-
-          <div className="sb-sep"></div>
-
-          <p className="sb-title">Programs & Features</p>
-          <button onClick={() => go("/products?sort=newest")} className="sb-item">
-            <span className="sb-icon">✨</span>
-            <span className="sb-name">New Arrivals</span>
-          </button>
-          <button onClick={() => go("/products?sort=popular")} className="sb-item">
-            <span className="sb-icon">🔥</span>
-            <span className="sb-name">Best Sellers</span>
-          </button>
-          <button onClick={() => go("/products?sort=rating")} className="sb-item">
-            <span className="sb-icon">⭐</span>
-            <span className="sb-name">Top Rated</span>
-          </button>
-
-          <div className="sb-sep"></div>
-
-          <p className="sb-title">Get Started</p>
-          <button
-            onClick={() => go("/login")}
-            className="sb-item"
-            style={{ background: "linear-gradient(135deg, #FFF5F0, #FFFBF9)", color: "#D85A30", fontWeight: 800 }}
-          >
-            <span className="sb-icon">🔑</span>
-            <span className="sb-name">Sign In</span>
-          </button>
-          <button onClick={() => go("/signup")} className="sb-item">
-            <span className="sb-icon">✨</span>
-            <span className="sb-name">Create Account</span>
-          </button>
-
-          <div className="sb-sep"></div>
-
-          <p className="sb-title">Sell with Us</p>
-          <button onClick={() => go("/vendor/signup")} className="sb-item">
-            <span className="sb-icon">🏪</span>
-            <span className="sb-name">Become a Seller</span>
-          </button>
-          <button onClick={() => go("/vendor/login")} className="sb-item">
-            <span className="sb-icon">🔓</span>
-            <span className="sb-name">Seller Login</span>
-          </button>
-
-          <div className="sb-sep"></div>
-
-          <p className="sb-title">Help & Settings</p>
-          <button onClick={() => go("/help")} className="sb-item">
-            <span className="sb-icon">💬</span>
-            <span className="sb-name">Customer Service</span>
-          </button>
-          <button onClick={() => go("/contact")} className="sb-item">
-            <span className="sb-icon">📬</span>
-            <span className="sb-name">Contact Us</span>
-          </button>
-          <button onClick={() => go("/about")} className="sb-item">
-            <span className="sb-icon">ℹ️</span>
-            <span className="sb-name">About</span>
-          </button>
-        </div>
-      )}
     </aside>
   );
 };

@@ -12,7 +12,7 @@ const {
   addToWishlist,
   removeFromWishlist,
   mergeWishlist,
-} = require("../controllers/customer");
+} = require("../controllers/customerController");
 
 const router = express.Router();
 

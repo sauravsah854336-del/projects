@@ -3,28 +3,27 @@ import Footer from "./Footer";
 import CategorySidebar from "./CategorySidebar";
 import { useLocation } from "react-router-dom";
 
+const hideSidebarPaths = [
+  "/login",
+  "/signup",
+  "/vendor/login",
+  "/vendor/signup",
+  "/unauthorized",
+  "/checkout",
+  "/forgot-password",
+];
+
 const Layout = ({ children }) => {
   const location = useLocation();
-
-  const hideSidebarPaths = [
-    "/login",
-    "/signup",
-    "/vendor/login",
-    "/vendor/signup",
-    "/unauthorized",
-    "/checkout",
-  ];
-
   const hideSidebar = hideSidebarPaths.includes(location.pathname);
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "#EAEDED" }}>
+    <div className="min-h-screen flex flex-col bg-[#EAEDED]">
       <Navbar />
 
-      <div style={{ flex: 1, display: "flex", maxWidth: "100%" }}>
+      <div className="flex-1 flex max-w-full">
         {!hideSidebar && <CategorySidebar />}
-
-        <main style={{ flex: 1, minWidth: 0 }}>
+        <main className="flex-1 min-w-0">
           {children}
         </main>
       </div>

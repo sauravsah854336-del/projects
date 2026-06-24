@@ -4,14 +4,7 @@ import { uploadDocumentPublic } from "../utils/uploadToLocal";
 const ACCEPTED_TYPES = ["image/jpeg", "image/jpg", "image/png", "application/pdf"];
 const MAX_SIZE_MB = 5;
 
-const DocumentUploader = ({
-  label,
-  required = false,
-  hint,
-  value,
-  onChange,
-  docKey,
-}) => {
+const DocumentUploader = ({ label, required = false, hint, value, onChange, docKey }) => {
   const inputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
@@ -21,24 +14,12 @@ const DocumentUploader = ({
 
   const handleFile = async (file) => {
     setError("");
-
-    if (!ACCEPTED_TYPES.includes(file.type)) {
-      setError("Only JPG, PNG, or PDF files allowed");
-      return;
-    }
-
-    if (file.size > MAX_SIZE_MB * 1024 * 1024) {
-      setError(`File must be under ${MAX_SIZE_MB}MB`);
-      return;
-    }
-
+    if (!ACCEPTED_TYPES.includes(file.type)) { setError("Only JPG, PNG, or PDF files allowed"); return; }
+    if (file.size > MAX_SIZE_MB * 1024 * 1024) { setError(`File must be under ${MAX_SIZE_MB}MB`); return; }
     setUploading(true);
     try {
       const result = await uploadDocumentPublic(file);
-      onChange(docKey, {
-        url: result.url,
-        filename: result.filename,
-      });
+      onChange(docKey, { url: result.url, filename: result.filename });
     } catch (err) {
       setError(err?.message || "Upload failed. Try again.");
     } finally {
@@ -59,26 +40,18 @@ const DocumentUploader = ({
     if (file) handleFile(file);
   };
 
-  const handleRemove = () => {
-    onChange(docKey, { url: "", filename: "" });
-    setError("");
-  };
+  const handleRemove = () => { onChange(docKey, { url: "", filename: "" }); setError(""); };
 
   const isUploaded = !!value?.url;
 
   return (
     <div>
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
-      `}</style>
-
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-        <label style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-          {label} {required && <span style={{ color: "#EF4444" }}>*</span>}
+      <div className="flex items-center justify-between mb-2">
+        <label className="text-[13px] font-bold text-gray-700">
+          {label} {required && <span className="text-red-500">*</span>}
         </label>
         {isUploaded && (
-          <span style={{ fontSize: 11, fontWeight: 700, color: "#22C55E", display: "flex", alignItems: "center", gap: 4 }}>
+          <span className="flex items-center gap-1 text-[11px] font-bold text-green-600">
             <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
               <path d="M5 13l4 4L19 7" strokeLinecap="round" />
             </svg>
@@ -93,61 +66,49 @@ const DocumentUploader = ({
           onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={() => setDragOver(false)}
           onDrop={handleDrop}
-          style={{
-            border: `2px dashed ${dragOver ? "#7C3AED" : error ? "#EF4444" : "#E5E7EB"}`,
-            borderRadius: 14,
-            padding: "24px 16px",
-            textAlign: "center",
-            cursor: uploading ? "not-allowed" : "pointer",
-            background: dragOver ? "#F5F3FF" : "#FAFAFA",
-            transition: "all 0.2s",
-          }}
+          className={`border-2 border-dashed rounded-2xl px-4 py-6 text-center transition-all duration-200 ${
+            uploading
+              ? "cursor-not-allowed border-purple-300 bg-purple-50"
+              : dragOver
+              ? "border-purple-600 bg-purple-50 scale-[1.01]"
+              : error
+              ? "border-red-300 bg-red-50 cursor-pointer"
+              : "border-gray-200 bg-gray-50 cursor-pointer hover:border-purple-400 hover:bg-purple-50/50"
+          }`}
         >
           <input
             ref={inputRef}
             type="file"
             accept=".jpg,.jpeg,.png,.pdf"
             onChange={handleInputChange}
-            style={{ display: "none" }}
+            className="hidden"
           />
 
           {uploading ? (
             <div>
-              <div style={{ width: 40, height: 40, border: "3px solid #7C3AED", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.7s linear infinite", margin: "0 auto 12px" }}></div>
-              <p style={{ fontSize: 13, fontWeight: 700, color: "#7C3AED", margin: 0, animation: "pulse 1s ease infinite" }}>
-                Uploading...
-              </p>
+              <div className="w-10 h-10 border-[3px] border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+              <p className="text-[13px] font-bold text-purple-700 m-0 animate-pulse">Uploading...</p>
             </div>
           ) : (
             <div>
-              <div style={{ width: 48, height: 48, background: "#F5F3FF", borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
+              <div className="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
                 <svg width="22" height="22" fill="none" stroke="#7C3AED" strokeWidth="1.8" viewBox="0 0 24 24">
                   <path d="M4 16l4-4 4 4" strokeLinecap="round" strokeLinejoin="round" />
                   <path d="M12 12V3" strokeLinecap="round" />
                   <path d="M20 16v3a2 2 0 01-2 2H6a2 2 0 01-2-2v-3" strokeLinecap="round" />
                 </svg>
               </div>
-              <p style={{ fontSize: 13, fontWeight: 700, color: "#374151", margin: "0 0 4px" }}>
+              <p className="text-[13px] font-bold text-gray-700 m-0 mb-1">
                 {dragOver ? "Drop file here" : "Click to upload or drag & drop"}
               </p>
-              <p style={{ fontSize: 11, color: "#6B7280", margin: 0 }}>
-                JPG, PNG or PDF • Max {MAX_SIZE_MB}MB
-              </p>
+              <p className="text-[11px] text-gray-500 m-0">JPG, PNG or PDF • Max {MAX_SIZE_MB}MB</p>
             </div>
           )}
         </div>
       ) : (
-        <div style={{
-          border: "1.5px solid #A7F3D0",
-          borderRadius: 14,
-          padding: "14px 16px",
-          background: "#F0FDF4",
-          display: "flex",
-          alignItems: "center",
-          gap: 14,
-        }}>
+        <div className="flex items-center gap-3.5 border-[1.5px] border-green-200 rounded-2xl px-4 py-3.5 bg-green-50">
           {isPdf ? (
-            <div style={{ width: 44, height: 44, background: "#FEF2F2", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <div className="w-11 h-11 bg-red-50 rounded-xl flex items-center justify-center shrink-0">
               <svg width="22" height="22" fill="none" stroke="#EF4444" strokeWidth="1.8" viewBox="0 0 24 24">
                 <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" strokeLinecap="round" />
                 <path d="M14 2v6h6M9 13h6M9 17h4" strokeLinecap="round" />
@@ -157,20 +118,18 @@ const DocumentUploader = ({
             <img
               src={value.url}
               alt={label}
-              style={{ width: 44, height: 44, borderRadius: 10, objectFit: "cover", border: "1px solid #D1FAE5", flexShrink: 0 }}
+              className="w-11 h-11 rounded-xl object-cover border border-green-100 shrink-0"
               onError={(e) => { e.target.style.display = "none"; }}
             />
           )}
 
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: "#065F46", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {value.filename || "Document uploaded"}
-            </p>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-bold text-green-900 m-0 truncate">{value.filename || "Document uploaded"}</p>
             <a
               href={value.url}
               target="_blank"
               rel="noreferrer"
-              style={{ fontSize: 11, color: "#059669", textDecoration: "none", fontWeight: 600 }}
+              className="text-[11px] text-green-700 no-underline font-semibold hover:underline"
               onClick={(e) => e.stopPropagation()}
             >
               View document →
@@ -180,16 +139,7 @@ const DocumentUploader = ({
           <button
             type="button"
             onClick={handleRemove}
-            style={{
-              width: 32, height: 32,
-              borderRadius: 8,
-              border: "1px solid #FCA5A5",
-              background: "#FEF2F2",
-              cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              flexShrink: 0,
-              color: "#EF4444",
-            }}
+            className="w-8 h-8 rounded-lg border border-red-200 bg-red-50 flex items-center justify-center cursor-pointer hover:bg-red-100 transition shrink-0 text-red-500 font-[inherit]"
           >
             <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
               <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
@@ -198,12 +148,8 @@ const DocumentUploader = ({
         </div>
       )}
 
-      {hint && !error && (
-        <p style={{ fontSize: 11, color: "#6B7280", marginTop: 5 }}>{hint}</p>
-      )}
-      {error && (
-        <p style={{ fontSize: 11, color: "#EF4444", marginTop: 5, fontWeight: 600 }}>⚠️ {error}</p>
-      )}
+      {hint && !error && <p className="text-[11px] text-gray-500 mt-1.5 m-0">{hint}</p>}
+      {error && <p className="text-[11px] text-red-500 font-semibold mt-1.5 m-0">⚠️ {error}</p>}
     </div>
   );
 };

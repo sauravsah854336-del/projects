@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "../hooks/useCart";
 import { PLACEHOLDER_MEDIUM } from "../utils/placeholder";
+import WishlistButton from "../components/WishlistButton";
 
 const formatRupee = (amount) =>
   new Intl.NumberFormat("en-IN", {
@@ -23,80 +24,55 @@ const CartPage = () => {
   const handleQuantityChange = async (productId, newQty) => {
     if (newQty < 1) return;
     setUpdatingItems((prev) => ({ ...prev, [productId]: true }));
-    try {
-      await updateItem(productId, newQty);
-    } catch (err) {
-      console.log(err);
-    } finally {
-      setUpdatingItems((prev) => ({ ...prev, [productId]: false }));
-    }
+    try { await updateItem(productId, newQty); }
+    catch (err) { console.log(err); }
+    finally { setUpdatingItems((prev) => ({ ...prev, [productId]: false })); }
   };
 
   const handleRemove = async (productId) => {
     setRemovingItems((prev) => ({ ...prev, [productId]: true }));
-    try {
-      await removeItem(productId);
-    } catch (err) {
-      console.log(err);
-    } finally {
-      setRemovingItems((prev) => ({ ...prev, [productId]: false }));
-    }
+    try { await removeItem(productId); }
+    catch (err) { console.log(err); }
+    finally { setRemovingItems((prev) => ({ ...prev, [productId]: false })); }
   };
 
   const handleClearCart = async () => {
-    try {
-      await clear();
-    } catch (err) {
-      console.log(err);
-    }
+    try { await clear(); } catch (err) { console.log(err); }
   };
 
   const handleCheckout = () => {
-    if (isGuest) {
-      navigate("/login?redirect=/checkout");
-    } else {
-      navigate("/checkout");
-    }
+    if (isGuest) { navigate("/login?redirect=/checkout"); }
+    else { navigate("/checkout"); }
   };
 
   if (isLoading) {
     return (
-      <div style={{ minHeight: "70vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F3F4F6" }}>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ width: 36, height: 36, border: "3px solid #D85A30", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.6s linear infinite", margin: "0 auto 16px" }}></div>
-          <p style={{ color: "#6B7280", fontSize: 14 }}>Loading your cart...</p>
+      <div className="min-h-[70vh] flex items-center justify-center bg-gray-100">
+        <div className="text-center">
+          <div className="w-9 h-9 border-[3px] border-[#D85A30] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-500 text-sm">Loading your cart...</p>
         </div>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
 
   if (!items || items.length === 0) {
     return (
-      <div style={{ minHeight: "70vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F3F4F6" }}>
-        <div style={{ textAlign: "center", background: "white", padding: 56, borderRadius: 20, border: "1px solid #E5E7EB", maxWidth: 440 }}>
-          <p style={{ fontSize: 64, marginBottom: 16 }}>🛒</p>
-          <h2 style={{ fontSize: 22, fontWeight: 800, color: "#111", marginBottom: 8 }}>Your cart is empty</h2>
-          <p style={{ color: "#6B7280", fontSize: 14, marginBottom: 28 }}>Looks like you haven't added anything yet. Start shopping!</p>
-          <Link to="/products" style={{
-            background: "linear-gradient(180deg, #FFD814, #F7CA00)",
-            color: "#111", textDecoration: "none",
-            padding: "12px 32px", borderRadius: 10,
-            fontWeight: 700, fontSize: 14,
-            display: "inline-block",
-            border: "1px solid #FCD200",
-          }}>
+      <div className="min-h-[70vh] flex items-center justify-center bg-gray-100 px-4">
+        <div className="text-center bg-white p-12 sm:p-14 rounded-2xl border border-gray-200 max-w-[440px] w-full">
+          <p className="text-6xl mb-4">🛒</p>
+          <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 mb-2">Your cart is empty</h2>
+          <p className="text-gray-500 text-sm mb-7">Looks like you haven't added anything yet. Start shopping!</p>
+          <Link
+            to="/products"
+            className="inline-block bg-gradient-to-b from-yellow-300 to-yellow-400 text-gray-900 no-underline px-8 py-3 rounded-xl font-bold text-sm border border-yellow-400 hover:brightness-95 transition"
+          >
             Continue Shopping
           </Link>
-
           {isGuest && (
-            <div style={{ marginTop: 24, padding: "14px 18px", background: "#EFF6FF", border: "1px solid #93C5FD", borderRadius: 12, textAlign: "left" }}>
-              <p style={{ fontSize: 12, color: "#1E40AF", fontWeight: 700, margin: 0 }}>
-                💡 Sign in to save your cart
-              </p>
-              <p style={{ fontSize: 11, color: "#2563EB", margin: "2px 0 0" }}>
-                Your cart will be synced when you sign in
-              </p>
+            <div className="mt-6 px-4 py-3.5 bg-blue-50 border border-blue-200 rounded-xl text-left">
+              <p className="text-xs text-blue-800 font-bold m-0">💡 Sign in to save your cart</p>
+              <p className="text-[11px] text-blue-600 mt-0.5 m-0">Your cart will be synced when you sign in</p>
             </div>
           )}
         </div>
@@ -105,241 +81,188 @@ const CartPage = () => {
   }
 
   return (
-    <div style={{ background: "#F3F4F6", minHeight: "100vh", padding: "24px 16px" }}>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+    <div className="bg-gray-100 min-h-screen py-5 sm:py-6 px-3 sm:px-4">
+      <div className="max-w-[1200px] mx-auto">
 
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+        <div className="flex items-center justify-between mb-5 sm:mb-6 flex-wrap gap-3">
           <div>
-            <h1 style={{ fontSize: 26, fontWeight: 800, color: "#111", margin: 0 }}>Shopping Cart</h1>
-            <p style={{ color: "#6B7280", fontSize: 13, margin: "4px 0 0" }}>
+            <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 m-0">Shopping Cart</h1>
+            <p className="text-gray-500 text-[13px] mt-1 m-0">
               {cart?.totalItems} {cart?.totalItems === 1 ? "item" : "items"} in your cart
             </p>
           </div>
           <button
             onClick={handleClearCart}
-            style={{
-              background: "none", border: "1px solid #FCA5A5",
-              color: "#EF4444", borderRadius: 8,
-              padding: "8px 16px", fontSize: 12,
-              fontWeight: 600, cursor: "pointer",
-            }}
+            className="bg-transparent border border-red-300 text-red-500 rounded-lg px-4 py-2 text-xs font-semibold cursor-pointer hover:bg-red-50 transition font-[inherit]"
           >
             Clear Cart
           </button>
         </div>
 
         {isGuest && (
-          <div style={{
-            background: "linear-gradient(135deg, #EFF6FF, #DBEAFE)",
-            border: "1px solid #93C5FD",
-            borderRadius: 14, padding: "14px 20px",
-            display: "flex", alignItems: "center", gap: 14, marginBottom: 16,
-          }}>
-            <span style={{ fontSize: 26 }}>🔐</span>
-            <div style={{ flex: 1 }}>
-              <p style={{ fontSize: 14, fontWeight: 800, color: "#1E40AF", margin: 0 }}>
-                Sign in to save your cart
-              </p>
-              <p style={{ fontSize: 12, color: "#2563EB", margin: "2px 0 0" }}>
-                Your cart items will be saved to your account when you sign in. You'll need to sign in to complete checkout.
-              </p>
+          <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-2xl px-4 sm:px-5 py-3.5 flex items-center gap-3.5 mb-4 flex-wrap">
+            <span className="text-2xl shrink-0">🔐</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-extrabold text-blue-800 m-0">Sign in to save your cart</p>
+              <p className="text-xs text-blue-600 mt-0.5 m-0">Your cart items will be saved when you sign in. You'll need to sign in to complete checkout.</p>
             </div>
             <button
               onClick={() => navigate("/login?redirect=/cart")}
-              style={{
-                background: "#2563EB", color: "white", border: "none",
-                borderRadius: 10, padding: "10px 20px", fontSize: 13,
-                fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap",
-                boxShadow: "0 4px 12px rgba(37,99,235,0.3)",
-              }}
+              className="bg-blue-600 text-white border-none rounded-xl px-5 py-2.5 text-[13px] font-extrabold cursor-pointer whitespace-nowrap shadow-md shadow-blue-500/25 hover:bg-blue-700 transition font-[inherit] shrink-0"
             >
               Sign In →
             </button>
           </div>
         )}
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 20, alignItems: "flex-start" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div className="flex flex-col lg:grid lg:grid-cols-[1fr_340px] gap-4 lg:gap-5 items-start">
 
-            <div style={{
-              background: "white", borderRadius: 12,
-              border: "1px solid #E5E7EB", padding: "12px 20px",
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-            }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#111" }}>Product</span>
-              <div style={{ display: "flex", gap: 80 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#111" }}>Quantity</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#111" }}>Total</span>
+          <div className="flex flex-col gap-3 w-full">
+
+            <div className="bg-white rounded-xl border border-gray-200 px-4 sm:px-5 py-3 hidden sm:flex items-center justify-between">
+              <span className="text-[13px] font-bold text-gray-900">Product</span>
+              <div className="flex gap-16 sm:gap-20">
+                <span className="text-[13px] font-bold text-gray-900">Quantity</span>
+                <span className="text-[13px] font-bold text-gray-900">Total</span>
               </div>
             </div>
 
             {items.map((item) => {
               const productId = getProductId(item);
+              const wishlistProduct = {
+                _id: productId,
+                name: item.name,
+                slug: item.product?.slug || "",
+                price: item.price,
+                comparePrice: item.comparePrice || 0,
+                images: item.image ? [{ url: item.image }] : [],
+                stock: item.maxQuantity || 99,
+                averageRating: 0,
+                totalReviews: 0,
+                vendorStore: { storeName: item.storeName || "Vendor" },
+              };
+
               return (
                 <div
                   key={productId}
-                  style={{
-                    background: "white", borderRadius: 12,
-                    border: "1px solid #E5E7EB", padding: 20,
-                    display: "flex", gap: 16, alignItems: "flex-start",
-                    opacity: removingItems[productId] ? 0.5 : 1,
-                    transition: "opacity 0.2s",
-                  }}
+                  className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 flex gap-3.5 sm:gap-4 items-start transition-opacity"
+                  style={{ opacity: removingItems[productId] ? 0.5 : 1 }}
                 >
-                  <Link to={`/products/${item.product?.slug || ""}`} style={{ flexShrink: 0 }}>
+                  <Link to={`/products/${item.product?.slug || ""}`} className="shrink-0">
                     <img
                       src={item.image || PLACEHOLDER_MEDIUM}
                       alt={item.name}
-                      style={{ width: 100, height: 100, objectFit: "cover", borderRadius: 10, border: "1px solid #E5E7EB" }}
+                      className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-xl border border-gray-200"
                       onError={(e) => { e.target.src = PLACEHOLDER_MEDIUM; }}
                     />
                   </Link>
 
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
-                      <div style={{ flex: 1 }}>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="flex-1 min-w-0">
                         <Link
                           to={`/products/${item.product?.slug || ""}`}
-                          style={{ fontWeight: 600, fontSize: 14, color: "#111", textDecoration: "none", lineHeight: 1.4, display: "block" }}
+                          className="font-semibold text-sm text-gray-900 no-underline leading-snug block hover:text-[#D85A30] transition-colors"
                         >
                           {item.name}
                         </Link>
-                        <p style={{ fontSize: 12, color: "#9CA3AF", margin: "4px 0 0" }}>
-                          Sold by: {item.storeName || "Vendor"}
-                        </p>
-                        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                          <Link
-                            to={`/products/${item.product?.slug || ""}`}
-                            style={{ fontSize: 11, color: "#0066C0", textDecoration: "none" }}
-                          >
+                        <p className="text-xs text-gray-400 mt-1 m-0">Sold by: {item.storeName || "Vendor"}</p>
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
+                          <Link to={`/products/${item.product?.slug || ""}`} className="text-[11px] text-blue-700 no-underline hover:underline">
                             View Details
                           </Link>
-                          <span style={{ color: "#E5E7EB" }}>|</span>
+                          <span className="text-gray-200 text-xs">|</span>
                           <button
                             onClick={() => handleRemove(productId)}
-                            style={{ fontSize: 11, color: "#EF4444", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                            className="text-[11px] text-red-500 bg-transparent border-none cursor-pointer p-0 hover:underline font-[inherit]"
                           >
                             Remove
                           </button>
+                          <span className="text-gray-200 text-xs">|</span>
+                          <WishlistButton product={wishlistProduct} size="sm" />
                         </div>
                       </div>
-                      <div style={{ textAlign: "right", flexShrink: 0 }}>
-                        <p style={{ fontSize: 18, fontWeight: 800, color: "#B12704", margin: 0 }}>
+
+                      <div className="text-right shrink-0">
+                        <p className="text-lg sm:text-xl font-extrabold text-[#B12704] m-0">
                           {formatRupee(item.price * item.quantity)}
                         </p>
                         {item.comparePrice > 0 && (
-                          <p style={{ fontSize: 11, color: "#9CA3AF", textDecoration: "line-through", margin: "2px 0 0" }}>
+                          <p className="text-[11px] text-gray-400 line-through mt-0.5 m-0">
                             {formatRupee(item.comparePrice * item.quantity)}
                           </p>
                         )}
                       </div>
                     </div>
 
-                    <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12 }}>
-                      <div style={{
-                        display: "flex", alignItems: "center",
-                        border: "1px solid #E5E7EB", borderRadius: 8,
-                        overflow: "hidden", width: "fit-content",
-                      }}>
+                    <div className="flex items-center gap-3 mt-3">
+                      <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden w-fit">
                         <button
                           onClick={() => handleQuantityChange(productId, item.quantity - 1)}
                           disabled={updatingItems[productId] || item.quantity <= 1}
-                          style={{
-                            width: 36, height: 36,
-                            background: "#F9FAFB", border: "none",
-                            cursor: "pointer", fontSize: 18,
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            color: "#111", opacity: (updatingItems[productId] || item.quantity <= 1) ? 0.4 : 1,
-                          }}
+                          className="w-9 h-9 bg-gray-50 border-none cursor-pointer text-lg flex items-center justify-center text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 transition font-[inherit]"
                         >
                           −
                         </button>
-                        <span style={{
-                          width: 44, textAlign: "center",
-                          fontSize: 14, fontWeight: 700, color: "#111",
-                          borderLeft: "1px solid #E5E7EB", borderRight: "1px solid #E5E7EB",
-                          height: 36, display: "flex", alignItems: "center", justifyContent: "center",
-                        }}>
+                        <span className="w-11 h-9 text-sm font-bold text-gray-900 border-x border-gray-200 flex items-center justify-center">
                           {updatingItems[productId] ? (
-                            <div style={{ width: 14, height: 14, border: "2px solid #D85A30", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.6s linear infinite" }}></div>
+                            <span className="w-3.5 h-3.5 border-2 border-[#D85A30] border-t-transparent rounded-full animate-spin inline-block" />
                           ) : item.quantity}
                         </span>
                         <button
                           onClick={() => handleQuantityChange(productId, item.quantity + 1)}
                           disabled={updatingItems[productId] || item.quantity >= item.maxQuantity}
-                          style={{
-                            width: 36, height: 36,
-                            background: "#F9FAFB", border: "none",
-                            cursor: "pointer", fontSize: 18,
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            color: "#111", opacity: (updatingItems[productId] || item.quantity >= item.maxQuantity) ? 0.4 : 1,
-                          }}
+                          className="w-9 h-9 bg-gray-50 border-none cursor-pointer text-lg flex items-center justify-center text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 transition font-[inherit]"
                         >
                           +
                         </button>
                       </div>
-                      <p style={{ fontSize: 12, color: "#9CA3AF", margin: 0 }}>
-                        {formatRupee(item.price)} each
-                      </p>
+                      <p className="text-xs text-gray-400 m-0">{formatRupee(item.price)} each</p>
                     </div>
                   </div>
                 </div>
               );
             })}
 
-            <div style={{
-              background: "#F0FDF4", border: "1px solid #86EFAC",
-              borderRadius: 12, padding: "16px 20px",
-              display: "flex", alignItems: "center", gap: 10,
-            }}>
-              <span style={{ fontSize: 20 }}>🚚</span>
+            <div className="bg-green-50 border border-green-200 rounded-xl px-5 py-4 flex items-center gap-2.5">
+              <span className="text-xl">🚚</span>
               <div>
-                <p style={{ fontSize: 13, fontWeight: 700, color: "#166534", margin: 0 }}>Free Delivery</p>
-                <p style={{ fontSize: 12, color: "#16A34A", margin: 0 }}>Your order qualifies for free delivery</p>
+                <p className="text-[13px] font-bold text-green-800 m-0">Free Delivery</p>
+                <p className="text-xs text-green-600 m-0">Your order qualifies for free delivery</p>
               </div>
             </div>
           </div>
 
-          <div style={{ position: "sticky", top: 80 }}>
-            <div style={{
-              background: "white", borderRadius: 12,
-              border: "1px solid #E5E7EB", overflow: "hidden",
-            }}>
-              <div style={{ padding: "16px 20px", borderBottom: "1px solid #E5E7EB", background: "#F9FAFB" }}>
-                <h2 style={{ fontSize: 16, fontWeight: 700, color: "#111", margin: 0 }}>Order Summary</h2>
+          <div className="w-full lg:sticky lg:top-20">
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-200 bg-gray-50">
+                <h2 className="text-base font-bold text-gray-900 m-0">Order Summary</h2>
               </div>
-              <div style={{ padding: "20px" }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span style={{ fontSize: 13, color: "#6B7280" }}>Subtotal ({cart?.totalItems} items)</span>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "#111" }}>{formatRupee(cart?.subtotal || 0)}</span>
+              <div className="p-5">
+                <div className="flex flex-col gap-3">
+                  <div className="flex justify-between">
+                    <span className="text-[13px] text-gray-500">Subtotal ({cart?.totalItems} items)</span>
+                    <span className="text-[13px] font-semibold text-gray-900">{formatRupee(cart?.subtotal || 0)}</span>
                   </div>
                   {cart?.coupon?.discount > 0 && (
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span style={{ fontSize: 13, color: "#16A34A" }}>Discount</span>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: "#16A34A" }}>− {formatRupee(cart.coupon.discount)}</span>
+                    <div className="flex justify-between">
+                      <span className="text-[13px] text-green-600">Discount</span>
+                      <span className="text-[13px] font-semibold text-green-600">− {formatRupee(cart.coupon.discount)}</span>
                     </div>
                   )}
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span style={{ fontSize: 13, color: "#6B7280" }}>Shipping</span>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "#16A34A" }}>FREE</span>
+                  <div className="flex justify-between">
+                    <span className="text-[13px] text-gray-500">Shipping</span>
+                    <span className="text-[13px] font-semibold text-green-600">FREE</span>
                   </div>
-                  <div style={{ borderTop: "2px solid #E5E7EB", paddingTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 16, fontWeight: 800, color: "#111" }}>Total</span>
-                    <span style={{ fontSize: 22, fontWeight: 800, color: "#B12704" }}>{formatRupee(cart?.total || cart?.subtotal || 0)}</span>
+                  <div className="border-t-2 border-gray-200 pt-3 flex justify-between items-center">
+                    <span className="text-base font-extrabold text-gray-900">Total</span>
+                    <span className="text-2xl font-extrabold text-[#B12704]">{formatRupee(cart?.total || cart?.subtotal || 0)}</span>
                   </div>
                 </div>
 
                 <button
                   onClick={handleCheckout}
-                  style={{
-                    width: "100%", marginTop: 20,
-                    background: "linear-gradient(180deg, #FFD814, #F7CA00)",
-                    color: "#111", border: "1px solid #FCD200",
-                    borderRadius: 10, padding: "14px",
-                    fontSize: 15, fontWeight: 800, cursor: "pointer",
-                  }}
+                  className="w-full mt-5 bg-gradient-to-b from-yellow-300 to-yellow-400 text-gray-900 border border-yellow-400 rounded-xl py-3.5 text-[15px] font-extrabold cursor-pointer hover:brightness-95 transition font-[inherit]"
                 >
                   {isGuest
                     ? `🔐 Sign in to Checkout (${cart?.totalItems})`
@@ -348,26 +271,20 @@ const CartPage = () => {
 
                 <button
                   onClick={() => navigate("/products")}
-                  style={{
-                    width: "100%", marginTop: 10,
-                    background: "transparent", color: "#0066C0",
-                    border: "1px solid #E5E7EB",
-                    borderRadius: 10, padding: "12px",
-                    fontSize: 13, fontWeight: 600, cursor: "pointer",
-                  }}
+                  className="w-full mt-2.5 bg-transparent text-blue-700 border border-gray-200 rounded-xl py-3 text-[13px] font-semibold cursor-pointer hover:bg-gray-50 transition font-[inherit]"
                 >
                   Continue Shopping
                 </button>
 
-                <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 8 }}>
+                <div className="mt-5 flex flex-col gap-2">
                   {[
                     { icon: "🔒", text: "Secure checkout" },
                     { icon: "🔄", text: "Easy returns" },
                     { icon: "✅", text: "Verified vendors" },
                   ].map((item) => (
-                    <div key={item.text} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ fontSize: 14 }}>{item.icon}</span>
-                      <span style={{ fontSize: 12, color: "#6B7280" }}>{item.text}</span>
+                    <div key={item.text} className="flex items-center gap-2">
+                      <span className="text-sm">{item.icon}</span>
+                      <span className="text-xs text-gray-500">{item.text}</span>
                     </div>
                   ))}
                 </div>

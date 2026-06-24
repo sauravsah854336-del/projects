@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import ForgotPassword from "./pages/ForgotPassword";
 import VendorSignup from "./pages/VendorSignup";
 import VendorLogin from "./pages/VendorLogin";
 import Dashboard from "./pages/Dashboard";
@@ -13,6 +14,7 @@ import ProductDetailPage from "./pages/ProductDetailPage";
 import CartPage from "./pages/CartPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import OrdersPage from "./pages/OrdersPage";
+import OrderDetailPage from "./pages/OrderDetailPage";
 import ProfilePage from "./pages/ProfilePage";
 import WishlistPage from "./pages/WishlistPage";
 import AboutPage from "./pages/AboutPage";
@@ -24,6 +26,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import AuthVerifier from "./components/AuthVerifier";
 import Layout from "./components/Layout";
 import ScrollToTop from "./components/ScrollToTop";
+import ToastContainer from "./components/Toast";
 
 function App() {
   return (
@@ -35,6 +38,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/vendor/signup" element={<VendorSignup />} />
             <Route path="/vendor/login" element={<VendorLogin />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
@@ -61,6 +65,15 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={["customer"]}>
                   <OrdersPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/orders/:id"
+              element={
+                <ProtectedRoute allowedRoles={["customer"]}>
+                  <OrderDetailPage />
                 </ProtectedRoute>
               }
             />
@@ -104,6 +117,7 @@ function App() {
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </Layout>
+        <ToastContainer />
       </AuthVerifier>
     </BrowserRouter>
   );

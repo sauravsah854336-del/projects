@@ -1,20 +1,19 @@
 import { useState } from "react";
 import { useWishlist } from "../hooks/useWishlist";
 
+const sizeMap = {
+  sm: { btn: "w-7 h-7", icon: 14 },
+  md: { btn: "w-[34px] h-[34px]", icon: 18 },
+  lg: { btn: "w-10 h-10", icon: 22 },
+};
+
 const WishlistButton = ({ product, size = "md", style: customStyle = {} }) => {
   const { isWishlisted, toggleWishlist } = useWishlist();
   const [loading, setLoading] = useState(false);
   const [animating, setAnimating] = useState(false);
 
   const wishlisted = isWishlisted(product._id);
-
-  const sizes = {
-    sm: { btn: 28, icon: 14 },
-    md: { btn: 34, icon: 18 },
-    lg: { btn: 40, icon: 22 },
-  };
-
-  const s = sizes[size];
+  const s = sizeMap[size];
 
   const handleClick = async (e) => {
     e.preventDefault();
@@ -39,27 +38,25 @@ const WishlistButton = ({ product, size = "md", style: customStyle = {} }) => {
           50% { transform: scale(1.3); }
           100% { transform: scale(1); }
         }
+        .heart-pop { animation: heartPop 0.3s ease; }
       `}</style>
       <button
         onClick={handleClick}
         disabled={loading}
-        style={{
-          width: s.btn,
-          height: s.btn,
-          borderRadius: "50%",
-          background: wishlisted ? "#FEE2E2" : "rgba(255,255,255,0.9)",
-          border: wishlisted ? "1px solid #FCA5A5" : "1px solid #E5E7EB",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: loading ? "not-allowed" : "pointer",
-          transition: "all 0.2s",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-          animation: animating ? "heartPop 0.3s ease" : "none",
-          opacity: loading ? 0.6 : 1,
-          ...customStyle,
-        }}
         title={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
+        className={`
+          ${s.btn}
+          rounded-full flex items-center justify-center
+          border transition-all duration-200
+          shadow-[0_2px_8px_rgba(0,0,0,0.1)]
+          ${wishlisted
+            ? "bg-red-100 border-red-300"
+            : "bg-white/90 border-gray-200"
+          }
+          ${loading ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:scale-110"}
+          ${animating ? "heart-pop" : ""}
+        `}
+        style={customStyle}
       >
         <svg
           width={s.icon}

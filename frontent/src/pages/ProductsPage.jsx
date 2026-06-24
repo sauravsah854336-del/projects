@@ -2,9 +2,11 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useGetAllProductsQuery } from "../features/product/productApi";
 import { useGetCategoryTreeQuery } from "../features/category/categoryApi";
-import { useAddToCartMutation } from "../features/cart/cartApi";
+import { useCart } from "../hooks/useCart";
 import { useSelector } from "react-redux";
 import { PLACEHOLDER_MEDIUM } from "../utils/placeholder";
+import WishlistButton from "../components/WishlistButton";
+import { toast } from "../components/Toast";
 
 const formatRupee = (amount) =>
   new Intl.NumberFormat("en-IN", {
@@ -24,7 +26,7 @@ const categoryIcons = {
 const ProductsPage = () => {
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
-  const [addToCart] = useAddToCartMutation();
+  const { addItem } = useCart();
   const [addedProducts, setAddedProducts] = useState({});
   const [loadingProducts, setLoadingProducts] = useState({});
 
@@ -117,54 +119,47 @@ const ProductsPage = () => {
     setExpandedCategory(expandedCategory === catId ? "" : catId);
   };
 
-  const handleAddToCart = async (e, productId) => {
+  const handleAddToCart = async (e, product) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!user) { navigate("/login"); return; }
-    if (!isCustomer) return;
-    setLoadingProducts((p) => ({ ...p, [productId]: "cart" }));
+    if (user && !isCustomer) return;
+    setLoadingProducts((p) => ({ ...p, [product._id]: "cart" }));
     try {
-      await addToCart({ productId, quantity: 1 }).unwrap();
-      setAddedProducts((prev) => ({ ...prev, [productId]: true }));
-      setTimeout(() => setAddedProducts((prev) => ({ ...prev, [productId]: false })), 2000);
+      await addItem(product, 1);
+      setAddedProducts((prev) => ({ ...prev, [product._id]: true }));
+      toast.success("Added to cart!");
+      setTimeout(() => setAddedProducts((prev) => ({ ...prev, [product._id]: false })), 2000);
     } catch (err) {
-      alert(err?.data?.message || "Failed to add to cart");
+      toast.error(err?.data?.message || err?.message || "Failed to add to cart");
     } finally {
-      setLoadingProducts((p) => ({ ...p, [productId]: null }));
+      setLoadingProducts((p) => ({ ...p, [product._id]: null }));
     }
   };
 
-  const handleBuyNow = async (e, productId) => {
+  const handleBuyNow = async (e, product) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!user) { navigate("/login"); return; }
-    if (!isCustomer) return;
-    setLoadingProducts((p) => ({ ...p, [productId]: "buy" }));
+    if (user && !isCustomer) return;
+    setLoadingProducts((p) => ({ ...p, [product._id]: "buy" }));
     try {
-      await addToCart({ productId, quantity: 1 }).unwrap();
-      navigate("/checkout");
+      await addItem(product, 1);
+      if (!user) {
+        navigate("/login?redirect=/checkout");
+      } else {
+        navigate("/checkout");
+      }
     } catch (err) {
-      alert(err?.data?.message || "Failed to add to cart");
-      setLoadingProducts((p) => ({ ...p, [productId]: null }));
+      toast.error(err?.data?.message || err?.message || "Failed to add to cart");
+      setLoadingProducts((p) => ({ ...p, [product._id]: null }));
     }
   };
 
   const Sidebar = () => (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-      <div style={{
-        background: "white", borderRadius: 12,
-        border: "1px solid #E5E7EB", overflow: "hidden",
-      }}>
-        <div style={{
-          padding: "14px 16px", borderBottom: "1px solid #E5E7EB",
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          background: "#F9FAFB",
-        }}>
+      <div style={{ background: "white", borderRadius: 12, border: "1px solid #E5E7EB", overflow: "hidden" }}>
+        <div style={{ padding: "14px 16px", borderBottom: "1px solid #E5E7EB", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F9FAFB" }}>
           <span style={{ fontWeight: 700, fontSize: 14, color: "#111" }}>Filters</span>
-          <button
-            onClick={handleClearFilters}
-            style={{ background: "none", border: "none", cursor: "pointer", color: "#D85A30", fontSize: 12, fontWeight: 600 }}
-          >
+          <button onClick={handleClearFilters} style={{ background: "none", border: "none", cursor: "pointer", color: "#D85A30", fontSize: 12, fontWeight: 600 }}>
             Clear All
           </button>
         </div>
@@ -176,14 +171,7 @@ const ProductsPage = () => {
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <button
               onClick={() => handleCategorySelect("")}
-              style={{
-                display: "flex", alignItems: "center", gap: 8,
-                padding: "8px 10px", borderRadius: 8,
-                background: filters.category === "" ? "#111" : "transparent",
-                color: filters.category === "" ? "white" : "#374151",
-                border: "none", cursor: "pointer", textAlign: "left",
-                fontSize: 13, fontWeight: filters.category === "" ? 700 : 400,
-              }}
+              style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 8, background: filters.category === "" ? "#111" : "transparent", color: filters.category === "" ? "white" : "#374151", border: "none", cursor: "pointer", textAlign: "left", fontSize: 13, fontWeight: filters.category === "" ? 700 : 400 }}
             >
               <span>🛍️</span>
               <span style={{ flex: 1 }}>All Products</span>
@@ -197,14 +185,7 @@ const ProductsPage = () => {
                   <div style={{ display: "flex", alignItems: "center" }}>
                     <button
                       onClick={() => handleCategorySelect(cat._id)}
-                      style={{
-                        display: "flex", alignItems: "center", gap: 8,
-                        flex: 1, padding: "8px 10px", borderRadius: 8,
-                        background: isActive ? "#111" : "transparent",
-                        color: isActive ? "white" : "#374151",
-                        border: "none", cursor: "pointer", textAlign: "left",
-                        fontSize: 13, fontWeight: isActive ? 700 : 400,
-                      }}
+                      style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, padding: "8px 10px", borderRadius: 8, background: isActive ? "#111" : "transparent", color: isActive ? "white" : "#374151", border: "none", cursor: "pointer", textAlign: "left", fontSize: 13, fontWeight: isActive ? 700 : 400 }}
                     >
                       <span>{icon}</span>
                       <span style={{ flex: 1 }}>{cat.name}</span>
@@ -226,14 +207,7 @@ const ProductsPage = () => {
                         <button
                           key={sub._id}
                           onClick={() => handleCategorySelect(sub._id)}
-                          style={{
-                            display: "flex", alignItems: "center", gap: 6,
-                            width: "100%", padding: "6px 10px", borderRadius: 6,
-                            background: filters.category === sub._id ? "#FFF5F0" : "transparent",
-                            color: filters.category === sub._id ? "#D85A30" : "#6B7280",
-                            border: "none", cursor: "pointer", textAlign: "left",
-                            fontSize: 12, fontWeight: filters.category === sub._id ? 700 : 400,
-                          }}
+                          style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", padding: "6px 10px", borderRadius: 6, background: filters.category === sub._id ? "#FFF5F0" : "transparent", color: filters.category === sub._id ? "#D85A30" : "#6B7280", border: "none", cursor: "pointer", textAlign: "left", fontSize: 12, fontWeight: filters.category === sub._id ? 700 : 400 }}
                         >
                           <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#D85A30", flexShrink: 0 }}></span>
                           {sub.name}
@@ -282,14 +256,7 @@ const ProductsPage = () => {
               <button
                 key={option.value}
                 onClick={() => handleFilterChange("sort", option.value)}
-                style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  padding: "8px 10px", borderRadius: 8,
-                  background: filters.sort === option.value ? "#111" : "transparent",
-                  color: filters.sort === option.value ? "white" : "#374151",
-                  border: "none", cursor: "pointer", textAlign: "left",
-                  fontSize: 13, fontWeight: filters.sort === option.value ? 700 : 400,
-                }}
+                style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 8, background: filters.sort === option.value ? "#111" : "transparent", color: filters.sort === option.value ? "white" : "#374151", border: "none", cursor: "pointer", textAlign: "left", fontSize: 13, fontWeight: filters.sort === option.value ? 700 : 400 }}
               >
                 <span style={{ fontSize: 14 }}>{option.icon}</span>
                 {option.label}
@@ -476,16 +443,17 @@ const ProductsPage = () => {
                           <span style={{ background: "white", color: "#111", padding: "5px 12px", borderRadius: 6, fontSize: 11, fontWeight: 700 }}>Out of Stock</span>
                         </div>
                       )}
+                      <div style={{ position: "absolute", bottom: 8, right: 8 }}>
+                        <WishlistButton product={product} size="sm" />
+                      </div>
                     </div>
                     <div style={{ padding: "12px", display: "flex", flexDirection: "column", flex: 1 }}>
                       <p style={{ fontSize: 10, color: "#9CA3AF", margin: 0, marginBottom: 3 }}>
                         {product.category?.name} • {product.vendorStore?.storeName || "Vendor"}
                       </p>
-                      <h3 style={{
-                        fontSize: 13, fontWeight: 500, color: "#111", margin: "0 0 4px",
-                        display: "-webkit-box", WebkitLineClamp: 2,
-                        WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: 1.4,
-                      }}>{product.name}</h3>
+                      <h3 style={{ fontSize: 13, fontWeight: 500, color: "#111", margin: "0 0 4px", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: 1.4 }}>
+                        {product.name}
+                      </h3>
                       {product.averageRating > 0 && (
                         <div style={{ display: "flex", alignItems: "center", gap: 3, marginBottom: 4 }}>
                           <span style={{ color: "#F59E0B", fontSize: 11 }}>★</span>
@@ -502,14 +470,14 @@ const ProductsPage = () => {
                       {canShop && product.stock > 0 && (
                         <div style={{ display: "flex", gap: 5, marginTop: "auto" }}>
                           <button
-                            onClick={(e) => handleAddToCart(e, product._id)}
+                            onClick={(e) => handleAddToCart(e, product)}
                             disabled={loading === "cart"}
                             className={`btn-cart ${isAdded ? "added" : ""}`}
                           >
                             {loading === "cart" ? "..." : isAdded ? "✓ Added" : "Add to Cart"}
                           </button>
                           <button
-                            onClick={(e) => handleBuyNow(e, product._id)}
+                            onClick={(e) => handleBuyNow(e, product)}
                             disabled={loading === "buy"}
                             className="btn-buy"
                           >
@@ -553,13 +521,7 @@ const ProductsPage = () => {
                   <button
                     key={page}
                     onClick={() => handlePageChange(page)}
-                    style={{
-                      padding: "10px 16px", borderRadius: 8,
-                      background: filters.page === page ? "#111" : "white",
-                      color: filters.page === page ? "white" : "#111",
-                      border: filters.page === page ? "none" : "1px solid #E5E7EB",
-                      fontSize: 13, fontWeight: filters.page === page ? 700 : 400, cursor: "pointer",
-                    }}
+                    style={{ padding: "10px 16px", borderRadius: 8, background: filters.page === page ? "#111" : "white", color: filters.page === page ? "white" : "#111", border: filters.page === page ? "none" : "1px solid #E5E7EB", fontSize: 13, fontWeight: filters.page === page ? 700 : 400, cursor: "pointer" }}
                   >
                     {page}
                   </button>

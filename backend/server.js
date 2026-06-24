@@ -52,7 +52,7 @@ app.get("/", (req, res) => {
 
 app.use("/api/auth", authRouter);
 app.use("/api/customer", customerRouter);
-app.use("/api/setup", setupRouter);
+app.use("/api", setupRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/vendor", vendorRouter);
 app.use("/api/categories", categoryRouter);

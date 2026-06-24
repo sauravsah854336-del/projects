@@ -7,6 +7,7 @@ import { useSearchSuggestionsQuery } from "../features/search/searchApi";
 import { useGetCategoryTreeQuery } from "../features/category/categoryApi";
 import { useDebounce } from "../hooks/useDebounce";
 import { useCart } from "../hooks/useCart";
+import { useWishlist } from "../hooks/useWishlist";
 import { PLACEHOLDER_TINY } from "../utils/placeholder";
 
 const formatRupee = (amount) =>
@@ -52,13 +53,12 @@ const Navbar = () => {
 
   const { cart } = useCart();
   const cartCount = cart?.totalItems || 0;
+  const { total: wishlistCount } = useWishlist();
+  const showShoppingFeatures = isCustomer || isGuest;
 
   const { data: sugData, isFetching, isLoading } = useSearchSuggestionsQuery(
     debouncedQuery,
-    {
-      skip: debouncedQuery.length < 1 || (!isCustomer && !isGuest),
-      refetchOnMountOrArgChange: true,
-    }
+    { skip: debouncedQuery.length < 1 || (!isCustomer && !isGuest), refetchOnMountOrArgChange: true }
   );
 
   const { data: categoryData } = useGetCategoryTreeQuery(undefined, {
@@ -66,12 +66,7 @@ const Navbar = () => {
   });
 
   const categories = categoryData?.data || [];
-
-  const suggestions = sugData?.data || {
-    products: [],
-    categories: [],
-    vendors: [],
-  };
+  const suggestions = sugData?.data || { products: [], categories: [], vendors: [] };
 
   const allSuggestions = [
     ...(suggestions.categories?.map((c) => ({ type: "category", data: c })) || []),
@@ -81,12 +76,7 @@ const Navbar = () => {
 
   const hasResults = allSuggestions.length > 0;
   const showDropdown = searchFocus && trimmedQuery.length >= 1;
-  const isSearching =
-    isFetching ||
-    isLoading ||
-    (trimmedQuery !== debouncedQuery && trimmedQuery.length >= 1);
-
-  const showShoppingFeatures = isCustomer || isGuest;
+  const isSearching = isFetching || isLoading || (trimmedQuery !== debouncedQuery && trimmedQuery.length >= 1);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -97,9 +87,7 @@ const Navbar = () => {
     setLocationOpen(false);
   }, [location.pathname]);
 
-  useEffect(() => {
-    setHighlightIndex(-1);
-  }, [searchQuery]);
+  useEffect(() => { setHighlightIndex(-1); }, [searchQuery]);
 
   useEffect(() => {
     const handler = (e) => {
@@ -144,9 +132,7 @@ const Navbar = () => {
   const handleKeyDown = (e) => {
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setHighlightIndex((prev) =>
-        prev < allSuggestions.length - 1 ? prev + 1 : prev
-      );
+      setHighlightIndex((prev) => prev < allSuggestions.length - 1 ? prev + 1 : prev);
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setHighlightIndex((prev) => (prev > 0 ? prev - 1 : -1));
@@ -164,9 +150,7 @@ const Navbar = () => {
 
   const doLogout = async () => {
     setAccountOpen(false);
-    try {
-      await logoutAPI({ refreshToken }).unwrap();
-    } catch (e) {}
+    try { await logoutAPI({ refreshToken }).unwrap(); } catch (e) {}
     dispatch(authApi.util.resetApiState());
     dispatch(logout());
     navigate("/login");
@@ -192,20 +176,16 @@ const Navbar = () => {
   const handleDetectLocation = () => {
     setDetectingLocation(true);
     setLocationError("");
-
     if (!navigator.geolocation) {
       setLocationError("Geolocation not supported by your browser");
       setDetectingLocation(false);
       return;
     }
-
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
-          );
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
           const data = await res.json();
           const city = data.address?.city || data.address?.town || data.address?.village || data.address?.state || "Unknown";
           const country = data.address?.country || "India";
@@ -225,428 +205,105 @@ const Navbar = () => {
 
   const highlightText = (text, query) => {
     if (!query || !text) return text;
-    const regex = new RegExp(
-      `(${query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
-      "gi"
-    );
+    const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
     const parts = text.split(regex);
     return parts.map((part, i) =>
-      regex.test(part) ? (
-        <span key={i} style={{ fontWeight: 800, color: "#C45500" }}>
-          {part}
-        </span>
-      ) : (
-        part
-      )
+      regex.test(part) ? <span key={i} className="font-extrabold text-[#C45500]">{part}</span> : part
     );
   };
+
+  const navBg = isAdmin
+    ? "bg-gradient-to-b from-red-900 to-red-800"
+    : isVendor
+    ? "bg-gradient-to-b from-indigo-900 to-indigo-800"
+    : "bg-[#131921]";
+
+  const NavLink = ({ top, bottom, onClick, className = "" }) => (
+    <button
+      onClick={onClick}
+      className={`hidden lg:flex flex-col px-2.5 py-2 border border-transparent rounded hover:border-white transition-colors cursor-pointer bg-transparent shrink-0 text-left font-[inherit] ${className}`}
+    >
+      <span className="text-[11px] text-gray-400 leading-tight">{top}</span>
+      <span className="text-[13px] font-bold text-white leading-tight flex items-center gap-1">{bottom}</span>
+    </button>
+  );
+
+  const DDLink = ({ onClick, children }) => (
+    <button
+      onClick={onClick}
+      className="block w-full text-left px-0 py-1.5 text-[13px] text-gray-600 bg-transparent border-none cursor-pointer hover:text-[#E47911] hover:underline font-[inherit]"
+    >
+      {children}
+    </button>
+  );
+
+  const SlideItem = ({ onClick, children, className = "" }) => (
+    <button
+      onClick={onClick}
+      className={`flex items-center justify-between w-full px-5 py-2.5 text-sm text-gray-700 bg-transparent border-none cursor-pointer hover:bg-gray-100 text-left font-[inherit] ${className}`}
+    >
+      {children}
+    </button>
+  );
 
   return (
     <>
       <style>{`
         @keyframes ddIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
-        @keyframes modalIn { from { opacity:0; transform: translate(-50%, -48%) scale(0.96); } to { opacity:1; transform: translate(-50%, -50%) scale(1); } }
-        @keyframes spin { to { transform:rotate(360deg); } }
-        @keyframes slideRight { from { transform: translateX(-100%); } to { transform: translateX(0); } }
-
-        .nav-main {
-          background: #131921;
-          padding: 10px 16px;
-          display: flex;
-          align-items: center;
-          gap: 14px;
-          position: sticky;
-          top: 0;
-          z-index: 9000;
-          overflow: visible;
-        }
-        .nav-vendor { background: linear-gradient(180deg, #1e1b4b, #312e81); }
-        .nav-admin { background: linear-gradient(180deg, #7F1D1D, #991B1B); }
-
-        .nav-logo {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 6px 10px;
-          border: 1px solid transparent;
-          border-radius: 4px;
-          cursor: pointer;
-          flex-shrink: 0;
-        }
-        .nav-logo:hover { border-color: white; }
-        .nav-logo-icon {
-          width: 34px; height: 34px;
-          background: linear-gradient(135deg, #D85A30, #FF8C5A);
-          border-radius: 6px;
-          display: flex; align-items: center; justify-content: center;
-          color: white; font-weight: 900; font-size: 15px;
-        }
-        .nav-logo-text { color: white; font-weight: 800; font-size: 18px; }
-        .nav-role-badge {
-          font-size: 9px;
-          background: rgba(255,255,255,0.15);
-          color: white;
-          padding: 2px 8px;
-          border-radius: 99px;
-          font-weight: 800;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          margin-left: 6px;
-        }
-
-        .search-wrapper {
-          flex: 1;
-          display: flex;
-          justify-content: center;
-          max-width: 650px;
-          margin: 0 auto;
-          position: relative;
-          z-index: 9999;
-        }
-        .search-container {
-          width: 100%;
-          display: flex;
-          height: 42px;
-          border-radius: 8px;
-          overflow: visible;
-          position: relative;
-          background: white;
-          z-index: 9999;
-        }
-        .search-container.focused { box-shadow: 0 0 0 3px #FF9900; }
-        .search-cat-select {
-          background: linear-gradient(180deg, #F3F3F3, #E7E9EC);
-          border: none;
-          padding: 0 10px;
-          font-size: 12px;
-          font-weight: 600;
-          color: #111;
-          cursor: pointer;
-          border-right: 1px solid #CDCDCD;
-          outline: none;
-          max-width: 100px;
-          border-top-left-radius: 8px;
-          border-bottom-left-radius: 8px;
-        }
-        .search-input {
-          flex: 1;
-          border: none;
-          outline: none;
-          padding: 0 14px;
-          font-size: 14px;
-          background: white;
-          color: #111;
-          min-width: 0;
-        }
-        .search-btn {
-          background: linear-gradient(180deg, #FFD814, #F7CA00);
-          border: none;
-          padding: 0 18px;
-          cursor: pointer;
-          color: #111;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-top-right-radius: 8px;
-          border-bottom-right-radius: 8px;
-        }
-        .search-dd {
-          position: absolute;
-          top: calc(100% + 6px);
-          left: 0;
-          right: 0;
-          background: white;
-          border-radius: 8px;
-          box-shadow: 0 12px 40px rgba(0,0,0,0.3);
-          max-height: 500px;
-          overflow-y: auto;
-          z-index: 99999;
-          animation: ddIn 0.12s ease both;
-          border: 1px solid #E5E5E5;
-        }
-        .sd-section { padding: 6px 0; }
-        .sd-section + .sd-section { border-top: 1px solid #F0F0F0; }
-        .sd-label {
-          padding: 8px 16px 4px;
-          font-size: 11px;
-          font-weight: 700;
-          text-transform: uppercase;
-          color: #888;
-          display: flex;
-          justify-content: space-between;
-        }
-        .sd-count {
-          background: #FFF5F0;
-          color: #D85A30;
-          padding: 2px 8px;
-          border-radius: 99px;
-          font-size: 10px;
-          font-weight: 700;
-        }
-        .sd-item {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 8px 16px;
-          width: 100%;
-          border: none;
-          background: transparent;
-          cursor: pointer;
-          text-align: left;
-        }
-        .sd-item:hover, .sd-item.highlight { background: #FFF8F3; }
+        @keyframes modalIn { from { opacity:0; transform:translate(-50%,-48%) scale(0.96); } to { opacity:1; transform:translate(-50%,-50%) scale(1); } }
+        @keyframes slideRight { from { transform:translateX(-100%); } to { transform:translateX(0); } }
+        .search-dd { animation: ddIn 0.12s ease both; }
+        .account-dd { animation: ddIn 0.15s ease both; }
+        .loc-modal { animation: modalIn 0.2s ease both; }
+        .slide-panel { animation: slideRight 0.2s ease both; }
         .sd-item.highlight { border-left: 3px solid #D85A30; padding-left: 13px; }
-        .sd-empty { padding: 28px 16px; text-align: center; }
-        .sd-empty-icon {
-          width: 48px; height: 48px;
-          background: #F5F5F5;
-          border-radius: 50%;
-          display: flex; align-items: center; justify-content: center;
-          margin: 0 auto 10px;
-          font-size: 22px;
-        }
-        .sd-loading { padding: 24px; text-align: center; }
-        .sd-spinner {
-          width: 24px; height: 24px;
-          border: 2.5px solid #F90;
-          border-top-color: transparent;
-          border-radius: 50%;
-          animation: spin 0.6s linear infinite;
-          margin: 0 auto 10px;
-        }
-        .sd-see-all {
-          width: 100%;
-          padding: 12px 16px;
-          background: #F7F7F7;
-          border: none;
-          border-top: 1px solid #EEE;
-          cursor: pointer;
-          color: #0066C0;
-          font-size: 13px;
-          font-weight: 600;
-        }
-
-        .nav-link {
-          padding: 8px 10px;
-          border: 1px solid transparent;
-          border-radius: 4px;
-          cursor: pointer;
-          color: white;
-          display: flex;
-          flex-direction: column;
-          background: transparent;
-          text-align: left;
-          flex-shrink: 0;
-          line-height: 1.2;
-          font-family: inherit;
-        }
-        .nav-link:hover { border-color: white; }
-        .nav-link-top { color: #CCC; font-size: 11px; }
-        .nav-link-bottom { color: white; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 3px; }
-
-        .nav-cart {
-          padding: 8px 10px;
-          border: 1px solid transparent;
-          border-radius: 4px;
-          cursor: pointer;
-          color: white;
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          background: transparent;
-          flex-shrink: 0;
-          font-family: inherit;
-        }
-        .nav-cart:hover { border-color: white; }
-        .nav-cart-icon-wrap { position: relative; display: flex; align-items: center; }
-        .cart-count {
-          position: absolute;
-          top: -8px; right: -8px;
-          background: linear-gradient(135deg, #F90, #FFA826);
-          color: white;
-          font-size: 11px;
-          font-weight: 800;
-          min-width: 20px; height: 20px;
-          border-radius: 99px;
-          display: flex; align-items: center; justify-content: center;
-          padding: 0 6px;
-          border: 2px solid #131921;
-        }
-
-        .account-dd {
-          position: absolute;
-          top: calc(100% + 8px);
-          right: 0;
-          background: white;
-          border-radius: 8px;
-          box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-          min-width: 340px;
-          z-index: 99999;
-          animation: ddIn 0.15s ease both;
-          overflow: hidden;
-        }
-        .account-dd-header { padding: 16px 20px; border-bottom: 1px solid #EEE; text-align: center; }
-        .account-dd-body { display: flex; }
-        .account-dd-col { flex: 1; padding: 16px; }
-        .account-dd-col:not(:last-child) { border-right: 1px solid #EEE; }
-        .account-dd-col-title { font-size: 14px; font-weight: 700; color: #111; margin-bottom: 8px; }
-        .account-dd-link {
-          display: block;
-          padding: 5px 0;
-          font-size: 13px;
-          color: #555;
-          background: transparent;
-          border: none;
-          cursor: pointer;
-          text-align: left;
-          width: 100%;
-          font-family: inherit;
-        }
-        .account-dd-link:hover { color: #E47911; text-decoration: underline; }
-
-        .slide-overlay {
-          position: fixed;
-          top: 0; left: 0; right: 0; bottom: 0;
-          background: rgba(0,0,0,0.5);
-          z-index: 99998;
-        }
-        .slide-panel {
-          position: fixed;
-          top: 0; left: 0; bottom: 0;
-          width: 320px;
-          max-width: 85vw;
-          background: white;
-          z-index: 99999;
-          overflow-y: auto;
-          animation: slideRight 0.2s ease both;
-        }
-        .slide-header {
-          background: #232F3E;
-          color: white;
-          padding: 16px 20px;
-          font-size: 17px;
-          font-weight: 700;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
-        .slide-section { padding: 12px 0; border-bottom: 6px solid #F3F3F3; }
-        .slide-section-title { font-size: 17px; font-weight: 800; color: #111; padding: 4px 20px 8px; }
-        .slide-item {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 10px 20px;
-          font-size: 14px;
-          color: #333;
-          cursor: pointer;
-          border: none;
-          background: transparent;
-          width: 100%;
-          text-align: left;
-          font-family: inherit;
-        }
-        .slide-item:hover { background: #F2F2F2; }
-
-        .loc-modal {
-          position: fixed;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          width: 100%;
-          max-width: 460px;
-          background: white;
-          border-radius: 16px;
-          z-index: 99999;
-          box-shadow: 0 25px 80px rgba(0,0,0,0.4);
-          overflow: hidden;
-          animation: modalIn 0.2s ease both;
-        }
-
-        .mobile-only { display: none; }
-        .desktop-only { display: flex; }
-        @media (max-width: 1024px) { .nav-logo-text { display: none; } }
-        @media (max-width: 900px) {
-          .search-cat-select { display: none; }
-          .nav-link { display: none; }
-          .search-wrapper { max-width: none; }
-        }
-        @media (max-width: 640px) {
-          .desktop-only { display: none !important; }
-          .mobile-only { display: flex !important; }
-          .nav-main { padding: 8px 10px; gap: 8px; }
-          .search-container { height: 40px; }
-          .loc-modal { max-width: 92vw; }
-        }
-        .mobile-menu-btn {
-          padding: 8px;
-          background: transparent;
-          border: 1px solid transparent;
-          border-radius: 4px;
-          color: white;
-          cursor: pointer;
-        }
-        .mobile-menu-btn:hover { border-color: white; }
-
-        .vendor-action-btn {
-          background: rgba(255,255,255,0.1);
-          color: white;
-          padding: 8px 14px;
-          border-radius: 6px;
-          font-size: 13px;
-          font-weight: 700;
-          border: 1px solid rgba(255,255,255,0.2);
-          cursor: pointer;
-          font-family: inherit;
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          flex-shrink: 0;
-        }
-        .vendor-action-btn:hover { background: rgba(255,255,255,0.2); }
       `}</style>
 
-      <nav className={`nav-main ${isVendor ? "nav-vendor" : ""} ${isAdmin ? "nav-admin" : ""}`}>
+      <nav className={`${navBg} px-2.5 sm:px-4 py-2 sm:py-2.5 flex items-center gap-2 sm:gap-3.5 sticky top-0 z-[9000] overflow-visible`}>
+
         <button
           onClick={() => setMobileOpen(true)}
-          className="mobile-menu-btn mobile-only"
+          className="lg:hidden p-2 border border-transparent rounded hover:border-white text-white bg-transparent cursor-pointer shrink-0"
         >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
             <path d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
 
-        <div className="nav-logo" onClick={() => go(user ? dash(user.role) : "/")}>
-          <div className="nav-logo-icon">E</div>
-          <span className="nav-logo-text">Commerce</span>
-          {isVendor && <span className="nav-role-badge">Vendor</span>}
-          {isAdmin && <span className="nav-role-badge">Admin</span>}
+        <div
+          onClick={() => go(user ? dash(user.role) : "/")}
+          className="flex items-center gap-2 px-2 py-1.5 border border-transparent rounded hover:border-white cursor-pointer shrink-0"
+        >
+          <div className="w-8 h-8 bg-gradient-to-br from-[#D85A30] to-[#FF8C5A] rounded-md flex items-center justify-center text-white font-black text-sm">
+            E
+          </div>
+          <span className="hidden lg:block text-white font-extrabold text-lg">Commerce</span>
+          {isVendor && <span className="text-[9px] bg-white/15 text-white px-2 py-0.5 rounded-full font-extrabold uppercase tracking-wide">Vendor</span>}
+          {isAdmin && <span className="text-[9px] bg-white/15 text-white px-2 py-0.5 rounded-full font-extrabold uppercase tracking-wide">Admin</span>}
         </div>
 
         {showShoppingFeatures && (
-          <button
-            className="nav-link desktop-only"
+          <NavLink
+            top={user ? `Deliver to ${user.firstName}` : "Deliver to"}
+            bottom={
+              <>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
+                </svg>
+                <span className="max-w-[100px] truncate">{currentLocation}</span>
+              </>
+            }
             onClick={() => setLocationOpen(true)}
-          >
-            <span className="nav-link-top">
-              {user ? `Deliver to ${user.firstName}` : "Deliver to"}
-            </span>
-            <span className="nav-link-bottom">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
-              </svg>
-              {currentLocation}
-            </span>
-          </button>
+          />
         )}
 
         {showShoppingFeatures && (
-          <div className="search-wrapper">
-            <div className={`search-container ${searchFocus ? "focused" : ""}`} ref={searchBoxRef}>
+          <div className="flex-1 flex justify-center max-w-2xl mx-auto relative z-[9999]" ref={searchBoxRef}>
+            <div className={`w-full flex h-10 sm:h-[42px] rounded-lg bg-white relative overflow-visible ${searchFocus ? "ring-[3px] ring-yellow-400" : ""}`}>
               <select
-                className="search-cat-select"
                 value={searchCategory}
                 onChange={(e) => setSearchCategory(e.target.value)}
+                className="hidden sm:block bg-gradient-to-b from-gray-100 to-gray-200 border-none border-r border-gray-300 px-2.5 text-xs font-semibold text-gray-900 cursor-pointer outline-none max-w-[100px] rounded-l-lg"
               >
                 <option value="all">All</option>
                 {categories.map((cat) => (
@@ -658,50 +315,42 @@ const Navbar = () => {
                 ref={inputRef}
                 type="text"
                 placeholder="Search products, brands, stores..."
-                className="search-input"
                 value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setSearchFocus(true);
-                }}
+                onChange={(e) => { setSearchQuery(e.target.value); setSearchFocus(true); }}
                 onFocus={() => setSearchFocus(true)}
                 onKeyDown={handleKeyDown}
                 autoComplete="off"
                 spellCheck="false"
+                className="flex-1 border-none outline-none px-3.5 text-sm text-gray-900 bg-white min-w-0"
               />
 
-              <button onClick={() => doSearch()} className="search-btn">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <button
+                onClick={() => doSearch()}
+                className="bg-gradient-to-b from-yellow-300 to-yellow-400 border-none px-4 sm:px-5 cursor-pointer text-gray-900 flex items-center justify-center rounded-r-lg hover:brightness-95 transition"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                   <circle cx="11" cy="11" r="7" />
                   <path d="M21 21l-4.35-4.35" />
                 </svg>
               </button>
 
               {showDropdown && (
-                <div className="search-dd" onMouseDown={(e) => e.preventDefault()}>
+                <div className="search-dd absolute top-[calc(100%+6px)] left-0 right-0 bg-white rounded-lg shadow-2xl max-h-[500px] overflow-y-auto z-[99999] border border-gray-200">
                   {isSearching && (
-                    <div className="sd-loading">
-                      <div className="sd-spinner"></div>
-                      <p style={{ fontSize: 12, color: "#888" }}>Searching...</p>
+                    <div className="p-6 text-center">
+                      <div className="w-6 h-6 border-[2.5px] border-yellow-400 border-t-transparent rounded-full animate-spin mx-auto mb-2.5"></div>
+                      <p className="text-xs text-gray-500">Searching...</p>
                     </div>
                   )}
 
                   {!isSearching && !hasResults && debouncedQuery && (
-                    <div className="sd-empty">
-                      <div className="sd-empty-icon">🔍</div>
-                      <p style={{ fontSize: 14, fontWeight: 700, color: "#111", marginBottom: 4 }}>
-                        No results found
-                      </p>
-                      <p style={{ fontSize: 12, color: "#888" }}>
-                        Nothing matches "<strong>{searchQuery}</strong>"
-                      </p>
+                    <div className="p-7 text-center">
+                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-2.5 text-2xl">🔍</div>
+                      <p className="text-sm font-bold text-gray-900 mb-1">No results found</p>
+                      <p className="text-xs text-gray-500">Nothing matches "<strong>{searchQuery}</strong>"</p>
                       <button
                         onClick={() => doSearch()}
-                        style={{
-                          marginTop: 12, padding: "8px 16px",
-                          background: "#FFD814", border: "1px solid #FCD200",
-                          borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer",
-                        }}
+                        className="mt-3 px-4 py-2 bg-yellow-300 border border-yellow-400 rounded-md text-xs font-semibold cursor-pointer hover:brightness-95"
                       >
                         Search anyway
                       </button>
@@ -711,28 +360,26 @@ const Navbar = () => {
                   {!isSearching && hasResults && (
                     <>
                       {suggestions.categories?.length > 0 && (
-                        <div className="sd-section">
-                          <div className="sd-label">
-                            <span>Categories</span>
-                            <span className="sd-count">{suggestions.categories.length}</span>
+                        <div className="py-1.5 border-b border-gray-100">
+                          <div className="flex justify-between items-center px-4 py-2">
+                            <span className="text-[11px] font-bold uppercase text-gray-400 tracking-wide">Categories</span>
+                            <span className="bg-orange-50 text-[#D85A30] text-[10px] font-bold px-2 py-0.5 rounded-full">{suggestions.categories.length}</span>
                           </div>
                           {suggestions.categories.map((c, idx) => (
                             <button
                               key={c._id}
                               onClick={() => handleSuggestionClick({ type: "category", data: c })}
                               onMouseEnter={() => setHighlightIndex(idx)}
-                              className={`sd-item ${highlightIndex === idx ? "highlight" : ""}`}
+                              className={`sd-item flex items-center gap-3 w-full px-4 py-2 border-none bg-transparent cursor-pointer text-left hover:bg-orange-50 transition-colors ${highlightIndex === idx ? "highlight bg-orange-50" : ""}`}
                             >
-                              <div style={{ width: 32, height: 32, background: "#FFF5F0", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                                <svg width="16" height="16" fill="none" stroke="#D85A30" strokeWidth="2">
-                                  <path d="M4 6h16M4 12h16M4 18h7" strokeLinecap="round" />
+                              <div className="w-8 h-8 bg-orange-50 rounded-md flex items-center justify-center shrink-0">
+                                <svg width="16" height="16" fill="none" stroke="#D85A30" strokeWidth="2" strokeLinecap="round">
+                                  <path d="M4 6h16M4 12h16M4 18h7" />
                                 </svg>
                               </div>
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <p style={{ fontSize: 13, fontWeight: 600, color: "#111" }}>
-                                  {highlightText(c.name, debouncedQuery)}
-                                </p>
-                                <p style={{ fontSize: 11, color: "#888" }}>in Categories</p>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[13px] font-semibold text-gray-900 m-0">{highlightText(c.name, debouncedQuery)}</p>
+                                <p className="text-[11px] text-gray-400 m-0">in Categories</p>
                               </div>
                               <svg width="14" height="14" fill="none" stroke="#999" strokeWidth="2.5" strokeLinecap="round">
                                 <path d="M9 5l7 7-7 7" />
@@ -743,10 +390,10 @@ const Navbar = () => {
                       )}
 
                       {suggestions.vendors?.length > 0 && (
-                        <div className="sd-section">
-                          <div className="sd-label">
-                            <span>Stores</span>
-                            <span className="sd-count">{suggestions.vendors.length}</span>
+                        <div className="py-1.5 border-b border-gray-100">
+                          <div className="flex justify-between items-center px-4 py-2">
+                            <span className="text-[11px] font-bold uppercase text-gray-400 tracking-wide">Stores</span>
+                            <span className="bg-orange-50 text-[#D85A30] text-[10px] font-bold px-2 py-0.5 rounded-full">{suggestions.vendors.length}</span>
                           </div>
                           {suggestions.vendors.map((v, idx) => {
                             const gIdx = (suggestions.categories?.length || 0) + idx;
@@ -755,16 +402,14 @@ const Navbar = () => {
                                 key={v._id}
                                 onClick={() => handleSuggestionClick({ type: "vendor", data: v })}
                                 onMouseEnter={() => setHighlightIndex(gIdx)}
-                                className={`sd-item ${highlightIndex === gIdx ? "highlight" : ""}`}
+                                className={`sd-item flex items-center gap-3 w-full px-4 py-2 border-none bg-transparent cursor-pointer text-left hover:bg-orange-50 transition-colors ${highlightIndex === gIdx ? "highlight bg-orange-50" : ""}`}
                               >
-                                <div style={{ width: 32, height: 32, background: "#EFF6FF", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", color: "#3B82F6", fontSize: 13, fontWeight: 800, flexShrink: 0 }}>
+                                <div className="w-8 h-8 bg-blue-50 rounded-md flex items-center justify-center text-blue-500 text-sm font-extrabold shrink-0">
                                   {v.storeName?.charAt(0)?.toUpperCase()}
                                 </div>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                  <p style={{ fontSize: 13, fontWeight: 600, color: "#111" }}>
-                                    {highlightText(v.storeName, debouncedQuery)}
-                                  </p>
-                                  <p style={{ fontSize: 11, color: "#888" }}>Store</p>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-[13px] font-semibold text-gray-900 m-0">{highlightText(v.storeName, debouncedQuery)}</p>
+                                  <p className="text-[11px] text-gray-400 m-0">Store</p>
                                 </div>
                               </button>
                             );
@@ -773,45 +418,34 @@ const Navbar = () => {
                       )}
 
                       {suggestions.products?.length > 0 && (
-                        <div className="sd-section">
-                          <div className="sd-label">
-                            <span>Products</span>
-                            <span className="sd-count">{suggestions.products.length}</span>
+                        <div className="py-1.5">
+                          <div className="flex justify-between items-center px-4 py-2">
+                            <span className="text-[11px] font-bold uppercase text-gray-400 tracking-wide">Products</span>
+                            <span className="bg-orange-50 text-[#D85A30] text-[10px] font-bold px-2 py-0.5 rounded-full">{suggestions.products.length}</span>
                           </div>
                           {suggestions.products.map((p, idx) => {
-                            const gIdx =
-                              (suggestions.categories?.length || 0) +
-                              (suggestions.vendors?.length || 0) +
-                              idx;
+                            const gIdx = (suggestions.categories?.length || 0) + (suggestions.vendors?.length || 0) + idx;
                             return (
                               <button
                                 key={p._id}
                                 onClick={() => handleSuggestionClick({ type: "product", data: p })}
                                 onMouseEnter={() => setHighlightIndex(gIdx)}
-                                className={`sd-item ${highlightIndex === gIdx ? "highlight" : ""}`}
+                                className={`sd-item flex items-center gap-3 w-full px-4 py-2 border-none bg-transparent cursor-pointer text-left hover:bg-orange-50 transition-colors ${highlightIndex === gIdx ? "highlight bg-orange-50" : ""}`}
                               >
                                 <img
                                   src={p.images?.[0]?.url || PLACEHOLDER_TINY}
                                   alt=""
-                                  style={{ width: 44, height: 44, borderRadius: 6, objectFit: "cover", flexShrink: 0, border: "1px solid #EEE" }}
+                                  className="w-11 h-11 rounded-md object-cover shrink-0 border border-gray-200"
                                   onError={(e) => { e.target.onerror = null; e.target.src = PLACEHOLDER_TINY; }}
                                 />
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                  <p style={{ fontSize: 13, color: "#111", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 500 }}>
-                                    {highlightText(p.name, debouncedQuery)}
-                                  </p>
-                                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
-                                    <span style={{ fontSize: 13, fontWeight: 700, color: "#B12704" }}>
-                                      {formatRupee(p.price)}
-                                    </span>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-[13px] text-gray-900 font-medium m-0 truncate">{highlightText(p.name, debouncedQuery)}</p>
+                                  <div className="flex items-center gap-1.5 mt-0.5">
+                                    <span className="text-[13px] font-bold text-[#B12704]">{formatRupee(p.price)}</span>
                                     {p.comparePrice > p.price && (
-                                      <span style={{ fontSize: 11, color: "#999", textDecoration: "line-through" }}>
-                                        {formatRupee(p.comparePrice)}
-                                      </span>
+                                      <span className="text-[11px] text-gray-400 line-through">{formatRupee(p.comparePrice)}</span>
                                     )}
-                                    {p.brand && (
-                                      <span style={{ fontSize: 11, color: "#888" }}>• {p.brand}</span>
-                                    )}
+                                    {p.brand && <span className="text-[11px] text-gray-400">• {p.brand}</span>}
                                   </div>
                                 </div>
                               </button>
@@ -820,7 +454,10 @@ const Navbar = () => {
                         </div>
                       )}
 
-                      <button onClick={() => doSearch()} className="sd-see-all">
+                      <button
+                        onClick={() => doSearch()}
+                        className="w-full px-4 py-3 bg-gray-50 border-none border-t border-gray-200 cursor-pointer text-blue-700 text-[13px] font-semibold hover:bg-gray-100 transition text-left"
+                      >
                         See all results for "{searchQuery}" →
                       </button>
                     </>
@@ -831,145 +468,105 @@ const Navbar = () => {
           </div>
         )}
 
-        {(isVendor || isAdmin) && (
-          <div style={{ flex: 1 }}></div>
-        )}
+        {(isVendor || isAdmin) && <div className="flex-1" />}
 
         <div
-          style={{ position: "relative" }}
-          className="desktop-only"
-          onMouseEnter={() => {
-            clearTimeout(accountTimer.current);
-            setAccountOpen(true);
-          }}
-          onMouseLeave={() => {
-            accountTimer.current = setTimeout(() => setAccountOpen(false), 200);
-          }}
+          className="hidden lg:block relative"
+          onMouseEnter={() => { clearTimeout(accountTimer.current); setAccountOpen(true); }}
+          onMouseLeave={() => { accountTimer.current = setTimeout(() => setAccountOpen(false), 200); }}
         >
-          <button className="nav-link">
-            <span className="nav-link-top">
-              {user ? `Hello, ${user.firstName}` : "Hello, sign in"}
-            </span>
-            <span className="nav-link-bottom">
-              Account & Lists
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M7 10l5 5 5-5z" />
-              </svg>
-            </span>
-          </button>
+          <NavLink
+            top={user ? `Hello, ${user.firstName}` : "Hello, sign in"}
+            bottom={
+              <>
+                Account & Lists
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z" /></svg>
+              </>
+            }
+          />
 
           {accountOpen && (
-            <div className="account-dd">
+            <div className="account-dd absolute top-[calc(100%+8px)] right-0 bg-white rounded-lg shadow-2xl min-w-[340px] z-[99999] overflow-hidden">
               {!user && (
-                <div className="account-dd-header">
+                <div className="px-5 py-4 border-b border-gray-100 text-center">
                   <button
                     onClick={() => go("/login")}
-                    style={{
-                      background: "linear-gradient(180deg, #FFD814, #F7CA00)",
-                      color: "#111", padding: "8px 24px",
-                      border: "1px solid #FCD200", borderRadius: 6,
-                      fontSize: 13, fontWeight: 600, cursor: "pointer",
-                      marginBottom: 8,
-                    }}
+                    className="bg-gradient-to-b from-yellow-300 to-yellow-400 text-gray-900 px-6 py-2 rounded-md text-sm font-semibold border border-yellow-400 cursor-pointer hover:brightness-95 mb-2"
                   >
                     Sign In
                   </button>
-                  <p style={{ fontSize: 12, color: "#555" }}>
+                  <p className="text-xs text-gray-500 m-0">
                     New customer?{" "}
-                    <button
-                      onClick={() => go("/signup")}
-                      style={{ color: "#0066C0", background: "transparent", border: "none", cursor: "pointer", fontSize: 12 }}
-                    >
+                    <button onClick={() => go("/signup")} className="text-blue-700 bg-transparent border-none cursor-pointer text-xs hover:underline">
                       Start here.
                     </button>
                   </p>
                 </div>
               )}
 
-              {isCustomer && (
-                <div className="account-dd-body">
-                  <div className="account-dd-col">
-                    <p className="account-dd-col-title">Your Account</p>
-                    <button onClick={() => go("/dashboard")} className="account-dd-link">Dashboard</button>
-                    <button onClick={() => go("/profile")} className="account-dd-link">Profile & Addresses</button>
-                    <button onClick={() => go("/orders")} className="account-dd-link">Your Orders</button>
-                    <button onClick={() => go("/cart")} className="account-dd-link">Your Cart</button>
-                    <button onClick={() => go("/wishlist")} className="account-dd-link">Your Wishlist</button>
-                    <button onClick={doLogout} className="account-dd-link" style={{ color: "#0066C0", marginTop: 8 }}>
-                      Sign Out
-                    </button>
+              {(isCustomer || isVendor || isAdmin || isGuest) && (
+                <div className="flex">
+                  <div className="flex-1 p-4 border-r border-gray-100">
+                    <p className="text-sm font-bold text-gray-900 mb-2">
+                      {isCustomer ? "Your Account" : isVendor ? "Vendor Panel" : isAdmin ? "Admin Panel" : "Your Account"}
+                    </p>
+                    {isCustomer && <>
+                      <DDLink onClick={() => go("/dashboard")}>Dashboard</DDLink>
+                      <DDLink onClick={() => go("/profile")}>Profile & Addresses</DDLink>
+                      <DDLink onClick={() => go("/orders")}>Your Orders</DDLink>
+                      <DDLink onClick={() => go("/cart")}>Your Cart</DDLink>
+                      <DDLink onClick={() => go("/wishlist")}>Your Wishlist {wishlistCount > 0 && `(${wishlistCount})`}</DDLink>
+                      <DDLink onClick={doLogout}><span className="text-blue-700">Sign Out</span></DDLink>
+                    </>}
+                    {isVendor && <>
+                      <DDLink onClick={() => go("/vendor/dashboard")}>Dashboard</DDLink>
+                      <DDLink onClick={() => go("/vendor/dashboard?tab=products")}>My Products</DDLink>
+                      <DDLink onClick={() => go("/vendor/dashboard?tab=orders")}>Orders</DDLink>
+                      <DDLink onClick={() => go("/vendor/dashboard?tab=reviews")}>Reviews</DDLink>
+                      <DDLink onClick={doLogout}><span className="text-blue-700">Sign Out</span></DDLink>
+                    </>}
+                    {isAdmin && <>
+                      <DDLink onClick={() => go("/admin/dashboard")}>Dashboard</DDLink>
+                      <DDLink onClick={() => go("/admin/dashboard?tab=vendors")}>Vendors</DDLink>
+                      <DDLink onClick={() => go("/admin/dashboard?tab=categories")}>Categories</DDLink>
+                      <DDLink onClick={() => go("/admin/dashboard?tab=products")}>Products</DDLink>
+                      <DDLink onClick={() => go("/admin/dashboard?tab=orders")}>Orders</DDLink>
+                      <DDLink onClick={() => go("/admin/dashboard?tab=reviews")}>Reviews</DDLink>
+                      <DDLink onClick={doLogout}><span className="text-blue-700">Sign Out</span></DDLink>
+                    </>}
+                    {isGuest && <>
+                      <DDLink onClick={() => go("/orders")}>Your Orders</DDLink>
+                      <DDLink onClick={() => go("/cart")}>Your Cart {cartCount > 0 && `(${cartCount})`}</DDLink>
+                      <DDLink onClick={() => go("/wishlist")}>Your Wishlist {wishlistCount > 0 && `(${wishlistCount})`}</DDLink>
+                    </>}
                   </div>
 
-                  <div className="account-dd-col">
-                    <p className="account-dd-col-title">Help & Settings</p>
-                    <button onClick={() => go("/help")} className="account-dd-link">Customer Service</button>
-                    <button onClick={() => go("/contact")} className="account-dd-link">Contact Us</button>
-                    <button onClick={() => go("/policy/returns")} className="account-dd-link">Returns Policy</button>
-                    <button onClick={() => go("/policy/shipping-info")} className="account-dd-link">Shipping Info</button>
-                  </div>
-                </div>
-              )}
-
-              {isVendor && (
-                <div className="account-dd-body">
-                  <div className="account-dd-col">
-                    <p className="account-dd-col-title">Vendor Panel</p>
-                    <button onClick={() => go("/vendor/dashboard")} className="account-dd-link">Dashboard</button>
-                    <button onClick={() => go("/vendor/dashboard?tab=products")} className="account-dd-link">My Products</button>
-                    <button onClick={() => go("/vendor/dashboard?tab=orders")} className="account-dd-link">Orders</button>
-                    <button onClick={() => go("/vendor/dashboard?tab=reviews")} className="account-dd-link">Reviews</button>
-                    <button onClick={doLogout} className="account-dd-link" style={{ color: "#0066C0", marginTop: 8 }}>
-                      Sign Out
-                    </button>
-                  </div>
-
-                  <div className="account-dd-col">
-                    <p className="account-dd-col-title">Resources</p>
-                    <button onClick={() => go("/policy/seller-guidelines")} className="account-dd-link">Seller Guidelines</button>
-                    <button onClick={() => go("/policy/commission-policy")} className="account-dd-link">Commission</button>
-                    <button onClick={() => go("/policy/vendor-agreement")} className="account-dd-link">Vendor Agreement</button>
-                    <button onClick={() => go("/help")} className="account-dd-link">Support</button>
-                  </div>
-                </div>
-              )}
-
-              {isAdmin && (
-                <div className="account-dd-body">
-                  <div className="account-dd-col">
-                    <p className="account-dd-col-title">Admin Panel</p>
-                    <button onClick={() => go("/admin/dashboard")} className="account-dd-link">Dashboard</button>
-                    <button onClick={() => go("/admin/dashboard?tab=vendors")} className="account-dd-link">Vendors</button>
-                    <button onClick={() => go("/admin/dashboard?tab=categories")} className="account-dd-link">Categories</button>
-                    <button onClick={() => go("/admin/dashboard?tab=products")} className="account-dd-link">Products</button>
-                    <button onClick={() => go("/admin/dashboard?tab=orders")} className="account-dd-link">Orders</button>
-                    <button onClick={() => go("/admin/dashboard?tab=reviews")} className="account-dd-link">Reviews</button>
-                    <button onClick={doLogout} className="account-dd-link" style={{ color: "#0066C0", marginTop: 8 }}>
-                      Sign Out
-                    </button>
-                  </div>
-
-                  <div className="account-dd-col">
-                    <p className="account-dd-col-title">Quick Links</p>
-                    <button onClick={() => go("/")} className="account-dd-link">View Storefront</button>
-                    <button onClick={() => go("/products")} className="account-dd-link">All Products</button>
-                    <button onClick={() => go("/help")} className="account-dd-link">Help Center</button>
-                  </div>
-                </div>
-              )}
-
-              {isGuest && (
-                <div className="account-dd-body">
-                  <div className="account-dd-col">
-                    <p className="account-dd-col-title">Your Account</p>
-                    <button onClick={() => go("/orders")} className="account-dd-link">Your Orders</button>
-                    <button onClick={() => go("/cart")} className="account-dd-link">Your Cart {cartCount > 0 && `(${cartCount})`}</button>
-                  </div>
-
-                  <div className="account-dd-col">
-                    <p className="account-dd-col-title">Sell on E-Commerce</p>
-                    <button onClick={() => go("/vendor/signup")} className="account-dd-link">Become a Seller</button>
-                    <button onClick={() => go("/vendor/login")} className="account-dd-link">Seller Login</button>
-                    <button onClick={() => go("/policy/seller-guidelines")} className="account-dd-link">Seller Guidelines</button>
+                  <div className="flex-1 p-4">
+                    <p className="text-sm font-bold text-gray-900 mb-2">
+                      {isCustomer ? "Help & Settings" : isVendor ? "Resources" : isAdmin ? "Quick Links" : "Sell on E-Commerce"}
+                    </p>
+                    {isCustomer && <>
+                      <DDLink onClick={() => go("/help")}>Customer Service</DDLink>
+                      <DDLink onClick={() => go("/contact")}>Contact Us</DDLink>
+                      <DDLink onClick={() => go("/policy/returns")}>Returns Policy</DDLink>
+                      <DDLink onClick={() => go("/policy/shipping-info")}>Shipping Info</DDLink>
+                    </>}
+                    {isVendor && <>
+                      <DDLink onClick={() => go("/policy/seller-guidelines")}>Seller Guidelines</DDLink>
+                      <DDLink onClick={() => go("/policy/commission-policy")}>Commission</DDLink>
+                      <DDLink onClick={() => go("/policy/vendor-agreement")}>Vendor Agreement</DDLink>
+                      <DDLink onClick={() => go("/help")}>Support</DDLink>
+                    </>}
+                    {isAdmin && <>
+                      <DDLink onClick={() => go("/")}>View Storefront</DDLink>
+                      <DDLink onClick={() => go("/products")}>All Products</DDLink>
+                      <DDLink onClick={() => go("/help")}>Help Center</DDLink>
+                    </>}
+                    {isGuest && <>
+                      <DDLink onClick={() => go("/vendor/signup")}>Become a Seller</DDLink>
+                      <DDLink onClick={() => go("/vendor/login")}>Seller Login</DDLink>
+                      <DDLink onClick={() => go("/policy/seller-guidelines")}>Seller Guidelines</DDLink>
+                    </>}
                   </div>
                 </div>
               )}
@@ -978,35 +575,59 @@ const Navbar = () => {
         </div>
 
         {isCustomer && (
-          <button onClick={() => go("/orders")} className="nav-link desktop-only">
-            <span className="nav-link-top">Returns</span>
-            <span className="nav-link-bottom">& Orders</span>
+          <NavLink
+            top="Returns"
+            bottom="& Orders"
+            onClick={() => go("/orders")}
+          />
+        )}
+
+        {showShoppingFeatures && (
+          <button
+            onClick={() => go("/wishlist")}
+            title="Your Wishlist"
+            className="hidden lg:flex items-center gap-1 px-2.5 py-2 border border-transparent rounded hover:border-white text-white bg-transparent cursor-pointer shrink-0 font-[inherit]"
+          >
+            <div className="relative flex items-center">
+              {wishlistCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-gradient-to-br from-red-500 to-red-400 text-white text-[11px] font-extrabold min-w-5 h-5 rounded-full flex items-center justify-center px-1.5 border-2 border-[#131921] z-10">
+                  {wishlistCount > 99 ? "99+" : wishlistCount}
+                </span>
+              )}
+              <svg width="26" height="26" viewBox="0 0 24 24" fill={wishlistCount > 0 ? "#EF4444" : "none"} stroke={wishlistCount > 0 ? "#EF4444" : "currentColor"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+              </svg>
+            </div>
+            <div className="flex flex-col leading-tight mt-1">
+              <span className="text-[10px] text-gray-400">{wishlistCount > 0 ? `${wishlistCount} items` : "Wishlist"}</span>
+              <span className="text-[13px] font-bold">Wishlist</span>
+            </div>
           </button>
         )}
 
         {showShoppingFeatures && (
-          <button onClick={() => go("/cart")} className="nav-cart">
-            <div className="nav-cart-icon-wrap">
+          <button
+            onClick={() => go("/cart")}
+            className="flex items-center gap-1 px-2 sm:px-2.5 py-2 border border-transparent rounded hover:border-white text-white bg-transparent cursor-pointer shrink-0 font-[inherit]"
+          >
+            <div className="relative flex items-center">
               {cartCount > 0 && (
-                <span className="cart-count">
+                <span className="absolute -top-2 -right-2 bg-gradient-to-br from-yellow-500 to-yellow-400 text-white text-[11px] font-extrabold min-w-5 h-5 rounded-full flex items-center justify-center px-1.5 border-2 border-[#131921] z-10">
                   {cartCount > 99 ? "99+" : cartCount}
                 </span>
               )}
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
               </svg>
             </div>
-            <span style={{ fontSize: 13, fontWeight: 700, marginTop: 10 }} className="desktop-only">
-              Cart
-            </span>
+            <span className="hidden lg:block text-[13px] font-bold mt-2.5">Cart</span>
           </button>
         )}
 
         {(isVendor || isAdmin) && (
           <button
             onClick={doLogout}
-            className="vendor-action-btn desktop-only"
-            style={{ background: "rgba(239,68,68,0.2)", borderColor: "rgba(239,68,68,0.4)" }}
+            className="hidden lg:flex items-center gap-1.5 bg-red-500/20 text-white text-sm font-bold px-3.5 py-2 rounded-md border border-red-400/40 cursor-pointer hover:bg-red-500/30 transition shrink-0 font-[inherit]"
           >
             🚪 Sign Out
           </button>
@@ -1016,200 +637,121 @@ const Navbar = () => {
       {locationOpen && (
         <>
           <div
-            className="slide-overlay"
+            className="fixed inset-0 bg-black/50 z-[99998]"
             onClick={() => { setLocationOpen(false); setPincodeInput(""); setLocationError(""); }}
-          ></div>
-          <div className="loc-modal">
-            <div style={{ background: "linear-gradient(135deg, #131921, #232F3E)", padding: "20px 24px", color: "white" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          />
+          <div className="loc-modal fixed top-1/2 left-1/2 w-[92vw] max-w-[460px] bg-white rounded-2xl z-[99999] shadow-2xl overflow-hidden">
+            <div className="bg-gradient-to-r from-[#131921] to-[#232F3E] px-5 sm:px-6 py-4 sm:py-5">
+              <div className="flex items-start justify-between gap-4">
                 <div>
-                  <h2 style={{ fontSize: 18, fontWeight: 900, margin: 0 }}>Choose Your Location</h2>
-                  <p style={{ fontSize: 12, color: "#94A3B8", margin: "3px 0 0" }}>
-                    Select delivery location to see accurate prices and availability
-                  </p>
+                  <h2 className="text-base sm:text-lg font-black text-white m-0">Choose Your Location</h2>
+                  <p className="text-xs text-slate-400 mt-0.5 m-0">Select delivery location for accurate prices</p>
                 </div>
                 <button
                   onClick={() => { setLocationOpen(false); setPincodeInput(""); setLocationError(""); }}
-                  style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)", color: "white", borderRadius: 8, width: 32, height: 32, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                  className="bg-white/10 border border-white/15 text-white rounded-lg w-8 h-8 flex items-center justify-center cursor-pointer hover:bg-white/20 transition shrink-0"
                 >
-                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                    <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
+                  <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" strokeLinecap="round">
+                    <path d="M18 6L6 18M6 6l12 12" />
                   </svg>
                 </button>
               </div>
             </div>
 
-            <div style={{ padding: "24px" }}>
-              <div style={{ background: "linear-gradient(135deg, #FFF5F0, #FFFBF9)", border: "1px solid #FDBA74", borderRadius: 12, padding: "14px 16px", marginBottom: 20, display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ width: 36, height: 36, background: "white", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
-                  📍
-                </div>
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: 11, color: "#6B7280", margin: 0, textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.05em" }}>
-                    Current Location
-                  </p>
-                  <p style={{ fontSize: 14, fontWeight: 800, color: "#111", margin: "2px 0 0" }}>
-                    {currentLocation}
-                  </p>
+            <div className="p-5 sm:p-6 max-h-[80vh] overflow-y-auto">
+              <div className="flex items-center gap-3 bg-gradient-to-r from-orange-50 to-orange-50/50 border border-orange-200 rounded-xl p-3.5 mb-4">
+                <div className="w-9 h-9 bg-white rounded-lg flex items-center justify-center text-lg shrink-0">📍</div>
+                <div className="flex-1">
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wide m-0">Current Location</p>
+                  <p className="text-sm font-extrabold text-gray-900 mt-0.5 m-0">{currentLocation}</p>
                 </div>
               </div>
 
               <button
                 onClick={handleDetectLocation}
                 disabled={detectingLocation}
-                style={{
-                  width: "100%",
-                  background: detectingLocation ? "#9CA3AF" : "linear-gradient(135deg, #D85A30, #FF8C5A)",
-                  color: "white",
-                  border: "none",
-                  borderRadius: 12,
-                  padding: "13px",
-                  fontSize: 14,
-                  fontWeight: 800,
-                  cursor: detectingLocation ? "not-allowed" : "pointer",
-                  boxShadow: detectingLocation ? "none" : "0 4px 16px rgba(216,90,48,0.3)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 10,
-                  marginBottom: 16,
-                  fontFamily: "inherit",
-                }}
+                className={`w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl text-sm font-extrabold text-white border-none cursor-pointer transition-all mb-4 ${
+                  detectingLocation ? "bg-gray-400 cursor-not-allowed" : "bg-gradient-to-r from-[#D85A30] to-[#FF8C5A] hover:brightness-95 shadow-lg shadow-orange-500/20"
+                }`}
               >
                 {detectingLocation ? (
                   <>
-                    <span style={{ width: 16, height: 16, border: "2px solid white", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.6s linear infinite" }}></span>
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
                     Detecting your location...
                   </>
                 ) : (
                   <>
-                    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round">
                       <circle cx="12" cy="12" r="10" />
                       <circle cx="12" cy="12" r="4" />
-                      <path d="M12 2v2M12 20v2M2 12h2M20 12h2" strokeLinecap="round" />
+                      <path d="M12 2v2M12 20v2M2 12h2M20 12h2" />
                     </svg>
                     Use Current Location
                   </>
                 )}
               </button>
 
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-                <div style={{ flex: 1, height: 1, background: "#E5E7EB" }}></div>
-                <span style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>OR</span>
-                <div style={{ flex: 1, height: 1, background: "#E5E7EB" }}></div>
+              <div className="flex items-center gap-2.5 mb-4">
+                <div className="flex-1 h-px bg-gray-200"></div>
+                <span className="text-[11px] text-gray-400 font-bold uppercase tracking-wide">OR</span>
+                <div className="flex-1 h-px bg-gray-200"></div>
               </div>
 
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ fontSize: 12, fontWeight: 700, color: "#374151", display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  Enter PIN Code
-                </label>
-                <div style={{ display: "flex", gap: 8 }}>
+              <div className="mb-4">
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">Enter PIN Code</label>
+                <div className="flex gap-2">
                   <input
                     type="text"
                     placeholder="e.g. 400001"
                     value={pincodeInput}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, "").slice(0, 6);
-                      setPincodeInput(val);
-                      setLocationError("");
-                    }}
+                    onChange={(e) => { const val = e.target.value.replace(/\D/g, "").slice(0, 6); setPincodeInput(val); setLocationError(""); }}
                     onKeyDown={(e) => e.key === "Enter" && handlePincodeSubmit()}
                     maxLength={6}
-                    style={{
-                      flex: 1,
-                      border: `1.5px solid ${locationError ? "#FCA5A5" : "#E5E7EB"}`,
-                      borderRadius: 10,
-                      padding: "11px 14px",
-                      fontSize: 14,
-                      color: "#111",
-                      background: "#FAFAFA",
-                      outline: "none",
-                      fontFamily: "monospace",
-                      letterSpacing: "0.1em",
-                      fontWeight: 700,
-                      boxSizing: "border-box",
-                    }}
+                    className={`flex-1 border-[1.5px] rounded-xl px-3.5 py-3 text-sm font-bold text-gray-900 bg-gray-50 outline-none font-mono tracking-widest transition ${locationError ? "border-red-300" : "border-gray-200 focus:border-gray-900"}`}
                   />
                   <button
                     onClick={handlePincodeSubmit}
                     disabled={pincodeInput.length !== 6}
-                    style={{
-                      background: pincodeInput.length === 6 ? "#111" : "#E5E7EB",
-                      color: pincodeInput.length === 6 ? "white" : "#9CA3AF",
-                      border: "none",
-                      borderRadius: 10,
-                      padding: "0 24px",
-                      fontSize: 13,
-                      fontWeight: 800,
-                      cursor: pincodeInput.length === 6 ? "pointer" : "not-allowed",
-                      fontFamily: "inherit",
-                    }}
+                    className={`px-5 py-3 rounded-xl text-sm font-extrabold border-none cursor-pointer transition ${pincodeInput.length === 6 ? "bg-gray-900 text-white hover:bg-gray-800" : "bg-gray-200 text-gray-400 cursor-not-allowed"}`}
                   >
                     Apply
                   </button>
                 </div>
-                {locationError && (
-                  <p style={{ fontSize: 11, color: "#EF4444", marginTop: 6, fontWeight: 600 }}>
-                    ⚠️ {locationError}
-                  </p>
-                )}
+                {locationError && <p className="text-[11px] text-red-500 font-semibold mt-1.5">⚠️ {locationError}</p>}
               </div>
 
-              <div style={{ borderTop: "1px solid #F3F4F6", paddingTop: 16 }}>
-                <p style={{ fontSize: 11, color: "#6B7280", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
-                  Popular Cities
-                </p>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  {[
-                    "Mumbai", "Delhi", "Bangalore", "Hyderabad", "Chennai",
-                    "Kolkata", "Pune", "Ahmedabad", "Jaipur", "Lucknow",
-                  ].map((city) => (
-                    <button
-                      key={city}
-                      onClick={() => handleSetLocation(`${city}, India`)}
-                      style={{
-                        background: currentLocation.includes(city) ? "#FFF5F0" : "#F9FAFB",
-                        color: currentLocation.includes(city) ? "#D85A30" : "#374151",
-                        border: `1px solid ${currentLocation.includes(city) ? "#FDBA74" : "#E5E7EB"}`,
-                        borderRadius: 99,
-                        padding: "7px 14px",
-                        fontSize: 12,
-                        fontWeight: currentLocation.includes(city) ? 800 : 600,
-                        cursor: "pointer",
-                        fontFamily: "inherit",
-                      }}
-                    >
-                      {currentLocation.includes(city) && "✓ "}{city}
-                    </button>
-                  ))}
+              <div className="border-t border-gray-100 pt-4">
+                <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wide mb-2.5">Popular Cities</p>
+                <div className="flex flex-wrap gap-2">
+                  {["Mumbai", "Delhi", "Bangalore", "Hyderabad", "Chennai", "Kolkata", "Pune", "Ahmedabad", "Jaipur", "Lucknow"].map((city) => {
+                    const isActive = currentLocation.includes(city);
+                    return (
+                      <button
+                        key={city}
+                        onClick={() => handleSetLocation(`${city}, India`)}
+                        className={`text-xs font-semibold px-3.5 py-1.5 rounded-full border cursor-pointer transition ${
+                          isActive
+                            ? "bg-orange-50 text-[#D85A30] border-orange-200 font-extrabold"
+                            : "bg-gray-50 text-gray-700 border-gray-200 hover:border-[#D85A30] hover:text-[#D85A30]"
+                        }`}
+                      >
+                        {isActive && "✓ "}{city}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
               {user && (
-                <div style={{ marginTop: 20, padding: "14px 16px", background: "#F0FDF4", border: "1px solid #86EFAC", borderRadius: 12, display: "flex", alignItems: "center", gap: 12 }}>
-                  <span style={{ fontSize: 20 }}>💡</span>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: 12, color: "#166534", fontWeight: 700, margin: 0 }}>
-                      Save delivery addresses
-                    </p>
-                    <p style={{ fontSize: 11, color: "#16A34A", margin: 0 }}>
-                      Add addresses to your profile for faster checkout
-                    </p>
+                <div className="mt-4 flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl p-3.5">
+                  <span className="text-xl">💡</span>
+                  <div className="flex-1">
+                    <p className="text-xs font-bold text-green-800 m-0">Save delivery addresses</p>
+                    <p className="text-[11px] text-green-600 m-0">Add addresses to your profile for faster checkout</p>
                   </div>
                   <button
                     onClick={() => { setLocationOpen(false); go("/profile"); }}
-                    style={{
-                      background: "#22C55E",
-                      color: "white",
-                      border: "none",
-                      borderRadius: 8,
-                      padding: "7px 14px",
-                      fontSize: 11,
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      whiteSpace: "nowrap",
-                      fontFamily: "inherit",
-                    }}
+                    className="bg-green-500 text-white text-[11px] font-bold px-3.5 py-1.5 rounded-lg border-none cursor-pointer hover:bg-green-600 transition whitespace-nowrap"
                   >
                     Go to Profile
                   </button>
@@ -1217,30 +759,15 @@ const Navbar = () => {
               )}
 
               {!user && (
-                <div style={{ marginTop: 20, padding: "14px 16px", background: "#EFF6FF", border: "1px solid #93C5FD", borderRadius: 12, display: "flex", alignItems: "center", gap: 12 }}>
-                  <span style={{ fontSize: 20 }}>🔐</span>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: 12, color: "#1E40AF", fontWeight: 700, margin: 0 }}>
-                      Sign in for better experience
-                    </p>
-                    <p style={{ fontSize: 11, color: "#2563EB", margin: 0 }}>
-                      Save addresses and get faster delivery
-                    </p>
+                <div className="mt-4 flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-xl p-3.5">
+                  <span className="text-xl">🔐</span>
+                  <div className="flex-1">
+                    <p className="text-xs font-bold text-blue-800 m-0">Sign in for better experience</p>
+                    <p className="text-[11px] text-blue-600 m-0">Save addresses and get faster delivery</p>
                   </div>
                   <button
                     onClick={() => { setLocationOpen(false); go("/login"); }}
-                    style={{
-                      background: "#2563EB",
-                      color: "white",
-                      border: "none",
-                      borderRadius: 8,
-                      padding: "7px 14px",
-                      fontSize: 11,
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      whiteSpace: "nowrap",
-                      fontFamily: "inherit",
-                    }}
+                    className="bg-blue-600 text-white text-[11px] font-bold px-3.5 py-1.5 rounded-lg border-none cursor-pointer hover:bg-blue-700 transition whitespace-nowrap"
                   >
                     Sign In
                   </button>
@@ -1253,19 +780,16 @@ const Navbar = () => {
 
       {mobileOpen && (
         <>
-          <div className="slide-overlay" onClick={() => setMobileOpen(false)}></div>
-          <div className="slide-panel">
-            <div className="slide-header">
+          <div className="fixed inset-0 bg-black/50 z-[99998]" onClick={() => setMobileOpen(false)} />
+          <div className="slide-panel fixed top-0 left-0 bottom-0 w-80 max-w-[85vw] bg-white z-[99999] overflow-y-auto">
+            <div className="bg-[#232F3E] text-white px-5 py-4 flex items-center gap-2.5">
               {user && (
-                <div style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg, #D85A30, #FF8C5A)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 800 }}>
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#D85A30] to-[#FF8C5A] flex items-center justify-center text-white font-extrabold shrink-0">
                   {user.firstName?.charAt(0)?.toUpperCase()}
                 </div>
               )}
-              <span>Hello, {user ? user.firstName : "Sign in"}</span>
-              <button
-                onClick={() => setMobileOpen(false)}
-                style={{ marginLeft: "auto", background: "transparent", border: "none", color: "white", cursor: "pointer" }}
-              >
+              <span className="text-[17px] font-bold flex-1">Hello, {user ? user.firstName : "Sign in"}</span>
+              <button onClick={() => setMobileOpen(false)} className="bg-transparent border-none text-white cursor-pointer ml-auto">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                   <path d="M18 6L6 18M6 6l12 12" />
                 </svg>
@@ -1273,104 +797,100 @@ const Navbar = () => {
             </div>
 
             {showShoppingFeatures && (
-              <div className="slide-section">
-                <button
+              <div className="border-b-[6px] border-gray-100 py-3">
+                <SlideItem
                   onClick={() => { setMobileOpen(false); setLocationOpen(true); }}
-                  className="slide-item"
-                  style={{ background: "#FFF5F0", fontWeight: 700 }}
+                  className="bg-orange-50 font-bold"
                 >
-                  <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    📍 Deliver to {currentLocation}
-                  </span>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M9 5l7 7-7 7" strokeLinecap="round" />
+                  <span className="flex items-center gap-2">📍 Deliver to {currentLocation}</span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M9 5l7 7-7 7" />
                   </svg>
-                </button>
+                </SlideItem>
               </div>
             )}
 
             {showShoppingFeatures && (
-              <div className="slide-section">
-                <p className="slide-section-title">Shop by Category</p>
+              <div className="border-b-[6px] border-gray-100 py-3">
+                <p className="text-[17px] font-extrabold text-gray-900 px-5 pb-2">Shop by Category</p>
                 {categories.map((cat) => (
-                  <button
-                    key={cat._id}
-                    onClick={() => go(`/products?category=${cat._id}`)}
-                    className="slide-item"
-                  >
+                  <SlideItem key={cat._id} onClick={() => go(`/products?category=${cat._id}`)}>
                     <span>{cat.name}</span>
                     {cat.children?.length > 0 && (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M9 5l7 7-7 7" strokeLinecap="round" />
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <path d="M9 5l7 7-7 7" />
                       </svg>
                     )}
-                  </button>
+                  </SlideItem>
                 ))}
               </div>
             )}
 
             {isCustomer && (
-              <div className="slide-section">
-                <p className="slide-section-title">My Account</p>
-                <button onClick={() => go("/dashboard")} className="slide-item">Dashboard</button>
-                <button onClick={() => go("/profile")} className="slide-item">Profile</button>
-                <button onClick={() => go("/orders")} className="slide-item">Your Orders</button>
-                <button onClick={() => go("/cart")} className="slide-item">Cart ({cartCount})</button>
-                <button onClick={() => go("/wishlist")} className="slide-item">Wishlist</button>
-                <button onClick={doLogout} className="slide-item" style={{ color: "#0066C0" }}>
-                  Sign Out
-                </button>
+              <div className="border-b-[6px] border-gray-100 py-3">
+                <p className="text-[17px] font-extrabold text-gray-900 px-5 pb-2">My Account</p>
+                <SlideItem onClick={() => go("/dashboard")}>Dashboard</SlideItem>
+                <SlideItem onClick={() => go("/profile")}>Profile</SlideItem>
+                <SlideItem onClick={() => go("/orders")}>Your Orders</SlideItem>
+                <SlideItem onClick={() => go("/cart")}>
+                  <span>Cart</span>
+                  {cartCount > 0 && <span className="bg-yellow-400 text-gray-900 rounded-full text-[11px] font-extrabold px-2 py-0.5">{cartCount}</span>}
+                </SlideItem>
+                <SlideItem onClick={() => go("/wishlist")}>
+                  <span>Wishlist</span>
+                  {wishlistCount > 0 && <span className="bg-red-500 text-white rounded-full text-[11px] font-extrabold px-2 py-0.5">{wishlistCount}</span>}
+                </SlideItem>
+                <SlideItem onClick={doLogout} className="text-blue-700 font-semibold">Sign Out</SlideItem>
               </div>
             )}
 
             {isVendor && (
-              <div className="slide-section">
-                <p className="slide-section-title">Vendor Panel</p>
-                <button onClick={() => go("/vendor/dashboard")} className="slide-item">Dashboard</button>
-                <button onClick={() => go("/vendor/dashboard?tab=products")} className="slide-item">My Products</button>
-                <button onClick={() => go("/vendor/dashboard?tab=orders")} className="slide-item">Orders</button>
-                <button onClick={() => go("/vendor/dashboard?tab=reviews")} className="slide-item">Reviews</button>
-                <button onClick={doLogout} className="slide-item" style={{ color: "#0066C0" }}>
-                  Sign Out
-                </button>
+              <div className="border-b-[6px] border-gray-100 py-3">
+                <p className="text-[17px] font-extrabold text-gray-900 px-5 pb-2">Vendor Panel</p>
+                <SlideItem onClick={() => go("/vendor/dashboard")}>Dashboard</SlideItem>
+                <SlideItem onClick={() => go("/vendor/dashboard?tab=products")}>My Products</SlideItem>
+                <SlideItem onClick={() => go("/vendor/dashboard?tab=orders")}>Orders</SlideItem>
+                <SlideItem onClick={() => go("/vendor/dashboard?tab=reviews")}>Reviews</SlideItem>
+                <SlideItem onClick={doLogout} className="text-blue-700 font-semibold">Sign Out</SlideItem>
               </div>
             )}
 
             {isAdmin && (
-              <div className="slide-section">
-                <p className="slide-section-title">Admin Panel</p>
-                <button onClick={() => go("/admin/dashboard")} className="slide-item">Dashboard</button>
-                <button onClick={() => go("/admin/dashboard?tab=vendors")} className="slide-item">Vendors</button>
-                <button onClick={() => go("/admin/dashboard?tab=categories")} className="slide-item">Categories</button>
-                <button onClick={() => go("/admin/dashboard?tab=products")} className="slide-item">Products</button>
-                <button onClick={() => go("/admin/dashboard?tab=orders")} className="slide-item">Orders</button>
-                <button onClick={() => go("/admin/dashboard?tab=reviews")} className="slide-item">Reviews</button>
-                <button onClick={doLogout} className="slide-item" style={{ color: "#0066C0" }}>
-                  Sign Out
-                </button>
+              <div className="border-b-[6px] border-gray-100 py-3">
+                <p className="text-[17px] font-extrabold text-gray-900 px-5 pb-2">Admin Panel</p>
+                <SlideItem onClick={() => go("/admin/dashboard")}>Dashboard</SlideItem>
+                <SlideItem onClick={() => go("/admin/dashboard?tab=vendors")}>Vendors</SlideItem>
+                <SlideItem onClick={() => go("/admin/dashboard?tab=categories")}>Categories</SlideItem>
+                <SlideItem onClick={() => go("/admin/dashboard?tab=products")}>Products</SlideItem>
+                <SlideItem onClick={() => go("/admin/dashboard?tab=orders")}>Orders</SlideItem>
+                <SlideItem onClick={() => go("/admin/dashboard?tab=reviews")}>Reviews</SlideItem>
+                <SlideItem onClick={doLogout} className="text-blue-700 font-semibold">Sign Out</SlideItem>
               </div>
             )}
 
             {isGuest && (
-              <div className="slide-section">
-                <p className="slide-section-title">Account</p>
-                <button onClick={() => go("/login")} className="slide-item" style={{ color: "#0066C0", fontWeight: 600 }}>
-                  Sign In
-                </button>
-                <button onClick={() => go("/signup")} className="slide-item">Create Account</button>
+              <div className="border-b-[6px] border-gray-100 py-3">
+                <p className="text-[17px] font-extrabold text-gray-900 px-5 pb-2">Account</p>
+                <SlideItem onClick={() => go("/login")} className="text-blue-700 font-semibold">Sign In</SlideItem>
+                <SlideItem onClick={() => go("/signup")}>Create Account</SlideItem>
                 {cartCount > 0 && (
-                  <button onClick={() => go("/cart")} className="slide-item">
-                    Cart ({cartCount})
-                  </button>
+                  <SlideItem onClick={() => go("/cart")}>
+                    <span>Cart</span>
+                    <span className="bg-yellow-400 text-gray-900 rounded-full text-[11px] font-extrabold px-2 py-0.5">{cartCount}</span>
+                  </SlideItem>
                 )}
+                <SlideItem onClick={() => go("/wishlist")}>
+                  <span>Wishlist</span>
+                  {wishlistCount > 0 && <span className="bg-red-500 text-white rounded-full text-[11px] font-extrabold px-2 py-0.5">{wishlistCount}</span>}
+                </SlideItem>
               </div>
             )}
 
             {(isGuest || isCustomer) && (
-              <div className="slide-section">
-                <p className="slide-section-title">Sell with Us</p>
-                <button onClick={() => go("/vendor/signup")} className="slide-item">Become a Seller</button>
-                <button onClick={() => go("/vendor/login")} className="slide-item">Seller Login</button>
+              <div className="py-3">
+                <p className="text-[17px] font-extrabold text-gray-900 px-5 pb-2">Sell with Us</p>
+                <SlideItem onClick={() => go("/vendor/signup")}>Become a Seller</SlideItem>
+                <SlideItem onClick={() => go("/vendor/login")}>Seller Login</SlideItem>
               </div>
             )}
           </div>

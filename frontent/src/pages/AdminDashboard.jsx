@@ -2,134 +2,176 @@ import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { logout } from "../features/auth/authSlice";
 import {
-  authApi,
-  useLogoutMutation,
-  useGetPendingVendorsQuery,
-  useApproveVendorMutation,
-  useRejectVendorMutation,
+  authApi, useLogoutMutation, useGetPendingVendorsQuery,
+  useApproveVendorMutation, useRejectVendorMutation,
 } from "../features/auth/authApi";
 import {
-  useGetCategoryTreeQuery,
-  useCreateCategoryMutation,
-  useDeleteCategoryMutation,
+  useGetCategoryTreeQuery, useCreateCategoryMutation, useDeleteCategoryMutation,
 } from "../features/category/categoryApi";
 import {
-  useAdminGetAllProductsQuery,
-  useApproveProductMutation,
-  useRejectProductMutation,
-  useFeatureProductMutation,
+  useAdminGetAllProductsQuery, useApproveProductMutation,
+  useRejectProductMutation, useFeatureProductMutation,
 } from "../features/product/productApi";
 import {
-  useAdminGetAllOrdersQuery,
-  useUpdateOrderStatusMutation,
+  useAdminGetAllOrdersQuery, useUpdateOrderStatusMutation,
 } from "../features/order/orderApi";
 import {
-  useAdminGetAllReviewsQuery,
-  useDeleteReviewMutation,
+  useAdminGetAllReviewsQuery, useDeleteReviewMutation,
 } from "../features/review/reviewApi";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { toast } from "../components/Toast";
 
-const formatRupee = (amount) =>
-  new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(amount);
+const formatRupee = (amt) =>
+  new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amt);
 
-const formatDate = (date) =>
-  new Date(date).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+const formatDate = (d) =>
+  new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
-const StatusBadge = ({ status }) => {
-  const map = {
-    pending: { bg: "#FEF9C3", color: "#854D0E", label: "Pending" },
-    processing: { bg: "#DBEAFE", color: "#1E40AF", label: "Processing" },
-    shipped: { bg: "#EDE9FE", color: "#5B21B6", label: "Shipped" },
-    out_for_delivery: { bg: "#FFEDD5", color: "#9A3412", label: "Out for Delivery" },
-    delivered: { bg: "#DCFCE7", color: "#14532D", label: "Delivered" },
-    cancelled: { bg: "#FEE2E2", color: "#7F1D1D", label: "Cancelled" },
-    returned: { bg: "#F3F4F6", color: "#374151", label: "Returned" },
-    refunded: { bg: "#FCE7F3", color: "#831843", label: "Refunded" },
-    approved: { bg: "#DCFCE7", color: "#14532D", label: "Approved" },
-    rejected: { bg: "#FEE2E2", color: "#7F1D1D", label: "Rejected" },
-  };
-  const s = map[status] || { bg: "#F3F4F6", color: "#374151", label: status };
-  return (
-    <span style={{ background: s.bg, color: s.color, padding: "3px 10px", borderRadius: 99, fontSize: 11, fontWeight: 700 }}>
-      {s.label}
-    </span>
-  );
+const statusMap = {
+  pending: "bg-yellow-100 text-yellow-800", processing: "bg-blue-100 text-blue-800",
+  shipped: "bg-purple-100 text-purple-800", out_for_delivery: "bg-orange-100 text-orange-800",
+  delivered: "bg-green-100 text-green-800", cancelled: "bg-red-100 text-red-800",
+  returned: "bg-gray-100 text-gray-700", refunded: "bg-pink-100 text-pink-800",
+  approved: "bg-green-100 text-green-800", rejected: "bg-red-100 text-red-800",
 };
 
-const InfoRow = ({ label, value, mono = false }) => (
-  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "8px 0", borderBottom: "1px solid #F3F4F6" }}>
-    <span style={{ fontSize: 12, color: "#6B7280", fontWeight: 500, flexShrink: 0, marginRight: 16 }}>{label}</span>
-    <span style={{ fontSize: 12, color: "#111", fontWeight: 600, textAlign: "right", fontFamily: mono ? "monospace" : "inherit", wordBreak: "break-all" }}>
-      {value || "—"}
-    </span>
+const statusLabel = {
+  pending: "Pending", processing: "Processing", shipped: "Shipped",
+  out_for_delivery: "Out for Delivery", delivered: "Delivered",
+  cancelled: "Cancelled", returned: "Returned", refunded: "Refunded",
+  approved: "Approved", rejected: "Rejected",
+};
+
+const Badge = ({ status }) => (
+  <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${statusMap[status] || "bg-gray-100 text-gray-700"}`}>
+    {statusLabel[status] || status}
+  </span>
+);
+
+const InfoRow = ({ label, value, mono }) => (
+  <div className="flex justify-between items-start py-2 border-b border-gray-100">
+    <span className="text-xs text-gray-500 font-medium shrink-0 mr-4">{label}</span>
+    <span className={`text-xs text-gray-900 font-semibold text-right break-all ${mono ? "font-mono" : ""}`}>{value || "—"}</span>
+  </div>
+);
+
+const SecTitle = ({ icon, title }) => (
+  <div className="flex items-center gap-2 pt-3 pb-2 mt-2">
+    <span className="text-sm">{icon}</span>
+    <span className="text-[10px] font-black uppercase tracking-[0.08em] text-purple-700">{title}</span>
   </div>
 );
 
 const DocPreview = ({ label, doc }) => {
   if (!doc?.url) return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #F3F4F6" }}>
-      <span style={{ fontSize: 12, color: "#6B7280", fontWeight: 500 }}>{label}</span>
-      <span style={{ fontSize: 11, color: "#9CA3AF", fontStyle: "italic" }}>Not uploaded</span>
+    <div className="flex items-center justify-between py-2 border-b border-gray-100">
+      <span className="text-xs text-gray-500 font-medium">{label}</span>
+      <span className="text-[11px] text-gray-400 italic">Not uploaded</span>
     </div>
   );
-
   const isPdf = doc.url.endsWith(".pdf") || doc.filename?.endsWith(".pdf");
-
   return (
-    <div style={{ padding: "8px 0", borderBottom: "1px solid #F3F4F6" }}>
-      <p style={{ fontSize: 12, color: "#6B7280", fontWeight: 500, margin: "0 0 6px" }}>{label}</p>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+    <div className="py-2 border-b border-gray-100">
+      <p className="text-xs text-gray-500 font-medium mb-1.5 m-0">{label}</p>
+      <div className="flex items-center gap-2.5">
         {isPdf ? (
-          <div style={{ width: 40, height: 40, background: "#FEF2F2", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <svg width="18" height="18" fill="none" stroke="#EF4444" strokeWidth="1.8" viewBox="0 0 24 24">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" strokeLinecap="round" />
-              <path d="M14 2v6h6M9 13h6M9 17h4" strokeLinecap="round" />
-            </svg>
+          <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center shrink-0">
+            <svg width="18" height="18" fill="none" stroke="#EF4444" strokeWidth="1.8" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" strokeLinecap="round" /><path d="M14 2v6h6M9 13h6M9 17h4" strokeLinecap="round" /></svg>
           </div>
         ) : (
-          <img
-            src={doc.url}
-            alt={label}
-            style={{ width: 40, height: 40, borderRadius: 8, objectFit: "cover", border: "1px solid #E5E7EB" }}
-            onError={(e) => { e.target.style.display = "none"; }}
-          />
+          <img src={doc.url} alt={label} className="w-10 h-10 rounded-lg object-cover border border-gray-200" onError={(e) => { e.target.style.display = "none"; }} />
         )}
         <div>
-          <p style={{ fontSize: 11, color: "#374151", margin: 0, fontWeight: 600 }}>{doc.filename || "Document"}</p>
-          <a
-            href={doc.url}
-            target="_blank"
-            rel="noreferrer"
-            style={{ fontSize: 11, color: "#7C3AED", textDecoration: "none", fontWeight: 600 }}
-          >
-            View Document →
-          </a>
+          <p className="text-[11px] text-gray-700 font-semibold m-0">{doc.filename || "Document"}</p>
+          <a href={doc.url} target="_blank" rel="noreferrer" className="text-[11px] text-purple-700 font-semibold no-underline hover:underline">View Document →</a>
         </div>
       </div>
     </div>
   );
 };
 
-const SectionTitle = ({ icon, title }) => (
-  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 0 8px", marginTop: 8 }}>
-    <span style={{ fontSize: 14 }}>{icon}</span>
-    <span style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.08em", color: "#7C3AED" }}>{title}</span>
+const TabBtn = ({ active, onClick, icon, label }) => (
+  <button
+    onClick={onClick}
+    className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-[13px] font-bold cursor-pointer border transition-all font-[inherit] ${active ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"}`}
+  >
+    <span>{icon}</span>{label}
+  </button>
+);
+
+const FilterBtn = ({ active, onClick, children }) => (
+  <button
+    onClick={onClick}
+    className={`px-3.5 py-2 rounded-lg text-xs font-bold cursor-pointer border transition-all capitalize font-[inherit] ${active ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"}`}
+  >
+    {children}
+  </button>
+);
+
+const ActionBtn = ({ variant = "view", onClick, children, className = "" }) => {
+  const cls = {
+    approve: "bg-green-100 text-green-800 border-green-200 hover:bg-green-500 hover:text-white",
+    reject: "bg-red-100 text-red-800 border-red-200 hover:bg-red-500 hover:text-white",
+    view: "bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-600 hover:text-white",
+    delete: "bg-red-50 text-red-800 border-red-200 hover:bg-red-100",
+  };
+  return (
+    <button onClick={onClick} className={`px-3.5 py-2 rounded-lg text-xs font-bold cursor-pointer border transition-all font-[inherit] ${cls[variant]} ${className}`}>
+      {children}
+    </button>
+  );
+};
+
+const PageBtn = ({ active, onClick, disabled, children }) => (
+  <button
+    onClick={onClick}
+    disabled={disabled}
+    className={`px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer border transition-all font-[inherit] disabled:opacity-40 disabled:cursor-not-allowed ${active ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-900 border-gray-200 hover:bg-gray-50"}`}
+  >
+    {children}
+  </button>
+);
+
+const EmptyState = ({ icon, title, subtitle }) => (
+  <div className="text-center py-12 bg-white rounded-2xl border border-gray-200">
+    <p className="text-4xl mb-3">{icon}</p>
+    <p className="text-base font-bold text-gray-900 m-0">{title}</p>
+    {subtitle && <p className="text-[13px] text-gray-500 mt-1 m-0">{subtitle}</p>}
   </div>
 );
+
+const Spinner = ({ text }) => (
+  <div className="text-center py-10">
+    <div className="w-7 h-7 border-[3px] border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-2.5" />
+    <p className="text-gray-500 text-[13px] m-0">{text}</p>
+  </div>
+);
+
+const RejectPanel = ({ show, reason, setReason, onConfirm, onCancel }) => {
+  if (!show) return null;
+  return (
+    <div className="px-5 py-3 bg-red-50 border-t border-red-200">
+      <p className="text-xs font-bold text-red-600 mb-2 m-0">⚠️ Provide a reason for rejection</p>
+      <div className="flex gap-2">
+        <input type="text" placeholder="e.g. Documents unclear..." value={reason} onChange={(e) => setReason(e.target.value)}
+          className="flex-1 border border-red-200 rounded-lg px-3 py-2.5 text-[13px] outline-none focus:border-red-400 bg-white font-[inherit]"
+        />
+        <button onClick={onConfirm} className="bg-red-500 text-white border-none rounded-lg px-4 py-2.5 text-xs font-bold cursor-pointer font-[inherit]">
+          Confirm
+        </button>
+        <button onClick={onCancel} className="bg-white text-gray-700 border border-gray-200 rounded-lg px-3 py-2.5 text-xs font-semibold cursor-pointer font-[inherit]">
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const AdminDashboard = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user, refreshToken } = useSelector((state) => state.auth);
-  const [logoutAPI, { isLoading: logoutLoading }] = useLogoutMutation();
+  const [logoutAPI] = useLogoutMutation();
 
   const { data: pendingData, isLoading: vendorsLoading } = useGetPendingVendorsQuery();
   const [approveVendor] = useApproveVendorMutation();
@@ -163,111 +205,26 @@ const AdminDashboard = () => {
   const { data: reviewsData, isLoading: reviewsLoading } = useAdminGetAllReviewsQuery({ rating: reviewRatingFilter, sort: reviewSort, page: reviewPage, limit: 10 });
   const [deleteReview] = useDeleteReviewMutation();
 
-const [searchParams, setSearchParams] = useSearchParams();
-const activeTab = searchParams.get("tab") || "vendors";
-const setActiveTab = (tab) => {
-  setSearchParams({ tab });
-};
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get("tab") || "vendors";
+  const setActiveTab = (tab) => setSearchParams({ tab });
   const [categoryForm, setCategoryForm] = useState({ name: "", description: "", parent: "" });
   const [categoryError, setCategoryError] = useState("");
 
   const handleLogout = async () => {
-    try {
-      await logoutAPI({ refreshToken }).unwrap();
-    } catch (err) {
-      console.log(err);
-    } finally {
-      dispatch(authApi.util.resetApiState());
-      dispatch(logout());
-      navigate("/login");
-    }
+    try { await logoutAPI({ refreshToken }).unwrap(); } catch (err) { console.log(err); }
+    finally { dispatch(authApi.util.resetApiState()); dispatch(logout()); navigate("/login"); }
   };
 
-  const handleApprove = async (vendorId) => {
-    try {
-      await approveVendor(vendorId).unwrap();
-      setExpandedVendor(null);
-    } catch (err) {
-      console.log(err);
-    }
-  };
-
-  const handleReject = async (vendorId) => {
-    try {
-      await rejectVendor({ vendorId, reason: rejectReason }).unwrap();
-      setRejectingId(null);
-      setRejectReason("");
-      setExpandedVendor(null);
-    } catch (err) {
-      console.log(err);
-    }
-  };
-
-  const handleCreateCategory = async (e) => {
-    e.preventDefault();
-    setCategoryError("");
-    const name = categoryForm.name.trim();
-    if (!name) { setCategoryError("Category name is required"); return; }
-    try {
-      await createCategory({ name, description: categoryForm.description.trim(), parent: categoryForm.parent || null }).unwrap();
-      setCategoryForm({ name: "", description: "", parent: "" });
-    } catch (err) {
-      setCategoryError(err?.data?.message || "Failed to create category");
-    }
-  };
-
-  const handleDeleteCategory = async (id) => {
-    try {
-      await deleteCategory(id).unwrap();
-    } catch (err) {
-      alert(err?.data?.message || "Failed to delete");
-    }
-  };
-
-  const handleApproveProduct = async (id) => {
-    try {
-      await approveProduct(id).unwrap();
-      setExpandedProduct(null);
-    } catch (err) {
-      console.log(err);
-    }
-  };
-
-  const handleRejectProduct = async (id) => {
-    try {
-      await rejectProduct({ id, reason: productRejectReason }).unwrap();
-      setProductRejectingId(null);
-      setProductRejectReason("");
-      setExpandedProduct(null);
-    } catch (err) {
-      console.log(err);
-    }
-  };
-
-  const handleFeatureProduct = async (id) => {
-    try {
-      await featureProduct(id).unwrap();
-    } catch (err) {
-      console.log(err);
-    }
-  };
-
-  const handleUpdateOrderStatus = async (orderId, status) => {
-    try {
-      await updateOrderStatus({ id: orderId, status }).unwrap();
-    } catch (err) {
-      console.log(err);
-    }
-  };
-
-  const handleDeleteReview = async (reviewId) => {
-    try {
-      await deleteReview({ reviewId }).unwrap();
-      setDeletingReviewId(null);
-    } catch (err) {
-      console.log(err);
-    }
-  };
+  const handleApprove = async (vendorId) => { try { await approveVendor(vendorId).unwrap(); setExpandedVendor(null); toast.success("Vendor approved!"); } catch (err) { toast.error("Failed to approve vendor"); } };
+  const handleReject = async (vendorId) => { try { await rejectVendor({ vendorId, reason: rejectReason }).unwrap(); setRejectingId(null); setRejectReason(""); setExpandedVendor(null); toast.success("Vendor rejected"); } catch (err) { toast.error("Failed to reject vendor"); } };
+  const handleCreateCategory = async (e) => { e.preventDefault(); setCategoryError(""); if (!categoryForm.name.trim()) { setCategoryError("Category name is required"); return; } try { await createCategory({ name: categoryForm.name.trim(), description: categoryForm.description.trim(), parent: categoryForm.parent || null }).unwrap(); setCategoryForm({ name: "", description: "", parent: "" }); toast.success("Category created!"); } catch (err) { setCategoryError(err?.data?.message || "Failed to create category"); } };
+  const handleDeleteCategory = async (id) => { try { await deleteCategory(id).unwrap(); toast.success("Category deleted"); } catch (err) { toast.error(err?.data?.message || "Failed to delete"); } };
+  const handleApproveProduct = async (id) => { try { await approveProduct(id).unwrap(); setExpandedProduct(null); toast.success("Product approved!"); } catch (err) { toast.error("Failed to approve product"); } };
+  const handleRejectProduct = async (id) => { try { await rejectProduct({ id, reason: productRejectReason }).unwrap(); setProductRejectingId(null); setProductRejectReason(""); setExpandedProduct(null); toast.success("Product rejected"); } catch (err) { toast.error("Failed to reject product"); } };
+  const handleFeatureProduct = async (id) => { try { await featureProduct(id).unwrap(); toast.success("Feature status toggled"); } catch (err) { toast.error("Failed to toggle feature"); } };
+  const handleUpdateOrderStatus = async (orderId, status) => { try { await updateOrderStatus({ id: orderId, status }).unwrap(); toast.success(`Order status updated to ${status}`); } catch (err) { toast.error("Failed to update order status"); } };
+  const handleDeleteReview = async (reviewId) => { try { await deleteReview({ reviewId }).unwrap(); setDeletingReviewId(null); toast.success("Review deleted"); } catch (err) { toast.error("Failed to delete review"); } };
 
   const tabs = [
     { key: "vendors", label: "Vendors", icon: "🏪" },
@@ -278,217 +235,113 @@ const setActiveTab = (tab) => {
   ];
 
   return (
-    <div style={{ background: "#F3F4F6", minHeight: "100vh", padding: "24px 16px" }}>
-      <style>{`
-        @keyframes slideDown { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
-        .detail-panel { animation: slideDown 0.2s ease both; }
-        .tab-btn { padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; border: none; transition: all 0.15s; display: flex; align-items: center; gap: 6px; }
-        .tab-btn.active { background: #111; color: white; }
-        .tab-btn.inactive { background: white; color: #374151; border: 1px solid #E5E7EB; }
-        .tab-btn.inactive:hover { background: #F9FAFB; }
-        .action-btn { padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; border: none; transition: all 0.15s; font-family: inherit; }
-        .btn-approve { background: #DCFCE7; color: #14532D; border: 1px solid #86EFAC; }
-        .btn-approve:hover { background: #22C55E; color: white; }
-        .btn-reject { background: #FEE2E2; color: #7F1D1D; border: 1px solid #FCA5A5; }
-        .btn-reject:hover { background: #EF4444; color: white; }
-        .btn-view { background: #EDE9FE; color: #5B21B6; border: 1px solid #C4B5FD; }
-        .btn-view:hover { background: #7C3AED; color: white; }
-      `}</style>
+    <div className="bg-gray-100 min-h-screen py-5 sm:py-6 px-3 sm:px-4">
+      <div className="max-w-[1100px] mx-auto">
 
-      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
+        <div className="flex items-center justify-between mb-6 sm:mb-7">
           <div>
-            <h1 style={{ fontSize: 26, fontWeight: 900, color: "#111", margin: 0 }}>Admin Dashboard</h1>
-            <p style={{ fontSize: 13, color: "#6B7280", margin: "4px 0 0" }}>Welcome back, {user?.firstName}</p>
+            <h1 className="text-xl sm:text-2xl font-black text-gray-900 m-0">Admin Dashboard</h1>
+            <p className="text-[13px] text-gray-500 mt-1 m-0">Welcome back, {user?.firstName}</p>
           </div>
-          
         </div>
 
-        <div style={{ display: "flex", gap: 8, marginBottom: 24, flexWrap: "wrap" }}>
+        <div className="flex gap-2 mb-6 flex-wrap">
           {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`tab-btn ${activeTab === tab.key ? "active" : "inactive"}`}
-            >
-              <span>{tab.icon}</span>
-              {tab.label}
-            </button>
+            <TabBtn key={tab.key} active={activeTab === tab.key} onClick={() => setActiveTab(tab.key)} icon={tab.icon} label={tab.label} />
           ))}
         </div>
 
         {activeTab === "vendors" && (
           <div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 800, color: "#111", margin: 0 }}>
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+              <h2 className="text-lg font-extrabold text-gray-900 m-0 flex items-center gap-2.5">
                 Pending Vendor Approvals
                 {pendingData?.data?.length > 0 && (
-                  <span style={{ marginLeft: 10, background: "#FEF9C3", color: "#854D0E", fontSize: 12, fontWeight: 700, padding: "2px 10px", borderRadius: 99, border: "1px solid #FDE68A" }}>
+                  <span className="bg-yellow-100 text-yellow-800 text-xs font-bold px-2.5 py-0.5 rounded-full border border-yellow-200">
                     {pendingData.data.length} pending
                   </span>
                 )}
               </h2>
             </div>
 
-            {vendorsLoading && (
-              <div style={{ textAlign: "center", padding: 40 }}>
-                <div style={{ width: 28, height: 28, border: "3px solid #7C3AED", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.6s linear infinite", margin: "0 auto 10px" }}></div>
-                <p style={{ color: "#6B7280", fontSize: 13 }}>Loading vendors...</p>
-              </div>
-            )}
+            {vendorsLoading && <Spinner text="Loading vendors..." />}
+            {pendingData?.data?.length === 0 && !vendorsLoading && <EmptyState icon="🎉" title="All caught up!" subtitle="No pending vendor applications" />}
 
-            {pendingData?.data?.length === 0 && !vendorsLoading && (
-              <div style={{ textAlign: "center", padding: "48px 20px", background: "white", borderRadius: 16, border: "1px solid #E5E7EB" }}>
-                <p style={{ fontSize: 40, margin: "0 0 12px" }}>🎉</p>
-                <p style={{ fontSize: 16, fontWeight: 700, color: "#111", margin: 0 }}>All caught up!</p>
-                <p style={{ fontSize: 13, color: "#6B7280", marginTop: 4 }}>No pending vendor applications</p>
-              </div>
-            )}
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div className="flex flex-col gap-3">
               {pendingData?.data?.map((vendor) => (
-                <div key={vendor._id} style={{ background: "white", borderRadius: 16, border: "1px solid #E5E7EB", overflow: "hidden" }}>
-                  <div style={{ padding: "18px 20px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
-                    <div style={{ display: "flex", gap: 14, flex: 1, minWidth: 0 }}>
-                      <div style={{ width: 48, height: 48, background: "linear-gradient(135deg, #F5F3FF, #EDE9FE)", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0, border: "1px solid #DDD6FE" }}>
-                        🏪
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
-                          <h3 style={{ fontSize: 15, fontWeight: 800, color: "#111", margin: 0 }}>{vendor.storeName}</h3>
+                <div key={vendor._id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                  <div className="p-4 sm:p-5 flex flex-col sm:flex-row items-start justify-between gap-4">
+                    <div className="flex gap-3.5 flex-1 min-w-0">
+                      <div className="w-12 h-12 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl flex items-center justify-center text-2xl shrink-0 border border-purple-200">🏪</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <h3 className="text-[15px] font-extrabold text-gray-900 m-0">{vendor.storeName}</h3>
                           {vendor.businessType && (
-                            <span style={{ fontSize: 10, background: "#EDE9FE", color: "#5B21B6", padding: "2px 8px", borderRadius: 99, fontWeight: 700, textTransform: "capitalize" }}>
-                              {vendor.businessType.replace(/_/g, " ")}
-                            </span>
+                            <span className="text-[10px] bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full font-bold capitalize">{vendor.businessType.replace(/_/g, " ")}</span>
                           )}
                         </div>
-                        <p style={{ fontSize: 13, color: "#374151", fontWeight: 600, margin: "0 0 2px" }}>
-                          {vendor.userId?.firstName} {vendor.userId?.lastName}
-                        </p>
-                        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                          <span style={{ fontSize: 12, color: "#6B7280" }}>📧 {vendor.userId?.email}</span>
-                          <span style={{ fontSize: 12, color: "#6B7280" }}>📱 {vendor.userId?.phone}</span>
+                        <p className="text-[13px] text-gray-700 font-semibold m-0 mb-0.5">{vendor.userId?.firstName} {vendor.userId?.lastName}</p>
+                        <div className="flex gap-3 flex-wrap text-xs text-gray-500">
+                          <span>📧 {vendor.userId?.email}</span>
+                          <span>📱 {vendor.userId?.phone}</span>
                         </div>
-                        <p style={{ fontSize: 11, color: "#9CA3AF", margin: "4px 0 0" }}>
-                          Applied on {formatDate(vendor.createdAt)}
-                        </p>
+                        <p className="text-[11px] text-gray-400 mt-1 m-0">Applied on {formatDate(vendor.createdAt)}</p>
                       </div>
                     </div>
-
-                    <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                      <button
-                        onClick={() => setExpandedVendor(expandedVendor === vendor._id ? null : vendor._id)}
-                        className="action-btn btn-view"
-                      >
-                        {expandedVendor === vendor._id ? "▲ Hide Details" : "▼ View Details"}
-                      </button>
-                      <button onClick={() => handleApprove(vendor._id)} className="action-btn btn-approve">
-                        ✓ Approve
-                      </button>
-                      <button
-                        onClick={() => setRejectingId(rejectingId === vendor._id ? null : vendor._id)}
-                        className="action-btn btn-reject"
-                      >
-                        ✕ Reject
-                      </button>
+                    <div className="flex gap-2 flex-wrap shrink-0">
+                      <ActionBtn variant="view" onClick={() => setExpandedVendor(expandedVendor === vendor._id ? null : vendor._id)}>
+                        {expandedVendor === vendor._id ? "▲ Hide" : "▼ Details"}
+                      </ActionBtn>
+                      <ActionBtn variant="approve" onClick={() => handleApprove(vendor._id)}>✓ Approve</ActionBtn>
+                      <ActionBtn variant="reject" onClick={() => setRejectingId(rejectingId === vendor._id ? null : vendor._id)}>✕ Reject</ActionBtn>
                     </div>
                   </div>
 
-                  {rejectingId === vendor._id && (
-                    <div style={{ padding: "12px 20px", background: "#FEF2F2", borderTop: "1px solid #FECACA" }}>
-                      <p style={{ fontSize: 12, fontWeight: 700, color: "#DC2626", margin: "0 0 8px" }}>
-                        ⚠️ Provide a reason for rejection (will be shown to vendor)
-                      </p>
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <input
-                          type="text"
-                          placeholder="e.g. Documents unclear, Invalid PAN number..."
-                          value={rejectReason}
-                          onChange={(e) => setRejectReason(e.target.value)}
-                          style={{ flex: 1, border: "1px solid #FECACA", borderRadius: 8, padding: "9px 12px", fontSize: 13, outline: "none" }}
-                        />
-                        <button
-                          onClick={() => handleReject(vendor._id)}
-                          style={{ background: "#EF4444", color: "white", border: "none", borderRadius: 8, padding: "9px 16px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
-                        >
-                          Confirm Rejection
-                        </button>
-                        <button
-                          onClick={() => setRejectingId(null)}
-                          style={{ background: "white", color: "#374151", border: "1px solid #E5E7EB", borderRadius: 8, padding: "9px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                  <RejectPanel show={rejectingId === vendor._id} reason={rejectReason} setReason={setRejectReason} onConfirm={() => handleReject(vendor._id)} onCancel={() => setRejectingId(null)} />
 
                   {expandedVendor === vendor._id && (
-                    <div className="detail-panel" style={{ borderTop: "1px solid #E5E7EB", padding: "20px", background: "#FAFAFA" }}>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 20 }}>
-
-                        <div style={{ background: "white", borderRadius: 12, padding: "16px", border: "1px solid #E5E7EB" }}>
-                          <SectionTitle icon="👤" title="Personal & Business" />
+                    <div className="border-t border-gray-200 p-5 bg-gray-50 animate-in fade-in">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="bg-white rounded-xl p-4 border border-gray-200">
+                          <SecTitle icon="👤" title="Personal & Business" />
                           <InfoRow label="Full Name" value={`${vendor.userId?.firstName} ${vendor.userId?.lastName}`} />
                           <InfoRow label="Email" value={vendor.userId?.email} />
                           <InfoRow label="Phone" value={vendor.userId?.phone} />
                           <InfoRow label="Store Name" value={vendor.storeName} />
                           <InfoRow label="Business Type" value={vendor.businessType?.replace(/_/g, " ")} />
-                          {vendor.storeDescription && (
-                            <div style={{ padding: "8px 0" }}>
-                              <span style={{ fontSize: 12, color: "#6B7280", fontWeight: 500 }}>Description</span>
-                              <p style={{ fontSize: 12, color: "#374151", margin: "4px 0 0", lineHeight: 1.6 }}>{vendor.storeDescription}</p>
-                            </div>
-                          )}
+                          {vendor.storeDescription && <div className="pt-2"><span className="text-xs text-gray-500 font-medium">Description</span><p className="text-xs text-gray-700 mt-1 leading-relaxed m-0">{vendor.storeDescription}</p></div>}
                         </div>
-
-                        <div style={{ background: "white", borderRadius: 12, padding: "16px", border: "1px solid #E5E7EB" }}>
-                          <SectionTitle icon="📋" title="Tax & Bank Details" />
-                          <InfoRow label="PAN Number" value={vendor.panNumber} mono />
-                          <InfoRow label="GST Number" value={vendor.gstNumber} mono />
-                          <div style={{ height: 8 }}></div>
+                        <div className="bg-white rounded-xl p-4 border border-gray-200">
+                          <SecTitle icon="📋" title="Tax & Bank Details" />
+                          <InfoRow label="PAN" value={vendor.panNumber} mono />
+                          <InfoRow label="GST" value={vendor.gstNumber} mono />
                           <InfoRow label="Account Holder" value={vendor.bankDetails?.accountHolderName} />
-                          <InfoRow label="Bank Name" value={vendor.bankDetails?.bankName} />
-                          <InfoRow label="Account Number" value={vendor.bankDetails?.accountNumber ? `••••${vendor.bankDetails.accountNumber.slice(-4)}` : "—"} mono />
-                          <InfoRow label="IFSC Code" value={vendor.bankDetails?.ifscCode} mono />
-                          <InfoRow label="Account Type" value={vendor.bankDetails?.accountType} />
+                          <InfoRow label="Bank" value={vendor.bankDetails?.bankName} />
+                          <InfoRow label="Account No" value={vendor.bankDetails?.accountNumber ? `••••${vendor.bankDetails.accountNumber.slice(-4)}` : "—"} mono />
+                          <InfoRow label="IFSC" value={vendor.bankDetails?.ifscCode} mono />
+                          <InfoRow label="Type" value={vendor.bankDetails?.accountType} />
                         </div>
-
-                        <div style={{ background: "white", borderRadius: 12, padding: "16px", border: "1px solid #E5E7EB" }}>
-                          <SectionTitle icon="📍" title="Business Address" />
+                        <div className="bg-white rounded-xl p-4 border border-gray-200">
+                          <SecTitle icon="📍" title="Business Address" />
                           <InfoRow label="Street" value={vendor.businessAddress?.street} />
                           <InfoRow label="City" value={vendor.businessAddress?.city} />
                           <InfoRow label="State" value={vendor.businessAddress?.state} />
-                          <InfoRow label="PIN Code" value={vendor.businessAddress?.postalCode} mono />
+                          <InfoRow label="PIN" value={vendor.businessAddress?.postalCode} mono />
                           <InfoRow label="Country" value={vendor.businessAddress?.country} />
                         </div>
                       </div>
-
-                      <div style={{ marginTop: 16, background: "white", borderRadius: 12, padding: "16px", border: "1px solid #E5E7EB" }}>
-                        <SectionTitle icon="📁" title="Uploaded Documents" />
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 16 }}>
+                      <div className="mt-4 bg-white rounded-xl p-4 border border-gray-200">
+                        <SecTitle icon="📁" title="Uploaded Documents" />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                           <DocPreview label="PAN Card" doc={vendor.panDocument} />
                           <DocPreview label="GST Certificate" doc={vendor.gstDocument} />
                           <DocPreview label="Business Registration" doc={vendor.businessRegistrationDoc} />
                           <DocPreview label="Cancelled Cheque" doc={vendor.cancelledCheque} />
                         </div>
                       </div>
-
-                      <div style={{ marginTop: 16, display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                        <button
-                          onClick={() => setRejectingId(rejectingId === vendor._id ? null : vendor._id)}
-                          className="action-btn btn-reject"
-                          style={{ padding: "10px 20px", fontSize: 13 }}
-                        >
-                          ✕ Reject Application
-                        </button>
-                        <button
-                          onClick={() => handleApprove(vendor._id)}
-                          className="action-btn btn-approve"
-                          style={{ padding: "10px 24px", fontSize: 13 }}
-                        >
-                          ✓ Approve Vendor
-                        </button>
+                      <div className="mt-4 flex gap-2.5 justify-end">
+                        <ActionBtn variant="reject" onClick={() => setRejectingId(rejectingId === vendor._id ? null : vendor._id)} className="px-5 py-2.5 text-[13px]">✕ Reject</ActionBtn>
+                        <ActionBtn variant="approve" onClick={() => handleApprove(vendor._id)} className="px-6 py-2.5 text-[13px]">✓ Approve Vendor</ActionBtn>
                       </div>
                     </div>
                   )}
@@ -499,59 +352,43 @@ const setActiveTab = (tab) => {
         )}
 
         {activeTab === "categories" && (
-          <div style={{ background: "white", borderRadius: 16, border: "1px solid #E5E7EB", padding: "24px" }}>
-            <h2 style={{ fontSize: 18, fontWeight: 800, color: "#111", margin: "0 0 20px" }}>Category Management</h2>
-            <form onSubmit={handleCreateCategory} style={{ marginBottom: 24, display: "flex", flexDirection: "column", gap: 10 }}>
-              <input
-                type="text"
-                placeholder="Category Name"
-                value={categoryForm.name}
-                onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
-                style={{ border: "1.5px solid #E5E7EB", borderRadius: 10, padding: "10px 14px", fontSize: 14, outline: "none" }}
+          <div className="bg-white rounded-2xl border border-gray-200 p-5 sm:p-6">
+            <h2 className="text-lg font-extrabold text-gray-900 mb-5 m-0">Category Management</h2>
+            <form onSubmit={handleCreateCategory} className="mb-6 flex flex-col gap-2.5">
+              <input type="text" placeholder="Category Name" value={categoryForm.name} onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
+                className="border-[1.5px] border-gray-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-gray-900 transition bg-white font-[inherit]"
               />
-              <input
-                type="text"
-                placeholder="Description (optional)"
-                value={categoryForm.description}
-                onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })}
-                style={{ border: "1.5px solid #E5E7EB", borderRadius: 10, padding: "10px 14px", fontSize: 14, outline: "none" }}
+              <input type="text" placeholder="Description (optional)" value={categoryForm.description} onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })}
+                className="border-[1.5px] border-gray-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-gray-900 transition bg-white font-[inherit]"
               />
-              <select
-                value={categoryForm.parent}
-                onChange={(e) => setCategoryForm({ ...categoryForm, parent: e.target.value })}
-                style={{ border: "1.5px solid #E5E7EB", borderRadius: 10, padding: "10px 14px", fontSize: 14, outline: "none" }}
+              <select value={categoryForm.parent} onChange={(e) => setCategoryForm({ ...categoryForm, parent: e.target.value })}
+                className="border-[1.5px] border-gray-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-gray-900 transition bg-white font-[inherit]"
               >
                 <option value="">No Parent (Main Category)</option>
-                {categoryData?.data?.map((cat) => (
-                  <option key={cat._id} value={cat._id}>{cat.name}</option>
-                ))}
+                {categoryData?.data?.map((cat) => <option key={cat._id} value={cat._id}>{cat.name}</option>)}
               </select>
-              {categoryError && <p style={{ color: "#EF4444", fontSize: 12, margin: 0 }}>{categoryError}</p>}
-              <button
-                type="submit"
-                disabled={creatingCategory}
-                style={{ background: "#111", color: "white", border: "none", borderRadius: 10, padding: "11px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}
+              {categoryError && <p className="text-red-500 text-xs font-semibold m-0">{categoryError}</p>}
+              <button type="submit" disabled={creatingCategory}
+                className="bg-gray-900 text-white border-none rounded-xl py-3 text-sm font-bold cursor-pointer disabled:opacity-50 transition font-[inherit]"
               >
                 {creatingCategory ? "Creating..." : "Create Category"}
               </button>
             </form>
 
-            {categoriesLoading && <p style={{ color: "#6B7280" }}>Loading...</p>}
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {categoriesLoading && <p className="text-gray-500 text-sm">Loading...</p>}
+            <div className="flex flex-col gap-2.5">
               {categoryData?.data?.map((cat) => (
-                <div key={cat._id} style={{ border: "1px solid #E5E7EB", borderRadius: 12, padding: "14px 16px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <h3 style={{ fontSize: 14, fontWeight: 700, color: "#111", margin: 0 }}>{cat.name}</h3>
-                    <button onClick={() => handleDeleteCategory(cat._id)} style={{ background: "#FEE2E2", color: "#7F1D1D", border: "1px solid #FCA5A5", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-                      Delete
-                    </button>
+                <div key={cat._id} className="border border-gray-200 rounded-xl px-4 py-3.5">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-sm font-bold text-gray-900 m-0">{cat.name}</h3>
+                    <ActionBtn variant="delete" onClick={() => handleDeleteCategory(cat._id)}>Delete</ActionBtn>
                   </div>
                   {cat.children?.length > 0 && (
-                    <div style={{ marginTop: 10, marginLeft: 20, borderLeft: "2px solid #E5E7EB", paddingLeft: 14, display: "flex", flexDirection: "column", gap: 6 }}>
+                    <div className="mt-2.5 ml-5 border-l-2 border-gray-200 pl-3.5 flex flex-col gap-1.5">
                       {cat.children.map((sub) => (
-                        <div key={sub._id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <p style={{ fontSize: 13, color: "#374151", margin: 0 }}>{sub.name}</p>
-                          <button onClick={() => handleDeleteCategory(sub._id)} style={{ background: "#FEE2E2", color: "#7F1D1D", border: "1px solid #FCA5A5", borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                        <div key={sub._id} className="flex justify-between items-center">
+                          <p className="text-[13px] text-gray-700 m-0">{sub.name}</p>
+                          <button onClick={() => handleDeleteCategory(sub._id)} className="bg-red-50 text-red-800 border border-red-200 rounded-md px-2.5 py-1 text-[11px] font-bold cursor-pointer font-[inherit]">
                             Delete
                           </button>
                         </div>
@@ -566,99 +403,56 @@ const setActiveTab = (tab) => {
 
         {activeTab === "products" && (
           <div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 800, color: "#111", margin: 0 }}>Product Management</h2>
-              <div style={{ display: "flex", gap: 6 }}>
-                {["pending", "approved", "rejected"].map((status) => (
-                  <button
-                    key={status}
-                    onClick={() => setProductStatusFilter(status)}
-                    style={{
-                      padding: "8px 16px", borderRadius: 8, fontSize: 12, fontWeight: 700,
-                      cursor: "pointer", border: "none", textTransform: "capitalize",
-                      background: productStatusFilter === status ? "#111" : "white",
-                      color: productStatusFilter === status ? "white" : "#374151",
-                      border: productStatusFilter === status ? "none" : "1px solid #E5E7EB",
-                    }}
-                  >
-                    {status}
-                  </button>
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+              <h2 className="text-lg font-extrabold text-gray-900 m-0">Product Management</h2>
+              <div className="flex gap-1.5">
+                {["pending", "approved", "rejected"].map((s) => (
+                  <FilterBtn key={s} active={productStatusFilter === s} onClick={() => setProductStatusFilter(s)}>{s}</FilterBtn>
                 ))}
               </div>
             </div>
 
-            {productsLoading && (
-              <div style={{ textAlign: "center", padding: 40 }}>
-                <p style={{ color: "#6B7280", fontSize: 13 }}>Loading products...</p>
-              </div>
-            )}
+            {productsLoading && <Spinner text="Loading products..." />}
+            {productsData?.data?.length === 0 && !productsLoading && <EmptyState icon="📦" title={`No ${productStatusFilter} products`} />}
 
-            {productsData?.data?.length === 0 && !productsLoading && (
-              <div style={{ textAlign: "center", padding: "48px 20px", background: "white", borderRadius: 16, border: "1px solid #E5E7EB" }}>
-                <p style={{ fontSize: 36, margin: "0 0 12px" }}>📦</p>
-                <p style={{ fontSize: 15, fontWeight: 700, color: "#111", margin: 0 }}>No {productStatusFilter} products</p>
-              </div>
-            )}
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div className="flex flex-col gap-3">
               {productsData?.data?.map((product) => (
-                <div key={product._id} style={{ background: "white", borderRadius: 16, border: "1px solid #E5E7EB", overflow: "hidden" }}>
-                  <div style={{ padding: "16px 20px", display: "flex", alignItems: "flex-start", gap: 14 }}>
-                    <img
-                      src={product.images?.[0]?.url || "https://placehold.co/80?text=No+Image"}
-                      alt={product.name}
-                      style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 10, border: "1px solid #E5E7EB", flexShrink: 0 }}
+                <div key={product._id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                  <div className="p-4 sm:p-5 flex items-start gap-3.5">
+                    <img src={product.images?.[0]?.url || "https://placehold.co/80?text=No+Image"} alt={product.name}
+                      className="w-[72px] h-[72px] object-cover rounded-xl border border-gray-200 shrink-0"
                       onError={(e) => { e.target.src = "https://placehold.co/80?text=No+Image"; }}
                     />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-3 flex-wrap">
                         <div>
-                          <h3 style={{ fontSize: 15, fontWeight: 800, color: "#111", margin: "0 0 4px" }}>{product.name}</h3>
-                          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                            <span style={{ fontSize: 12, color: "#6B7280" }}>📂 {product.category?.name}</span>
-                            <span style={{ fontSize: 12, color: "#6B7280" }}>🏪 {product.vendor?.firstName} {product.vendor?.lastName}</span>
-                            {product.brand && <span style={{ fontSize: 12, color: "#6B7280" }}>🏷️ {product.brand}</span>}
+                          <h3 className="text-[15px] font-extrabold text-gray-900 m-0 mb-1">{product.name}</h3>
+                          <div className="flex gap-2.5 flex-wrap text-xs text-gray-500">
+                            <span>📂 {product.category?.name}</span>
+                            <span>🏪 {product.vendor?.firstName} {product.vendor?.lastName}</span>
+                            {product.brand && <span>🏷️ {product.brand}</span>}
                           </div>
-                          <div style={{ display: "flex", gap: 12, marginTop: 6, alignItems: "center" }}>
-                            <span style={{ fontSize: 16, fontWeight: 800, color: "#B12704" }}>{formatRupee(product.price)}</span>
-                            {product.comparePrice > 0 && (
-                              <span style={{ fontSize: 12, color: "#9CA3AF", textDecoration: "line-through" }}>{formatRupee(product.comparePrice)}</span>
-                            )}
-                            <span style={{ fontSize: 12, color: "#6B7280" }}>Stock: {product.stock}</span>
+                          <div className="flex gap-3 mt-1.5 items-center">
+                            <span className="text-base font-extrabold text-[#B12704]">{formatRupee(product.price)}</span>
+                            {product.comparePrice > 0 && <span className="text-xs text-gray-400 line-through">{formatRupee(product.comparePrice)}</span>}
+                            <span className="text-xs text-gray-500">Stock: {product.stock}</span>
                           </div>
                         </div>
-                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, flexShrink: 0 }}>
-                          <StatusBadge status={product.status} />
-                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                            <button
-                              onClick={() => setExpandedProduct(expandedProduct === product._id ? null : product._id)}
-                              className="action-btn btn-view"
-                            >
+                        <div className="flex flex-col items-end gap-2 shrink-0">
+                          <Badge status={product.status} />
+                          <div className="flex gap-1.5 flex-wrap">
+                            <ActionBtn variant="view" onClick={() => setExpandedProduct(expandedProduct === product._id ? null : product._id)}>
                               {expandedProduct === product._id ? "▲ Hide" : "▼ Details"}
-                            </button>
+                            </ActionBtn>
                             {product.status === "pending" && (
                               <>
-                                <button onClick={() => handleApproveProduct(product._id)} className="action-btn btn-approve">
-                                  ✓ Approve
-                                </button>
-                                <button
-                                  onClick={() => setProductRejectingId(productRejectingId === product._id ? null : product._id)}
-                                  className="action-btn btn-reject"
-                                >
-                                  ✕ Reject
-                                </button>
+                                <ActionBtn variant="approve" onClick={() => handleApproveProduct(product._id)}>✓ Approve</ActionBtn>
+                                <ActionBtn variant="reject" onClick={() => setProductRejectingId(productRejectingId === product._id ? null : product._id)}>✕ Reject</ActionBtn>
                               </>
                             )}
                             {product.status === "approved" && (
-                              <button
-                                onClick={() => handleFeatureProduct(product._id)}
-                                style={{
-                                  padding: "8px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700,
-                                  cursor: "pointer", border: "none",
-                                  background: product.isFeatured ? "#FEF9C3" : "#F3F4F6",
-                                  color: product.isFeatured ? "#854D0E" : "#374151",
-                                  border: product.isFeatured ? "1px solid #FDE68A" : "1px solid #E5E7EB",
-                                }}
+                              <button onClick={() => handleFeatureProduct(product._id)}
+                                className={`px-3.5 py-2 rounded-lg text-xs font-bold cursor-pointer border transition-all font-[inherit] ${product.isFeatured ? "bg-yellow-100 text-yellow-800 border-yellow-200" : "bg-gray-100 text-gray-700 border-gray-200"}`}
                               >
                                 {product.isFeatured ? "★ Featured" : "☆ Feature"}
                               </button>
@@ -669,140 +463,74 @@ const setActiveTab = (tab) => {
                     </div>
                   </div>
 
-                  {productRejectingId === product._id && (
-                    <div style={{ padding: "12px 20px", background: "#FEF2F2", borderTop: "1px solid #FECACA" }}>
-                      <p style={{ fontSize: 12, fontWeight: 700, color: "#DC2626", margin: "0 0 8px" }}>
-                        ⚠️ Provide a reason for rejection (will be shown to vendor)
-                      </p>
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <input
-                          type="text"
-                          placeholder="e.g. Images unclear, Description misleading..."
-                          value={productRejectReason}
-                          onChange={(e) => setProductRejectReason(e.target.value)}
-                          style={{ flex: 1, border: "1px solid #FECACA", borderRadius: 8, padding: "9px 12px", fontSize: 13, outline: "none" }}
-                        />
-                        <button
-                          onClick={() => handleRejectProduct(product._id)}
-                          style={{ background: "#EF4444", color: "white", border: "none", borderRadius: 8, padding: "9px 16px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
-                        >
-                          Confirm Rejection
-                        </button>
-                        <button
-                          onClick={() => setProductRejectingId(null)}
-                          style={{ background: "white", color: "#374151", border: "1px solid #E5E7EB", borderRadius: 8, padding: "9px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                  <RejectPanel show={productRejectingId === product._id} reason={productRejectReason} setReason={setProductRejectReason} onConfirm={() => handleRejectProduct(product._id)} onCancel={() => setProductRejectingId(null)} />
 
                   {product.status === "rejected" && product.rejectionReason && (
-                    <div style={{ padding: "10px 20px", background: "#FEF2F2", borderTop: "1px solid #FECACA" }}>
-                      <p style={{ fontSize: 12, color: "#DC2626", margin: 0, fontWeight: 600 }}>
-                        Rejection Reason: {product.rejectionReason}
-                      </p>
+                    <div className="px-5 py-2.5 bg-red-50 border-t border-red-200">
+                      <p className="text-xs text-red-600 font-semibold m-0">Rejection Reason: {product.rejectionReason}</p>
                     </div>
                   )}
 
                   {expandedProduct === product._id && (
-                    <div className="detail-panel" style={{ borderTop: "1px solid #E5E7EB", padding: "20px", background: "#FAFAFA" }}>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-
-                        <div style={{ background: "white", borderRadius: 12, padding: "16px", border: "1px solid #E5E7EB" }}>
-                          <SectionTitle icon="📦" title="Product Information" />
+                    <div className="border-t border-gray-200 p-5 bg-gray-50 animate-in fade-in">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div className="bg-white rounded-xl p-4 border border-gray-200">
+                          <SecTitle icon="📦" title="Product Information" />
                           <InfoRow label="Name" value={product.name} />
                           <InfoRow label="Category" value={product.category?.name} />
                           <InfoRow label="Brand" value={product.brand} />
                           <InfoRow label="SKU" value={product.sku} mono />
                           <InfoRow label="Price" value={formatRupee(product.price)} />
-                          <InfoRow label="Compare Price" value={product.comparePrice > 0 ? formatRupee(product.comparePrice) : "—"} />
+                          <InfoRow label="Compare" value={product.comparePrice > 0 ? formatRupee(product.comparePrice) : "—"} />
                           <InfoRow label="Stock" value={product.stock} />
                           <InfoRow label="Low Stock Alert" value={product.lowStockThreshold} />
                           <InfoRow label="Weight" value={product.weight ? `${product.weight}g` : "—"} />
-                          {product.shortDescription && (
-                            <div style={{ padding: "8px 0" }}>
-                              <span style={{ fontSize: 12, color: "#6B7280", fontWeight: 500 }}>Short Description</span>
-                              <p style={{ fontSize: 12, color: "#374151", margin: "4px 0 0", lineHeight: 1.6 }}>{product.shortDescription}</p>
-                            </div>
-                          )}
+                          {product.shortDescription && <div className="pt-2"><span className="text-xs text-gray-500">Short Description</span><p className="text-xs text-gray-700 mt-1 leading-relaxed m-0">{product.shortDescription}</p></div>}
                         </div>
-
-                        <div style={{ background: "white", borderRadius: 12, padding: "16px", border: "1px solid #E5E7EB" }}>
-                          <SectionTitle icon="🏪" title="Vendor Information" />
-                          <InfoRow label="Vendor Name" value={`${product.vendor?.firstName} ${product.vendor?.lastName}`} />
-                          <InfoRow label="Vendor Email" value={product.vendor?.email} />
-                          <InfoRow label="Store Name" value={product.vendorStore?.storeName} />
+                        <div className="bg-white rounded-xl p-4 border border-gray-200">
+                          <SecTitle icon="🏪" title="Vendor Information" />
+                          <InfoRow label="Vendor" value={`${product.vendor?.firstName} ${product.vendor?.lastName}`} />
+                          <InfoRow label="Email" value={product.vendor?.email} />
+                          <InfoRow label="Store" value={product.vendorStore?.storeName} />
                           <InfoRow label="Status" value={product.status} />
                           <InfoRow label="Featured" value={product.isFeatured ? "Yes" : "No"} />
-                          <InfoRow label="Total Views" value={product.views} />
-                          <InfoRow label="Total Sold" value={product.totalSold} />
-                          <InfoRow label="Avg Rating" value={product.averageRating > 0 ? `${product.averageRating} ⭐` : "No reviews"} />
-                          <InfoRow label="Listed On" value={formatDate(product.createdAt)} />
-
-                          {product.specifications?.length > 0 && (
-                            <div style={{ marginTop: 8 }}>
-                              <SectionTitle icon="📋" title="Specifications" />
-                              {product.specifications.map((spec, i) => (
-                                <InfoRow key={i} label={spec.key} value={spec.value} />
-                              ))}
-                            </div>
-                          )}
+                          <InfoRow label="Views" value={product.views} />
+                          <InfoRow label="Sold" value={product.totalSold} />
+                          <InfoRow label="Rating" value={product.averageRating > 0 ? `${product.averageRating} ⭐` : "No reviews"} />
+                          <InfoRow label="Listed" value={formatDate(product.createdAt)} />
+                          {product.specifications?.length > 0 && <>
+                            <SecTitle icon="📋" title="Specifications" />
+                            {product.specifications.map((spec, i) => <InfoRow key={i} label={spec.key} value={spec.value} />)}
+                          </>}
                         </div>
                       </div>
-
                       {product.description && (
-                        <div style={{ background: "white", borderRadius: 12, padding: "16px", border: "1px solid #E5E7EB", marginBottom: 16 }}>
-                          <SectionTitle icon="📝" title="Full Description" />
-                          <p style={{ fontSize: 13, color: "#374151", margin: 0, lineHeight: 1.7, whiteSpace: "pre-line" }}>{product.description}</p>
+                        <div className="bg-white rounded-xl p-4 border border-gray-200 mb-4">
+                          <SecTitle icon="📝" title="Full Description" />
+                          <p className="text-[13px] text-gray-700 m-0 leading-relaxed whitespace-pre-line">{product.description}</p>
                         </div>
                       )}
-
                       {product.images?.length > 0 && (
-                        <div style={{ background: "white", borderRadius: 12, padding: "16px", border: "1px solid #E5E7EB", marginBottom: 16 }}>
-                          <SectionTitle icon="🖼️" title="Product Images" />
-                          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                        <div className="bg-white rounded-xl p-4 border border-gray-200 mb-4">
+                          <SecTitle icon="🖼️" title="Product Images" />
+                          <div className="flex gap-2.5 flex-wrap">
                             {product.images.map((img, i) => (
                               <a key={i} href={img.url} target="_blank" rel="noreferrer">
-                                <img
-                                  src={img.url}
-                                  alt={`Product ${i + 1}`}
-                                  style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 10, border: "1px solid #E5E7EB", cursor: "pointer" }}
-                                  onError={(e) => { e.target.src = "https://placehold.co/90?text=Img"; }}
-                                />
+                                <img src={img.url} alt={`Product ${i + 1}`} className="w-[90px] h-[90px] object-cover rounded-xl border border-gray-200 cursor-pointer hover:opacity-80 transition" onError={(e) => { e.target.src = "https://placehold.co/90?text=Img"; }} />
                               </a>
                             ))}
                           </div>
                         </div>
                       )}
-
                       {product.tags?.length > 0 && (
-                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                          {product.tags.map((tag) => (
-                            <span key={tag} style={{ background: "#F3F4F6", color: "#374151", fontSize: 11, padding: "4px 10px", borderRadius: 99, fontWeight: 600 }}>
-                              #{tag}
-                            </span>
-                          ))}
+                        <div className="flex gap-1.5 flex-wrap mb-4">
+                          {product.tags.map((tag) => <span key={tag} className="bg-gray-100 text-gray-700 text-[11px] px-2.5 py-1 rounded-full font-semibold">#{tag}</span>)}
                         </div>
                       )}
-
                       {product.status === "pending" && (
-                        <div style={{ marginTop: 16, display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                          <button
-                            onClick={() => setProductRejectingId(productRejectingId === product._id ? null : product._id)}
-                            className="action-btn btn-reject"
-                            style={{ padding: "10px 20px", fontSize: 13 }}
-                          >
-                            ✕ Reject Product
-                          </button>
-                          <button
-                            onClick={() => handleApproveProduct(product._id)}
-                            className="action-btn btn-approve"
-                            style={{ padding: "10px 24px", fontSize: 13 }}
-                          >
-                            ✓ Approve Product
-                          </button>
+                        <div className="flex gap-2.5 justify-end">
+                          <ActionBtn variant="reject" onClick={() => setProductRejectingId(productRejectingId === product._id ? null : product._id)} className="px-5 py-2.5 text-[13px]">✕ Reject</ActionBtn>
+                          <ActionBtn variant="approve" onClick={() => handleApproveProduct(product._id)} className="px-6 py-2.5 text-[13px]">✓ Approve Product</ActionBtn>
                         </div>
                       )}
                     </div>
@@ -814,274 +542,166 @@ const setActiveTab = (tab) => {
         )}
 
         {activeTab === "orders" && (
-          <div style={{ background: "white", borderRadius: 16, border: "1px solid #E5E7EB", padding: "24px" }}>
-            <h2 style={{ fontSize: 18, fontWeight: 800, color: "#111", margin: "0 0 16px" }}>Order Management</h2>
-            <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
-              {[
-                { label: "All", value: "" },
-                { label: "Pending", value: "pending" },
-                { label: "Processing", value: "processing" },
-                { label: "Shipped", value: "shipped" },
-                { label: "Delivered", value: "delivered" },
-                { label: "Cancelled", value: "cancelled" },
-              ].map((item) => (
-                <button
-                  key={item.value}
-                  onClick={() => { setOrderStatusFilter(item.value); setOrderPage(1); }}
-                  style={{
-                    padding: "8px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700,
-                    cursor: "pointer",
-                    background: orderStatusFilter === item.value ? "#111" : "white",
-                    color: orderStatusFilter === item.value ? "white" : "#374151",
-                    border: orderStatusFilter === item.value ? "none" : "1px solid #E5E7EB",
-                  }}
-                >
-                  {item.label}
-                </button>
+          <div className="bg-white rounded-2xl border border-gray-200 p-5 sm:p-6">
+            <h2 className="text-lg font-extrabold text-gray-900 mb-4 m-0">Order Management</h2>
+            <div className="flex gap-1.5 mb-4 flex-wrap">
+              {[{ l: "All", v: "" }, { l: "Pending", v: "pending" }, { l: "Processing", v: "processing" }, { l: "Shipped", v: "shipped" }, { l: "Delivered", v: "delivered" }, { l: "Cancelled", v: "cancelled" }].map((item) => (
+                <FilterBtn key={item.v} active={orderStatusFilter === item.v} onClick={() => { setOrderStatusFilter(item.v); setOrderPage(1); }}>{item.l}</FilterBtn>
               ))}
             </div>
 
-            {ordersLoading && <p style={{ color: "#6B7280" }}>Loading...</p>}
-            {ordersData?.data?.length === 0 && <p style={{ color: "#6B7280" }}>No orders found</p>}
+            {ordersLoading && <Spinner text="Loading orders..." />}
+            {ordersData?.data?.length === 0 && !ordersLoading && <EmptyState icon="📦" title="No orders found" />}
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div className="flex flex-col gap-3">
               {ordersData?.data?.map((order) => (
-                <div key={order._id} style={{ border: "1px solid #E5E7EB", borderRadius: 12, padding: "16px" }}>
-                  <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
+                <div key={order._id} className="border border-gray-200 rounded-xl p-4">
+                  <div className="flex flex-wrap justify-between items-start gap-3 mb-3">
                     <div>
-                      <p style={{ fontWeight: 800, color: "#111", margin: 0, fontSize: 14 }}>{order.orderNumber}</p>
-                      <p style={{ fontSize: 12, color: "#6B7280", margin: "2px 0 0" }}>
-                        {order.user?.firstName} {order.user?.lastName} • {order.user?.email}
-                      </p>
-                      <p style={{ fontSize: 11, color: "#9CA3AF", margin: "2px 0 0" }}>
-                        {formatDate(order.createdAt)}
-                      </p>
+                      <p className="text-sm font-extrabold text-gray-900 m-0">{order.orderNumber}</p>
+                      <p className="text-xs text-gray-500 mt-0.5 m-0">{order.user?.firstName} {order.user?.lastName} • {order.user?.email}</p>
+                      <p className="text-[11px] text-gray-400 mt-0.5 m-0">{formatDate(order.createdAt)}</p>
                     </div>
-                    <div style={{ textAlign: "right" }}>
-                      <StatusBadge status={order.orderStatus} />
-                      <p style={{ fontSize: 18, fontWeight: 800, color: "#B12704", margin: "6px 0 0" }}>{formatRupee(order.total)}</p>
+                    <div className="text-right">
+                      <Badge status={order.orderStatus} />
+                      <p className="text-lg font-extrabold text-[#B12704] mt-1.5 m-0">{formatRupee(order.total)}</p>
                     </div>
                   </div>
-
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
-                    {order.items?.map((item, index) => (
-                      <div key={index} style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                        <img
-                          src={item.image || "https://placehold.co/44?text=P"}
-                          alt={item.name}
-                          style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8, border: "1px solid #E5E7EB", flexShrink: 0 }}
-                          onError={(e) => { e.target.src = "https://placehold.co/44?text=P"; }}
-                        />
+                  <div className="flex flex-col gap-2 mb-3">
+                    {order.items?.map((item, idx) => (
+                      <div key={idx} className="flex gap-2.5 items-center">
+                        <img src={item.image || "https://placehold.co/44?text=P"} alt={item.name} className="w-11 h-11 object-cover rounded-lg border border-gray-200 shrink-0" onError={(e) => { e.target.src = "https://placehold.co/44?text=P"; }} />
                         <div>
-                          <p style={{ fontSize: 13, fontWeight: 600, color: "#111", margin: 0 }}>{item.name}</p>
-                          <p style={{ fontSize: 11, color: "#6B7280", margin: 0 }}>
-                            Qty: {item.quantity} • {formatRupee(item.price * item.quantity)} • {item.storeName}
-                          </p>
+                          <p className="text-[13px] font-semibold text-gray-900 m-0">{item.name}</p>
+                          <p className="text-[11px] text-gray-500 m-0">Qty: {item.quantity} • {formatRupee(item.price * item.quantity)} • {item.storeName}</p>
                         </div>
                       </div>
                     ))}
                   </div>
-
-                  <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 14px", marginBottom: 12, fontSize: 12 }}>
-                    <p style={{ fontWeight: 700, color: "#374151", margin: "0 0 4px" }}>Ship to:</p>
-                    <p style={{ color: "#6B7280", margin: 0 }}>
-                      {order.shippingAddress?.fullName}, {order.shippingAddress?.phone} • {order.shippingAddress?.street}, {order.shippingAddress?.city}, {order.shippingAddress?.state} - {order.shippingAddress?.postalCode}
-                    </p>
+                  <div className="bg-gray-50 rounded-lg px-3.5 py-2.5 mb-3 text-xs">
+                    <p className="font-bold text-gray-700 mb-1 m-0">Ship to:</p>
+                    <p className="text-gray-500 m-0">{order.shippingAddress?.fullName}, {order.shippingAddress?.phone} • {order.shippingAddress?.street}, {order.shippingAddress?.city}, {order.shippingAddress?.state} - {order.shippingAddress?.postalCode}</p>
                   </div>
-
-                  <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 10, paddingTop: 10, borderTop: "1px solid #F3F4F6" }}>
-                    <p style={{ fontSize: 12, color: "#6B7280", margin: 0 }}>
-                      Payment: <strong>{order.paymentMethod === "cod" ? "Cash on Delivery" : "Online"}</strong>
-                      {" • "}
-                      <span style={{ color: order.paymentStatus === "paid" ? "#16A34A" : "#D97706", fontWeight: 700 }}>
-                        {order.paymentStatus}
-                      </span>
+                  <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2.5 border-t border-gray-100">
+                    <p className="text-xs text-gray-500 m-0">
+                      Payment: <strong>{order.paymentMethod === "cod" ? "COD" : "Online"}</strong> •{" "}
+                      <span className={order.paymentStatus === "paid" ? "text-green-600 font-bold" : "text-yellow-600 font-bold"}>{order.paymentStatus}</span>
                     </p>
                     {!["cancelled", "delivered", "refunded"].includes(order.orderStatus) && (
-                      <select
-                        value={order.orderStatus}
-                        onChange={(e) => handleUpdateOrderStatus(order._id, e.target.value)}
-                        style={{ border: "1px solid #E5E7EB", borderRadius: 8, padding: "7px 12px", fontSize: 12, outline: "none" }}
+                      <select value={order.orderStatus} onChange={(e) => handleUpdateOrderStatus(order._id, e.target.value)}
+                        className="border border-gray-200 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-gray-900 transition font-[inherit]"
                       >
-                        <option value="pending">Pending</option>
-                        <option value="processing">Processing</option>
-                        <option value="shipped">Shipped</option>
-                        <option value="out_for_delivery">Out for Delivery</option>
-                        <option value="delivered">Delivered</option>
-                        <option value="cancelled">Cancelled</option>
+                        {["pending", "processing", "shipped", "out_for_delivery", "delivered", "cancelled"].map((s) => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
                       </select>
                     )}
                   </div>
-
                   {order.cancelReason && (
-                    <div style={{ marginTop: 8, background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: "8px 12px" }}>
-                      <p style={{ fontSize: 11, color: "#DC2626", margin: 0, fontWeight: 600 }}>Cancel Reason: {order.cancelReason}</p>
+                    <div className="mt-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                      <p className="text-[11px] text-red-600 font-semibold m-0">Cancel Reason: {order.cancelReason}</p>
                     </div>
                   )}
                 </div>
               ))}
             </div>
 
-            {ordersData?.pagination && ordersData.pagination.pages > 1 && (
-              <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 20 }}>
-                <button onClick={() => setOrderPage((p) => Math.max(1, p - 1))} disabled={orderPage === 1} style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 12, cursor: "pointer", opacity: orderPage === 1 ? 0.4 : 1 }}>
-                  ← Prev
-                </button>
+            {ordersData?.pagination?.pages > 1 && (
+              <div className="flex justify-center gap-1.5 mt-5">
+                <PageBtn onClick={() => setOrderPage((p) => Math.max(1, p - 1))} disabled={orderPage === 1}>← Prev</PageBtn>
                 {Array.from({ length: ordersData.pagination.pages }, (_, i) => i + 1).map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => setOrderPage(p)}
-                    style={{ padding: "8px 12px", borderRadius: 8, fontSize: 12, cursor: "pointer", background: orderPage === p ? "#111" : "white", color: orderPage === p ? "white" : "#111", border: orderPage === p ? "none" : "1px solid #E5E7EB" }}
-                  >
-                    {p}
-                  </button>
+                  <PageBtn key={p} active={orderPage === p} onClick={() => setOrderPage(p)}>{p}</PageBtn>
                 ))}
-                <button onClick={() => setOrderPage((p) => Math.min(ordersData.pagination.pages, p + 1))} disabled={orderPage === ordersData.pagination.pages} style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 12, cursor: "pointer", opacity: orderPage === ordersData.pagination.pages ? 0.4 : 1 }}>
-                  Next →
-                </button>
+                <PageBtn onClick={() => setOrderPage((p) => Math.min(ordersData.pagination.pages, p + 1))} disabled={orderPage === ordersData.pagination.pages}>Next →</PageBtn>
               </div>
             )}
           </div>
         )}
 
         {activeTab === "reviews" && (
-          <div style={{ background: "white", borderRadius: 16, border: "1px solid #E5E7EB", padding: "24px" }}>
-            <h2 style={{ fontSize: 18, fontWeight: 800, color: "#111", margin: "0 0 16px" }}>Review Management</h2>
-
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 20 }}>
-              <select
-                value={reviewSort}
-                onChange={(e) => { setReviewSort(e.target.value); setReviewPage(1); }}
-                style={{ border: "1px solid #E5E7EB", borderRadius: 8, padding: "8px 12px", fontSize: 13, outline: "none" }}
+          <div className="bg-white rounded-2xl border border-gray-200 p-5 sm:p-6">
+            <h2 className="text-lg font-extrabold text-gray-900 mb-4 m-0">Review Management</h2>
+            <div className="flex flex-wrap gap-2.5 mb-5">
+              <select value={reviewSort} onChange={(e) => { setReviewSort(e.target.value); setReviewPage(1); }}
+                className="border border-gray-200 rounded-lg px-3 py-2 text-[13px] outline-none focus:border-gray-900 transition font-[inherit]"
               >
                 <option value="newest">Most Recent</option>
                 <option value="oldest">Oldest First</option>
                 <option value="highest">Highest Rated</option>
                 <option value="lowest">Lowest Rated</option>
               </select>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              <div className="flex gap-1.5 flex-wrap">
                 {[5, 4, 3, 2, 1].map((star) => (
-                  <button
-                    key={star}
-                    onClick={() => { setReviewRatingFilter(reviewRatingFilter === star ? undefined : star); setReviewPage(1); }}
-                    style={{
-                      padding: "7px 12px", borderRadius: 99, fontSize: 12, fontWeight: 700, cursor: "pointer",
-                      background: reviewRatingFilter === star ? "#111" : "white",
-                      color: reviewRatingFilter === star ? "white" : "#374151",
-                      border: reviewRatingFilter === star ? "none" : "1px solid #E5E7EB",
-                    }}
-                  >
+                  <FilterBtn key={star} active={reviewRatingFilter === star} onClick={() => { setReviewRatingFilter(reviewRatingFilter === star ? undefined : star); setReviewPage(1); }}>
                     {star} ★
-                  </button>
+                  </FilterBtn>
                 ))}
                 {reviewRatingFilter && (
-                  <button onClick={() => { setReviewRatingFilter(undefined); setReviewPage(1); }} style={{ padding: "7px 12px", fontSize: 12, color: "#6B7280", background: "transparent", border: "none", cursor: "pointer" }}>
-                    Clear
-                  </button>
+                  <button onClick={() => { setReviewRatingFilter(undefined); setReviewPage(1); }} className="px-3 py-2 text-xs text-gray-500 bg-transparent border-none cursor-pointer font-[inherit]">Clear</button>
                 )}
               </div>
             </div>
 
-            {reviewsLoading && <p style={{ color: "#6B7280" }}>Loading...</p>}
-            {reviewsData?.data?.length === 0 && (
-              <div style={{ textAlign: "center", padding: "48px 20px" }}>
-                <p style={{ fontSize: 36, margin: "0 0 12px" }}>💬</p>
-                <p style={{ fontSize: 14, color: "#6B7280", margin: 0 }}>No reviews found</p>
-              </div>
-            )}
+            {reviewsLoading && <Spinner text="Loading reviews..." />}
+            {reviewsData?.data?.length === 0 && !reviewsLoading && <EmptyState icon="💬" title="No reviews found" />}
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div className="flex flex-col gap-3">
               {reviewsData?.data?.map((review) => (
-                <div key={review._id} style={{ border: "1px solid #E5E7EB", borderRadius: 12, padding: "16px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
-                    <div style={{ display: "flex", gap: 12 }}>
-                      <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#F3F4F6", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontWeight: 700, fontSize: 14, color: "#374151" }}>
+                <div key={review._id} className="border border-gray-200 rounded-xl p-4">
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="flex gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0 font-bold text-sm text-gray-700">
                         {review.user?.firstName?.[0]?.toUpperCase() || "U"}
                       </div>
                       <div>
-                        <p style={{ fontWeight: 700, fontSize: 13, color: "#111", margin: 0 }}>
-                          {review.user?.firstName} {review.user?.lastName}
-                        </p>
-                        <p style={{ fontSize: 11, color: "#9CA3AF", margin: "2px 0" }}>{review.user?.email}</p>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <div style={{ display: "flex" }}>
-                            {[1, 2, 3, 4, 5].map((s) => (
-                              <span key={s} style={{ color: s <= review.rating ? "#F59E0B" : "#E5E7EB", fontSize: 13 }}>★</span>
-                            ))}
-                          </div>
-                          {review.isVerifiedPurchase && (
-                            <span style={{ fontSize: 10, background: "#DCFCE7", color: "#14532D", padding: "2px 8px", borderRadius: 99, fontWeight: 700 }}>
-                              ✓ Verified
-                            </span>
-                          )}
+                        <p className="font-bold text-[13px] text-gray-900 m-0">{review.user?.firstName} {review.user?.lastName}</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5 m-0">{review.user?.email}</p>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <div className="flex">{[1, 2, 3, 4, 5].map((s) => <span key={s} className={s <= review.rating ? "text-yellow-400 text-[13px]" : "text-gray-200 text-[13px]"}>★</span>)}</div>
+                          {review.isVerifiedPurchase && <span className="text-[10px] bg-green-100 text-green-800 px-2 py-0.5 rounded-full font-bold">✓ Verified</span>}
                         </div>
                       </div>
                     </div>
-
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-                      <p style={{ fontSize: 11, color: "#9CA3AF", margin: 0 }}>{formatDate(review.createdAt)}</p>
+                    <div className="flex flex-col items-end gap-1.5">
+                      <p className="text-[11px] text-gray-400 m-0">{formatDate(review.createdAt)}</p>
                       {deletingReviewId === review._id ? (
-                        <div style={{ display: "flex", gap: 6 }}>
-                          <button onClick={() => handleDeleteReview(review._id)} style={{ background: "#EF4444", color: "white", border: "none", borderRadius: 6, padding: "6px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-                            Confirm
-                          </button>
-                          <button onClick={() => setDeletingReviewId(null)} style={{ background: "white", color: "#374151", border: "1px solid #E5E7EB", borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>
-                            Cancel
-                          </button>
+                        <div className="flex gap-1.5">
+                          <button onClick={() => handleDeleteReview(review._id)} className="bg-red-500 text-white border-none rounded-md px-3 py-1.5 text-[11px] font-bold cursor-pointer font-[inherit]">Confirm</button>
+                          <button onClick={() => setDeletingReviewId(null)} className="bg-white text-gray-700 border border-gray-200 rounded-md px-2.5 py-1.5 text-[11px] cursor-pointer font-[inherit]">Cancel</button>
                         </div>
                       ) : (
-                        <button onClick={() => setDeletingReviewId(review._id)} style={{ background: "#FEE2E2", color: "#7F1D1D", border: "1px solid #FCA5A5", borderRadius: 6, padding: "6px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-                          Delete
-                        </button>
+                        <ActionBtn variant="delete" onClick={() => setDeletingReviewId(review._id)}>Delete</ActionBtn>
                       )}
                     </div>
                   </div>
-
-                  <div style={{ marginTop: 12, paddingLeft: 52 }}>
+                  <div className="mt-3 pl-[52px]">
                     {review.product && (
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                        {review.product?.images?.[0] && (
-                          <img src={review.product.images[0].url} alt="" style={{ width: 28, height: 28, borderRadius: 6, objectFit: "cover" }} onError={(e) => { e.target.style.display = "none"; }} />
-                        )}
-                        <span style={{ fontSize: 11, color: "#6B7280", fontWeight: 600 }}>{review.product?.name}</span>
+                      <div className="flex items-center gap-2 mb-2">
+                        {review.product?.images?.[0] && <img src={review.product.images[0].url} alt="" className="w-7 h-7 rounded-md object-cover" onError={(e) => { e.target.style.display = "none"; }} />}
+                        <span className="text-[11px] text-gray-500 font-semibold">{review.product?.name}</span>
                       </div>
                     )}
-                    {review.title && <p style={{ fontWeight: 700, fontSize: 13, color: "#111", margin: "0 0 4px" }}>{review.title}</p>}
-                    {review.body && <p style={{ fontSize: 13, color: "#374151", margin: 0, lineHeight: 1.6 }}>{review.body}</p>}
+                    {review.title && <p className="font-bold text-[13px] text-gray-900 m-0 mb-1">{review.title}</p>}
+                    {review.body && <p className="text-[13px] text-gray-700 m-0 leading-relaxed">{review.body}</p>}
                     {review.images?.length > 0 && (
-                      <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-                        {review.images.map((img, i) => (
-                          <img key={i} src={img.url} alt="" style={{ width: 52, height: 52, borderRadius: 8, objectFit: "cover", border: "1px solid #E5E7EB" }} />
-                        ))}
-                      </div>
+                      <div className="flex gap-1.5 mt-2">{review.images.map((img, i) => <img key={i} src={img.url} alt="" className="w-[52px] h-[52px] rounded-lg object-cover border border-gray-200" />)}</div>
                     )}
-                    <p style={{ fontSize: 11, color: "#9CA3AF", margin: "6px 0 0" }}>
-                      👍 {review.helpfulVotes?.length || 0} found helpful
-                    </p>
+                    <p className="text-[11px] text-gray-400 mt-1.5 m-0">👍 {review.helpfulVotes?.length || 0} found helpful</p>
                   </div>
                 </div>
               ))}
             </div>
 
-            {reviewsData?.pagination && reviewsData.pagination.pages > 1 && (
-              <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 20 }}>
-                <button onClick={() => setReviewPage((p) => Math.max(1, p - 1))} disabled={reviewPage === 1} style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 12, cursor: "pointer", opacity: reviewPage === 1 ? 0.4 : 1 }}>
-                  ← Prev
-                </button>
+            {reviewsData?.pagination?.pages > 1 && (
+              <div className="flex justify-center gap-1.5 mt-5">
+                <PageBtn onClick={() => setReviewPage((p) => Math.max(1, p - 1))} disabled={reviewPage === 1}>← Prev</PageBtn>
                 {Array.from({ length: reviewsData.pagination.pages }, (_, i) => i + 1).map((p) => (
-                  <button key={p} onClick={() => setReviewPage(p)} style={{ padding: "8px 12px", borderRadius: 8, fontSize: 12, cursor: "pointer", background: reviewPage === p ? "#111" : "white", color: reviewPage === p ? "white" : "#111", border: reviewPage === p ? "none" : "1px solid #E5E7EB" }}>
-                    {p}
-                  </button>
+                  <PageBtn key={p} active={reviewPage === p} onClick={() => setReviewPage(p)}>{p}</PageBtn>
                 ))}
-                <button onClick={() => setReviewPage((p) => Math.min(reviewsData.pagination.pages, p + 1))} disabled={reviewPage === reviewsData.pagination.pages} style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 12, cursor: "pointer", opacity: reviewPage === reviewsData.pagination.pages ? 0.4 : 1 }}>
-                  Next →
-                </button>
+                <PageBtn onClick={() => setReviewPage((p) => Math.min(reviewsData.pagination.pages, p + 1))} disabled={reviewPage === reviewsData.pagination.pages}>Next →</PageBtn>
               </div>
             )}
           </div>
         )}
       </div>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 };
