@@ -1,7 +1,19 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import {
+  useForgotPasswordMutation,
+  useVerifyOTPMutation,
+  useResetPasswordMutation,
+  useResendOTPMutation,
+} from "../features/auth/authApi";
+import { toast } from "../components/Toast";
 
 const ForgotPassword = () => {
+  const [forgotPassword] = useForgotPasswordMutation();
+  const [verifyOTP] = useVerifyOTPMutation();
+  const [resetPassword] = useResetPasswordMutation();
+  const [resendOTP] = useResendOTPMutation();
+
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
@@ -29,10 +41,18 @@ const ForgotPassword = () => {
     if (!email.trim()) { setError("Email is required"); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { setError("Please enter a valid email address"); return; }
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    setIsLoading(false);
-    setStep(2);
-    startResendTimer();
+    try {
+      await forgotPassword({ email: email.trim() }).unwrap();
+      toast.success("OTP sent to your email!");
+      setStep(2);
+      startResendTimer();
+    } catch (err) {
+      const msg = err?.data?.message || "Failed to send OTP. Please try again.";
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleOtpChange = (index, value) => {
@@ -41,9 +61,7 @@ const ForgotPassword = () => {
     updated[index] = value;
     setOtp(updated);
     setError("");
-    if (value && index < 5) {
-      document.getElementById(`otp-${index + 1}`)?.focus();
-    }
+    if (value && index < 5) document.getElementById(`otp-${index + 1}`)?.focus();
   };
 
   const handleOtpKeyDown = (index, e) => {
@@ -67,9 +85,17 @@ const ForgotPassword = () => {
     const otpValue = otp.join("");
     if (otpValue.length < 6) { setError("Please enter the complete 6-digit OTP"); return; }
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    setIsLoading(false);
-    setStep(3);
+    try {
+      await verifyOTP({ email: email.trim(), otp: otpValue }).unwrap();
+      toast.success("OTP verified successfully!");
+      setStep(3);
+    } catch (err) {
+      const msg = err?.data?.message || "Invalid OTP. Please try again.";
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleResend = async () => {
@@ -77,10 +103,16 @@ const ForgotPassword = () => {
     setIsLoading(true);
     setOtp(["", "", "", "", "", ""]);
     setError("");
-    await new Promise((r) => setTimeout(r, 800));
-    setIsLoading(false);
-    startResendTimer();
-    document.getElementById("otp-0")?.focus();
+    try {
+      await resendOTP({ email: email.trim() }).unwrap();
+      toast.success("New OTP sent to your email!");
+      startResendTimer();
+      document.getElementById("otp-0")?.focus();
+    } catch (err) {
+      toast.error(err?.data?.message || "Failed to resend OTP");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const getPasswordStrength = () => {
@@ -107,19 +139,36 @@ const ForgotPassword = () => {
     if (!/[0-9]/.test(newPassword)) { setError("Password must contain at least one number"); return; }
     if (newPassword !== confirmPassword) { setError("Passwords do not match"); return; }
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    setIsLoading(false);
-    setStep(4);
+    try {
+      await resetPassword({
+        email: email.trim(),
+        otp: otp.join(""),
+        newPassword,
+      }).unwrap();
+      toast.success("Password reset successfully!");
+      setStep(4);
+    } catch (err) {
+      const msg = err?.data?.message || "Failed to reset password. Please try again.";
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const stepLabels = ["Email", "Verify OTP", "New Password", "Done"];
 
+  const ErrorAlert = ({ msg }) => msg ? (
+    <div className="bg-red-50 border border-red-100 rounded-xl p-3 flex items-center gap-2">
+      <svg className="w-4 h-4 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <p className="text-red-600 text-sm m-0">{msg}</p>
+    </div>
+  ) : null;
+
   const EyeToggle = ({ show, onToggle }) => (
-    <button
-      type="button"
-      onClick={onToggle}
-      className="absolute right-4 top-1/2 -translate-y-1/2 bg-transparent border-none cursor-pointer p-0 text-gray-400 hover:text-gray-600 transition-colors"
-    >
+    <button type="button" onClick={onToggle} className="absolute right-4 top-1/2 -translate-y-1/2 bg-transparent border-none cursor-pointer p-0 text-gray-400 hover:text-gray-600 transition-colors">
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         {show ? (
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
@@ -133,10 +182,26 @@ const ForgotPassword = () => {
     </button>
   );
 
+  const SubmitBtn = ({ label, loadingLabel }) => (
+    <button
+      type="submit"
+      disabled={isLoading}
+      className="w-full bg-gradient-to-r from-[#D85A30] to-[#e8734d] text-white py-3.5 sm:py-4 rounded-xl font-semibold shadow-lg shadow-[#D85A30]/20 hover:shadow-[#D85A30]/40 hover:scale-[1.01] transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100 text-[15px] border-none cursor-pointer font-[inherit]"
+    >
+      {isLoading ? (
+        <span className="flex items-center justify-center gap-2">
+          <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          {loadingLabel}
+        </span>
+      ) : label}
+    </button>
+  );
+
   return (
     <div className="min-h-[85vh] flex items-center justify-center px-4 py-10 sm:py-12 bg-gray-50">
       <div className="w-full max-w-[1000px] grid lg:grid-cols-2 bg-white rounded-3xl shadow-2xl shadow-black/5 overflow-hidden border border-gray-100">
 
+        {/* ── LEFT PANEL ── */}
         <div className="hidden lg:flex flex-col justify-center items-center bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#0f172a] p-10 xl:p-12 relative overflow-hidden">
           <div className="absolute top-10 left-10 w-48 h-48 bg-[#D85A30]/20 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute bottom-10 right-10 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -151,14 +216,14 @@ const ForgotPassword = () => {
               Follow the simple steps to securely reset your account password.
             </p>
 
-            <div className="space-y-3">
+            <div className="space-y-3 mb-10">
               {stepLabels.map((label, i) => {
                 const num = i + 1;
                 const isDone = step > num;
                 const isActive = step === num;
                 return (
                   <div key={label} className="flex items-center gap-4">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-extrabold shrink-0 transition-all ${isDone ? "bg-green-500 text-white" : isActive ? "bg-[#D85A30] text-white shadow-lg shadow-[#D85A30]/40" : "bg-white/10 text-gray-500"}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-extrabold shrink-0 transition-all duration-300 ${isDone ? "bg-green-500 text-white shadow-md shadow-green-500/30" : isActive ? "bg-[#D85A30] text-white shadow-lg shadow-[#D85A30]/40" : "bg-white/10 text-gray-500"}`}>
                       {isDone ? (
                         <svg width="14" height="14" fill="none" stroke="white" strokeWidth="2.5" viewBox="0 0 24 24">
                           <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
@@ -178,8 +243,8 @@ const ForgotPassword = () => {
               })}
             </div>
 
-            <div className="mt-10 p-4 bg-white/[0.05] border border-white/[0.08] rounded-2xl text-left">
-              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-2">Security Note</p>
+            <div className="p-4 bg-white/[0.05] border border-white/[0.08] rounded-2xl text-left">
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-2">🔐 Security Note</p>
               <p className="text-gray-400 text-xs leading-relaxed">
                 OTP expires in <span className="text-[#FF8C5A] font-bold">10 minutes</span>. Never share your OTP with anyone. Our team will never ask for it.
               </p>
@@ -187,6 +252,7 @@ const ForgotPassword = () => {
           </div>
         </div>
 
+        {/* ── RIGHT PANEL ── */}
         <div className="p-6 sm:p-8 xl:p-12">
 
           <div className="flex items-center gap-3 mb-6 sm:mb-8">
@@ -205,30 +271,28 @@ const ForgotPassword = () => {
                 {step === 1 && "Forgot Password?"}
                 {step === 2 && "Verify OTP"}
                 {step === 3 && "Create New Password"}
-                {step === 4 && "Password Reset!"}
+                {step === 4 && "Password Reset! 🎉"}
               </h1>
-              <p className="text-gray-500 text-xs sm:text-sm mt-0.5">
+              <p className="text-gray-500 text-xs sm:text-sm mt-0.5 m-0">
                 {step === 1 && "Enter your registered email to receive a reset OTP"}
-                {step === 2 && `OTP sent to ${email}`}
+                {step === 2 && <>OTP sent to <strong className="text-gray-700">{email}</strong></>}
                 {step === 3 && "Choose a strong password for your account"}
                 {step === 4 && "Your password has been updated successfully"}
               </p>
             </div>
           </div>
 
-          <div className="flex gap-1.5 mb-6 sm:mb-8">
+          <div className="flex gap-1.5 mb-7 sm:mb-8">
             {[1, 2, 3, 4].map((s) => (
-              <div
-                key={s}
-                className={`h-1.5 rounded-full flex-1 transition-all duration-500 ${step >= s ? "bg-[#D85A30]" : "bg-gray-200"}`}
-              />
+              <div key={s} className={`h-1.5 rounded-full flex-1 transition-all duration-500 ${step >= s ? "bg-[#D85A30]" : "bg-gray-100"}`} />
             ))}
           </div>
 
+          {/* ── STEP 1: Email ── */}
           {step === 1 && (
             <form onSubmit={handleEmailSubmit} className="space-y-5">
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-1.5 block">Email Address</label>
+                <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Email Address</label>
                 <div className="relative">
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
                     <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -244,40 +308,20 @@ const ForgotPassword = () => {
                     className="w-full border border-gray-200 pl-12 pr-4 py-3 sm:py-3.5 rounded-xl outline-none focus:border-[#D85A30] focus:ring-4 focus:ring-[#D85A30]/10 transition-all text-[15px] bg-gray-50 focus:bg-white"
                   />
                 </div>
+                <p className="text-xs text-gray-400 mt-1.5">We'll send a 6-digit OTP to this email</p>
               </div>
 
-              {error && (
-                <div className="bg-red-50 border border-red-100 rounded-xl p-3 flex items-center gap-2">
-                  <svg className="w-4 h-4 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <p className="text-red-600 text-sm">{error}</p>
-                </div>
-              )}
+              <ErrorAlert msg={error} />
 
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full bg-gradient-to-r from-[#D85A30] to-[#e8734d] text-white py-3.5 sm:py-4 rounded-xl font-semibold shadow-lg shadow-[#D85A30]/20 hover:shadow-[#D85A30]/40 hover:scale-[1.01] transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100 text-[15px] border-none cursor-pointer font-[inherit]"
-              >
-                {isLoading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                    Sending OTP...
-                  </span>
-                ) : "Send OTP →"}
-              </button>
+              <SubmitBtn label="Send OTP →" loadingLabel="Sending OTP..." />
 
               <div className="flex items-center gap-3">
-                <div className="flex-1 h-px bg-gray-200"></div>
+                <div className="flex-1 h-px bg-gray-100" />
                 <span className="text-xs text-gray-400 font-medium">OR</span>
-                <div className="flex-1 h-px bg-gray-200"></div>
+                <div className="flex-1 h-px bg-gray-100" />
               </div>
 
-              <Link
-                to="/login"
-                className="w-full flex items-center justify-center gap-2 border border-gray-200 py-3 rounded-xl text-sm font-medium text-gray-700 no-underline hover:bg-gray-50 transition-all"
-              >
+              <Link to="/login" className="w-full flex items-center justify-center gap-2 border border-gray-200 py-3 rounded-xl text-sm font-semibold text-gray-600 no-underline hover:bg-gray-50 transition-all">
                 <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" viewBox="0 0 24 24">
                   <path d="M19 12H5M12 5l-7 7 7 7" />
                 </svg>
@@ -286,20 +330,22 @@ const ForgotPassword = () => {
             </form>
           )}
 
+          {/* ── STEP 2: OTP ── */}
           {step === 2 && (
             <form onSubmit={handleOtpSubmit} className="space-y-5">
-              <div className="bg-blue-50 border border-blue-100 rounded-xl p-3.5 flex items-start gap-3">
-                <span className="text-xl shrink-0">📧</span>
+              <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex items-start gap-3">
+                <div className="w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center text-lg shrink-0">📧</div>
                 <div>
                   <p className="text-sm font-bold text-blue-800 m-0">Check your inbox</p>
                   <p className="text-xs text-blue-600 m-0 mt-0.5">
-                    We sent a 6-digit OTP to <strong>{email}</strong>. Check spam if not found.
+                    We sent a 6-digit OTP to <strong>{email}</strong>
                   </p>
+                  <p className="text-[11px] text-blue-400 mt-1 m-0">Check spam folder if not found · Expires in 10 minutes</p>
                 </div>
               </div>
 
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-3 block text-center">
+                <label className="text-sm font-semibold text-gray-700 mb-3 block text-center">
                   Enter 6-digit OTP
                 </label>
                 <div className="flex gap-2 sm:gap-3 justify-center" onPaste={handleOtpPaste}>
@@ -313,40 +359,25 @@ const ForgotPassword = () => {
                       value={digit}
                       onChange={(e) => handleOtpChange(index, e.target.value)}
                       onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                      className={`w-11 h-12 sm:w-12 sm:h-14 text-center text-lg sm:text-xl font-extrabold border-2 rounded-xl outline-none transition-all bg-gray-50 focus:bg-white ${
+                      className={`w-11 h-12 sm:w-12 sm:h-14 text-center text-lg sm:text-xl font-extrabold border-2 rounded-xl outline-none transition-all ${
                         digit
                           ? "border-[#D85A30] bg-orange-50 text-[#D85A30]"
-                          : "border-gray-200 text-gray-900 focus:border-[#D85A30] focus:ring-4 focus:ring-[#D85A30]/10"
+                          : "border-gray-200 bg-gray-50 text-gray-900 focus:border-[#D85A30] focus:bg-white focus:ring-4 focus:ring-[#D85A30]/10"
                       }`}
                     />
                   ))}
                 </div>
+                <p className="text-center text-xs text-gray-400 mt-2">
+                  {otp.filter(Boolean).length}/6 digits entered
+                </p>
               </div>
 
-              {error && (
-                <div className="bg-red-50 border border-red-100 rounded-xl p-3 flex items-center gap-2">
-                  <svg className="w-4 h-4 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <p className="text-red-600 text-sm">{error}</p>
-                </div>
-              )}
+              <ErrorAlert msg={error} />
 
-              <button
-                type="submit"
-                disabled={isLoading || otp.join("").length < 6}
-                className="w-full bg-gradient-to-r from-[#D85A30] to-[#e8734d] text-white py-3.5 sm:py-4 rounded-xl font-semibold shadow-lg shadow-[#D85A30]/20 hover:shadow-[#D85A30]/40 hover:scale-[1.01] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 text-[15px] border-none cursor-pointer font-[inherit]"
-              >
-                {isLoading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                    Verifying...
-                  </span>
-                ) : "Verify OTP →"}
-              </button>
+              <SubmitBtn label="Verify OTP →" loadingLabel="Verifying..." />
 
               <div className="text-center">
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-500 m-0">
                   Didn't receive the OTP?{" "}
                   {resendTimer > 0 ? (
                     <span className="text-gray-400 font-medium">Resend in {resendTimer}s</span>
@@ -365,10 +396,11 @@ const ForgotPassword = () => {
             </form>
           )}
 
+          {/* ── STEP 3: New Password ── */}
           {step === 3 && (
             <form onSubmit={handlePasswordSubmit} className="space-y-5">
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-1.5 block">New Password</label>
+                <label className="text-sm font-semibold text-gray-700 mb-1.5 block">New Password</label>
                 <div className="relative">
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
                     <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -387,9 +419,9 @@ const ForgotPassword = () => {
                 </div>
 
                 {newPassword && (
-                  <div className="mt-2">
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="mt-2.5 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
                         <div className={`h-full ${strength.color} rounded-full transition-all duration-300`} style={{ width: strength.width }} />
                       </div>
                       <span className={`text-xs font-bold ${strength.textColor} min-w-[50px]`}>{strength.text}</span>
@@ -401,8 +433,11 @@ const ForgotPassword = () => {
                         { check: /[0-9]/.test(newPassword), label: "Number" },
                         { check: /[^A-Za-z0-9]/.test(newPassword), label: "Special" },
                       ].map((r) => (
-                        <span key={r.label} className={`text-[11px] ${r.check ? "text-green-500" : "text-gray-400"}`}>
-                          {r.check ? "✓" : "○"} {r.label}
+                        <span key={r.label} className={`text-[11px] flex items-center gap-1 ${r.check ? "text-green-500 font-semibold" : "text-gray-400"}`}>
+                          {r.check ? (
+                            <svg width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" strokeLinecap="round" /></svg>
+                          ) : <span className="w-2.5 h-2.5 rounded-full border-[1.5px] border-gray-300 inline-block" />}
+                          {r.label}
                         </span>
                       ))}
                     </div>
@@ -411,13 +446,10 @@ const ForgotPassword = () => {
               </div>
 
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-1.5 block">Confirm Password</label>
+                <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Confirm Password</label>
                 <div className="relative">
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                    <svg
-                      className={`w-5 h-5 ${confirmPassword && newPassword === confirmPassword ? "text-green-500" : "text-gray-400"}`}
-                      fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                    >
+                    <svg className={`w-5 h-5 ${confirmPassword && newPassword === confirmPassword ? "text-green-500" : "text-gray-400"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                     </svg>
                   </div>
@@ -432,74 +464,71 @@ const ForgotPassword = () => {
                   <EyeToggle show={showConfirm} onToggle={() => setShowConfirm(!showConfirm)} />
                 </div>
                 {confirmPassword && newPassword !== confirmPassword && (
-                  <p className="text-red-500 text-xs mt-1.5">Passwords do not match</p>
+                  <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1">
+                    <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" /></svg>
+                    Passwords do not match
+                  </p>
                 )}
                 {confirmPassword && newPassword === confirmPassword && (
-                  <p className="text-green-500 text-xs mt-1.5">✓ Passwords match</p>
+                  <p className="text-green-500 text-xs mt-1.5 flex items-center gap-1">
+                    <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" strokeLinecap="round" /></svg>
+                    Passwords match
+                  </p>
                 )}
               </div>
 
-              {error && (
-                <div className="bg-red-50 border border-red-100 rounded-xl p-3 flex items-center gap-2">
-                  <svg className="w-4 h-4 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <p className="text-red-600 text-sm">{error}</p>
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full bg-gradient-to-r from-[#D85A30] to-[#e8734d] text-white py-3.5 sm:py-4 rounded-xl font-semibold shadow-lg shadow-[#D85A30]/20 hover:shadow-[#D85A30]/40 hover:scale-[1.01] transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100 text-[15px] border-none cursor-pointer font-[inherit]"
-              >
-                {isLoading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                    Updating Password...
-                  </span>
-                ) : "Reset Password →"}
-              </button>
+              <ErrorAlert msg={error} />
+              <SubmitBtn label="Reset Password →" loadingLabel="Updating Password..." />
             </form>
           )}
 
+          {/* ── STEP 4: Success ── */}
           {step === 4 && (
             <div className="text-center py-4">
-              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5">
-                <svg className="w-10 h-10 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
+              <div className="relative w-24 h-24 mx-auto mb-6">
+                <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center">
+                  <svg className="w-12 h-12 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div className="absolute -top-1 -right-1 w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center text-base shadow-md">
+                  🎉
+                </div>
               </div>
-              <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 mb-2">Password Updated! 🎉</h2>
-              <p className="text-gray-500 text-sm mb-2">Your password has been reset successfully.</p>
+
+              <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 mb-2">Password Updated!</h2>
+              <p className="text-gray-500 text-sm mb-1">Your password has been reset successfully.</p>
               <p className="text-gray-400 text-sm mb-8">You can now log in with your new password.</p>
 
-              <div className="space-y-3">
+              <div className="space-y-3 mb-6">
                 <Link
                   to="/login"
-                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#D85A30] to-[#e8734d] text-white py-3.5 sm:py-4 rounded-xl font-semibold shadow-lg shadow-[#D85A30]/20 hover:shadow-[#D85A30]/40 hover:scale-[1.01] transition-all no-underline text-[15px]"
+                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#D85A30] to-[#e8734d] text-white py-3.5 sm:py-4 rounded-xl font-bold shadow-lg shadow-[#D85A30]/20 hover:shadow-[#D85A30]/40 hover:scale-[1.01] transition-all no-underline text-[15px]"
                 >
                   Login to Your Account →
                 </Link>
                 <Link
                   to="/"
-                  className="w-full flex items-center justify-center gap-2 border border-gray-200 text-gray-700 py-3 rounded-xl font-medium text-sm no-underline hover:bg-gray-50 transition-all"
+                  className="w-full flex items-center justify-center border border-gray-200 text-gray-600 py-3 rounded-xl font-medium text-sm no-underline hover:bg-gray-50 transition-all"
                 >
                   Go to Homepage
                 </Link>
               </div>
 
-              <div className="mt-6 p-4 bg-green-50 border border-green-100 rounded-xl text-left">
-                <p className="text-xs font-bold text-green-700 mb-1">✅ Security tip</p>
-                <p className="text-xs text-green-600 leading-relaxed">
-                  For your security, all other sessions have been logged out. Enable 2FA for extra protection.
+              <div className="p-4 bg-green-50 border border-green-100 rounded-2xl text-left">
+                <p className="text-xs font-bold text-green-700 mb-1.5 flex items-center gap-1.5">
+                  <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" strokeLinecap="round" /></svg>
+                  Security tip
+                </p>
+                <p className="text-xs text-green-600 leading-relaxed m-0">
+                  All other sessions have been logged out for your security. Consider enabling 2FA for extra protection.
                 </p>
               </div>
             </div>
           )}
 
           {step < 4 && (
-            <p className="text-center mt-6 text-gray-500 text-sm">
+            <p className="text-center mt-6 text-gray-400 text-sm m-0">
               Remember your password?{" "}
               <Link to="/login" className="text-[#D85A30] font-semibold no-underline hover:underline">
                 Login

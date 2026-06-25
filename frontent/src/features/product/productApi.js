@@ -1,87 +1,68 @@
 import { authApi } from "../auth/authApi";
 
-const productApi = authApi.injectEndpoints({
+export const productApi = authApi.injectEndpoints({
   endpoints: (builder) => ({
     getAllProducts: builder.query({
       query: (params) => {
-        const searchParams = new URLSearchParams();
-        if (params?.page) searchParams.set("page", params.page);
-        if (params?.limit) searchParams.set("limit", params.limit);
-        if (params?.category) searchParams.set("category", params.category);
-        if (params?.brand) searchParams.set("brand", params.brand);
-        if (params?.minPrice) searchParams.set("minPrice", params.minPrice);
-        if (params?.maxPrice) searchParams.set("maxPrice", params.maxPrice);
-        if (params?.sort) searchParams.set("sort", params.sort);
-        if (params?.search) searchParams.set("search", params.search);
-        return `/products?${searchParams.toString()}`;
+        const q = new URLSearchParams();
+        Object.entries(params || {}).forEach(([k, v]) => { if (v) q.set(k, v); });
+        return `/products?${q.toString()}`;
       },
       providesTags: ["Products"],
     }),
     getSingleProduct: builder.query({
       query: (slug) => `/products/single/${slug}`,
+      providesTags: ["Products"],
     }),
     getVendorProducts: builder.query({
       query: (params) => {
-        const searchParams = new URLSearchParams();
-        if (params?.page) searchParams.set("page", params.page);
-        if (params?.status) searchParams.set("status", params.status);
-        return `/products/vendor?${searchParams.toString()}`;
+        const q = new URLSearchParams();
+        if (params?.status) q.set("status", params.status);
+        if (params?.page) q.set("page", params.page);
+        return `/products/vendor?${q.toString()}`;
       },
       providesTags: ["VendorProducts"],
     }),
     createProduct: builder.mutation({
-      query: (data) => ({
-        url: "/products",
-        method: "POST",
-        body: data,
-      }),
-      invalidatesTags: ["VendorProducts", "Products"],
+      query: (data) => ({ url: "/products", method: "POST", body: data }),
+      invalidatesTags: ["VendorProducts", "Products", "AdminProducts"],
     }),
     updateProduct: builder.mutation({
-      query: ({ id, ...data }) => ({
-        url: `/products/${id}`,
-        method: "PUT",
-        body: data,
-      }),
-      invalidatesTags: ["VendorProducts", "Products"],
+      query: ({ id, ...data }) => ({ url: `/products/${id}`, method: "PUT", body: data }),
+      invalidatesTags: ["VendorProducts", "Products", "AdminProducts"],
     }),
     deleteProduct: builder.mutation({
-      query: (id) => ({
-        url: `/products/${id}`,
-        method: "DELETE",
-      }),
-      invalidatesTags: ["VendorProducts", "Products"],
+      query: (id) => ({ url: `/products/${id}`, method: "DELETE" }),
+      invalidatesTags: ["VendorProducts", "Products", "AdminProducts"],
     }),
     adminGetAllProducts: builder.query({
       query: (params) => {
-        const searchParams = new URLSearchParams();
-        if (params?.page) searchParams.set("page", params.page);
-        if (params?.status) searchParams.set("status", params.status);
-        return `/products/admin/all?${searchParams.toString()}`;
+        const q = new URLSearchParams();
+        if (params?.status) q.set("status", params.status);
+        if (params?.search) q.set("search", params.search);
+        if (params?.page) q.set("page", params.page);
+        return `/products/admin/all?${q.toString()}`;
       },
       providesTags: ["AdminProducts"],
     }),
-    approveProduct: builder.mutation({
-      query: (id) => ({
-        url: `/products/admin/${id}/approve`,
-        method: "PUT",
-      }),
-      invalidatesTags: ["AdminProducts", "Products"],
-    }),
-    rejectProduct: builder.mutation({
-      query: ({ id, reason }) => ({
-        url: `/products/admin/${id}/reject`,
-        method: "PUT",
-        body: { reason },
-      }),
-      invalidatesTags: ["AdminProducts", "Products"],
-    }),
     featureProduct: builder.mutation({
-      query: (id) => ({
-        url: `/products/admin/${id}/feature`,
-        method: "PUT",
-      }),
+      query: (id) => ({ url: `/products/admin/${id}/feature`, method: "PUT" }),
       invalidatesTags: ["AdminProducts", "Products"],
+    }),
+    delistProduct: builder.mutation({
+      query: ({ id, reason }) => ({ url: `/products/admin/${id}/delist`, method: "PUT", body: { reason } }),
+      invalidatesTags: ["AdminProducts", "Products"],
+    }),
+    relistProduct: builder.mutation({
+      query: (id) => ({ url: `/products/admin/${id}/relist`, method: "PUT" }),
+      invalidatesTags: ["AdminProducts", "Products"],
+    }),
+    getVendorStats: builder.query({
+      query: () => "/products/vendor/stats",
+      providesTags: ["VendorProducts"],
+    }),
+    searchSuggestions: builder.query({
+      query: (q) => `/products/search/suggestions?q=${encodeURIComponent(q)}`,
     }),
   }),
 });
@@ -94,7 +75,9 @@ export const {
   useUpdateProductMutation,
   useDeleteProductMutation,
   useAdminGetAllProductsQuery,
-  useApproveProductMutation,
-  useRejectProductMutation,
   useFeatureProductMutation,
+  useDelistProductMutation,
+  useRelistProductMutation,
+  useGetVendorStatsQuery,
+  useSearchSuggestionsQuery,
 } = productApi;

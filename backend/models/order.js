@@ -53,7 +53,7 @@ const orderSchema = new mongoose.Schema(
     orderStatus: {
       type: String,
       enum: [
-        "pending",
+        "confirmed",
         "processing",
         "shipped",
         "out_for_delivery",
@@ -62,8 +62,9 @@ const orderSchema = new mongoose.Schema(
         "returned",
         "refunded",
       ],
-      default: "pending",
+      default: "confirmed",
     },
+    confirmedAt: { type: Date, default: null },
     subtotal: { type: Number, required: true },
     discount: { type: Number, default: 0 },
     shippingCharge: { type: Number, default: 0 },

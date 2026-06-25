@@ -3,24 +3,21 @@ import { authApi } from "../auth/authApi";
 const orderApi = authApi.injectEndpoints({
   endpoints: (builder) => ({
     placeOrder: builder.mutation({
-      query: (data) => ({
-        url: "/orders",
-        method: "POST",
-        body: data,
-      }),
+      query: (data) => ({ url: "/orders", method: "POST", body: data }),
       invalidatesTags: ["Cart", "Orders"],
     }),
     getMyOrders: builder.query({
       query: (params) => {
-        const searchParams = new URLSearchParams();
-        if (params?.page) searchParams.set("page", params.page);
-        if (params?.limit) searchParams.set("limit", params.limit);
-        return `/orders/my?${searchParams.toString()}`;
+        const q = new URLSearchParams();
+        if (params?.page) q.set("page", params.page);
+        if (params?.limit) q.set("limit", params.limit);
+        return `/orders/my?${q.toString()}`;
       },
       providesTags: ["Orders"],
     }),
     getSingleOrder: builder.query({
       query: (id) => `/orders/my/${id}`,
+      providesTags: ["Orders"],
     }),
     cancelOrder: builder.mutation({
       query: ({ id, reason }) => ({
@@ -32,29 +29,38 @@ const orderApi = authApi.injectEndpoints({
     }),
     adminGetAllOrders: builder.query({
       query: (params) => {
-        const searchParams = new URLSearchParams();
-        if (params?.page) searchParams.set("page", params.page);
-        if (params?.status) searchParams.set("status", params.status);
-        return `/orders/admin?${searchParams.toString()}`;
+        const q = new URLSearchParams();
+        if (params?.page) q.set("page", params.page);
+        if (params?.status) q.set("status", params.status);
+        if (params?.search) q.set("search", params.search);
+        return `/orders/admin?${q.toString()}`;
       },
       providesTags: ["AdminOrders"],
     }),
-    updateOrderStatus: builder.mutation({
-      query: ({ id, status }) => ({
-        url: `/orders/admin/${id}/status`,
+    adminCancelOrder: builder.mutation({
+      query: ({ id, reason }) => ({
+        url: `/orders/admin/${id}/cancel`,
         method: "PUT",
-        body: { status },
+        body: { reason },
       }),
       invalidatesTags: ["AdminOrders"],
     }),
     vendorGetOrders: builder.query({
       query: (params) => {
-        const searchParams = new URLSearchParams();
-        if (params?.page) searchParams.set("page", params.page);
-        if (params?.status) searchParams.set("status", params.status);
-        return `/orders/vendor?${searchParams.toString()}`;
+        const q = new URLSearchParams();
+        if (params?.page) q.set("page", params.page);
+        if (params?.status) q.set("status", params.status);
+        return `/orders/vendor?${q.toString()}`;
       },
       providesTags: ["VendorOrders"],
+    }),
+    vendorUpdateOrderStatus: builder.mutation({
+      query: ({ id, status, reason }) => ({
+        url: `/orders/vendor/${id}/status`,
+        method: "PUT",
+        body: { status, reason },
+      }),
+      invalidatesTags: ["VendorOrders"],
     }),
   }),
 });
@@ -65,6 +71,7 @@ export const {
   useGetSingleOrderQuery,
   useCancelOrderMutation,
   useAdminGetAllOrdersQuery,
-  useUpdateOrderStatusMutation,
+  useAdminCancelOrderMutation,
   useVendorGetOrdersQuery,
+  useVendorUpdateOrderStatusMutation,
 } = orderApi;

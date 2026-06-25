@@ -150,6 +150,10 @@ const productSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    delistReason: {
+      type: String,
+      default: "",
+    },
   },
   { timestamps: true },
 );

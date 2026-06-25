@@ -31,11 +31,11 @@ const formatDateShort = (date) =>
   });
 
 const STATUS_STEPS = [
-  { key: "pending", label: "Order Placed", icon: "📋" },
+  { key: "confirmed", label: "Order Confirmed", icon: "✅" },
   { key: "processing", label: "Processing", icon: "⚙️" },
   { key: "shipped", label: "Shipped", icon: "🚚" },
   { key: "out_for_delivery", label: "Out for Delivery", icon: "🛵" },
-  { key: "delivered", label: "Delivered", icon: "✅" },
+  { key: "delivered", label: "Delivered", icon: "📦" },
 ];
 
 const RETURNED_STEPS = [
@@ -65,7 +65,7 @@ const getStatusIndex = (steps, currentStatus) =>
 
 const getStatusColor = (status) => {
   const map = {
-    pending: { bg: "#FEF3C7", text: "#92400E", border: "#FDE68A" },
+    confirmed: { bg: "#DCFCE7", text: "#166534", border: "#86EFAC" },
     processing: { bg: "#DBEAFE", text: "#1E40AF", border: "#93C5FD" },
     shipped: { bg: "#EDE9FE", text: "#5B21B6", border: "#C4B5FD" },
     out_for_delivery: { bg: "#FFEDD5", text: "#9A3412", border: "#FDBA74" },
@@ -79,7 +79,7 @@ const getStatusColor = (status) => {
 
 const getStatusLabel = (status) => {
   const labels = {
-    pending: "Order Placed",
+    confirmed: "Order Confirmed",
     processing: "Processing",
     shipped: "Shipped",
     out_for_delivery: "Out for Delivery",

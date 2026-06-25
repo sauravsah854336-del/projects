@@ -107,6 +107,14 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    passwordResetOTP: {
+      type: String,
+      default: null,
+    },
+    passwordResetOTPExpiry: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true },
 );

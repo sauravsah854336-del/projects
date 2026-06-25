@@ -36,11 +36,11 @@ const Dashboard = () => {
   };
 
   const cards = [
+    { to: "/products", icon: "🛍️", label: "Shop Now", desc: "Browse products", bg: "bg-green-50", border: "border-green-200" },
     { to: "/orders", icon: "📦", label: "My Orders", desc: "Track & manage orders", bg: "bg-blue-50", border: "border-blue-200" },
     { to: "/cart", icon: "🛒", label: "My Cart", desc: `${cartCount} items in cart`, bg: "bg-orange-50", border: "border-orange-200" },
     { to: "/profile", icon: "👤", label: "My Profile", desc: "Edit personal info", bg: "bg-purple-50", border: "border-purple-200" },
     { to: "/wishlist", icon: "❤️", label: "Wishlist", desc: "Saved products", bg: "bg-rose-50", border: "border-rose-200" },
-    { to: "/products", icon: "🛍️", label: "Shop Now", desc: "Browse products", bg: "bg-green-50", border: "border-green-200" },
     { to: "/help", icon: "💬", label: "Help Center", desc: "FAQs & support", bg: "bg-sky-50", border: "border-sky-200" },
   ];
 

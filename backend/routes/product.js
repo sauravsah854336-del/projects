@@ -2,16 +2,9 @@ const express = require("express");
 const protect = require("../middlewares/authMiddleware");
 const authorized = require("../middlewares/roleMiddleware");
 const {
-  createProduct,
-  getVendorProducts,
-  updateProduct,
-  deleteProduct,
-  getAllProducts,
-  getSingleProduct,
-  adminGetAllProducts,
-  approveProduct,
-  rejectProduct,
-  featureProduct,
+  createProduct, getVendorProducts, updateProduct, deleteProduct,
+  getAllProducts, getSingleProduct, adminGetAllProducts,
+  featureProduct, delistProduct, relistProduct,
 } = require("../controllers/productController");
 
 const router = express.Router();
@@ -25,8 +18,8 @@ router.put("/:id", protect, authorized("vendor"), updateProduct);
 router.delete("/:id", protect, authorized("vendor"), deleteProduct);
 
 router.get("/admin/all", protect, authorized("admin"), adminGetAllProducts);
-router.put("/admin/:id/approve", protect, authorized("admin"), approveProduct);
-router.put("/admin/:id/reject", protect, authorized("admin"), rejectProduct);
 router.put("/admin/:id/feature", protect, authorized("admin"), featureProduct);
+router.put("/admin/:id/delist", protect, authorized("admin"), delistProduct);
+router.put("/admin/:id/relist", protect, authorized("admin"), relistProduct);
 
 module.exports = router;
