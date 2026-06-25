@@ -1,5 +1,6 @@
 const Product = require("../models/product");
 const Vendor = require("../models/vendors");
+const Order = require("../models/order");
 const Category = require("../models/category");
 
 const createProduct = async (req, res) => {
@@ -202,7 +203,33 @@ const getAllProducts = async (req, res) => {
       if (minPrice) filter.price.$gte = Number(minPrice);
       if (maxPrice) filter.price.$lte = Number(maxPrice);
     }
-    if (search) filter.$text = { $search: search };
+
+    if (search) {
+      const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regex = new RegExp(escaped, "i");
+
+      const matchingCategories = await Category.find({ name: regex }).select("_id");
+      const matchingVendors = await Vendor.find({
+        storeName: regex,
+        approvalStatus: "approved",
+        isDeleted: false,
+      }).select("userId");
+
+      filter.$or = [
+        { name: regex },
+        { description: regex },
+        { shortDescription: regex },
+        { brand: regex },
+        { tags: regex },
+      ];
+
+      if (matchingCategories.length > 0) {
+        filter.$or.push({ category: { $in: matchingCategories.map((c) => c._id) } });
+      }
+      if (matchingVendors.length > 0) {
+        filter.$or.push({ vendor: { $in: matchingVendors.map((v) => v.userId) } });
+      }
+    }
 
     let sortOption = { createdAt: -1 };
     if (sort === "price_low") sortOption = { price: 1 };
@@ -343,6 +370,145 @@ const relistProduct = async (req, res) => {
   }
 };
 
+const getVendorStats = async (req, res) => {
+  try {
+    const vendorId = req.user.id;
+
+    const [totalProducts, approvedProducts, outOfStockProducts] = await Promise.all([
+      Product.countDocuments({ vendor: vendorId, isDeleted: false }),
+      Product.countDocuments({ vendor: vendorId, isDeleted: false, status: "approved" }),
+      Product.countDocuments({ vendor: vendorId, isDeleted: false, status: "approved", stock: 0 }),
+    ]);
+
+    const activeProducts = await Product.find({
+      vendor: vendorId,
+      isDeleted: false,
+      status: "approved",
+      stock: { $gt: 0 },
+    }).select("stock lowStockThreshold");
+
+    const lowStockProducts = activeProducts.filter(
+      (p) => p.stock <= (p.lowStockThreshold || 5)
+    ).length;
+
+    const now = new Date();
+    const last7Days = new Date(now - 7 * 24 * 60 * 60 * 1000);
+    const last30Days = new Date(now - 30 * 24 * 60 * 60 * 1000);
+    const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+
+    const allVendorOrders = await Order.find({ "items.vendor": vendorId }).lean();
+
+    const orderCounts = {
+      total: allVendorOrders.length,
+      confirmed: 0,
+      processing: 0,
+      shipped: 0,
+      out_for_delivery: 0,
+      delivered: 0,
+      cancelled: 0,
+      last7Days: 0,
+      last30Days: 0,
+    };
+
+    allVendorOrders.forEach((order) => {
+      if (order.orderStatus in orderCounts) {
+        orderCounts[order.orderStatus]++;
+      }
+      const createdAt = new Date(order.createdAt);
+      if (createdAt >= last7Days) orderCounts.last7Days++;
+      if (createdAt >= last30Days) orderCounts.last30Days++;
+    });
+
+    const getVendorRevenue = (order) => {
+      return order.items
+        .filter((item) => item.vendor?.toString() === vendorId.toString())
+        .reduce((sum, item) => sum + item.price * item.quantity, 0);
+    };
+
+    const deliveredOrders = allVendorOrders.filter((o) => o.orderStatus === "delivered");
+
+    const totalRevenue = deliveredOrders.reduce((sum, order) => sum + getVendorRevenue(order), 0);
+
+    const thisMonthRevenue = deliveredOrders
+      .filter((o) => new Date(o.createdAt) >= startOfThisMonth)
+      .reduce((sum, order) => sum + getVendorRevenue(order), 0);
+
+    const lastMonthRevenue = deliveredOrders
+      .filter((o) => {
+        const d = new Date(o.createdAt);
+        return d >= startOfLastMonth && d <= endOfLastMonth;
+      })
+      .reduce((sum, order) => sum + getVendorRevenue(order), 0);
+
+    const monthlyGrowth =
+      lastMonthRevenue > 0
+        ? Math.round(((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100)
+        : thisMonthRevenue > 0
+        ? 100
+        : 0;
+
+    const dailyRevenue = {};
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().split("T")[0];
+      dailyRevenue[key] = 0;
+    }
+
+    deliveredOrders.forEach((order) => {
+      const key = new Date(order.createdAt).toISOString().split("T")[0];
+      if (key in dailyRevenue) {
+        dailyRevenue[key] += getVendorRevenue(order);
+      }
+    });
+
+    const topProducts = await Product.find({
+      vendor: vendorId,
+      isDeleted: false,
+      status: "approved",
+      totalSold: { $gt: 0 },
+    })
+      .sort({ totalSold: -1 })
+      .limit(5)
+      .select("name price images averageRating totalSold")
+      .lean();
+
+    const vendorProfile = await Vendor.findOne({ userId: vendorId })
+      .select("storeName commission")
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        revenue: {
+          total: totalRevenue,
+          thisMonth: thisMonthRevenue,
+          lastMonth: lastMonthRevenue,
+          monthlyGrowth: monthlyGrowth,
+          daily: dailyRevenue,
+        },
+        orders: orderCounts,
+        products: {
+          total: totalProducts,
+          approved: approvedProducts,
+          lowStock: lowStockProducts,
+          outOfStock: outOfStockProducts,
+        },
+        topProducts,
+        store: {
+          storeName: vendorProfile?.storeName || "",
+          commission: vendorProfile?.commission || 10,
+        },
+      },
+    });
+  } catch (err) {
+    console.error("getVendorStats error:", err);
+    return res.status(500).json({ success: false, message: err.message || "Server error" });
+  }
+};
+
 module.exports = {
   createProduct,
   getVendorProducts,
@@ -354,4 +520,5 @@ module.exports = {
   featureProduct,
   delistProduct,
   relistProduct,
+  getVendorStats,
 };

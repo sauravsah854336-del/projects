@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { authApi, useLoginMutation } from "../features/auth/authApi";
 import { useMergeGuestCartMutation } from "../features/cart/cartApi";
 import { useMergeWishlistMutation } from "../features/wishlist/wishlistApi";
 import { setCredentials } from "../features/auth/authSlice";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { getGuestCartForMerge, clearGuestCart } from "../utils/guestCart";
 import { getGuestWishlistForMerge, clearGuestWishlist } from "../utils/guestWishlist";
@@ -29,6 +29,7 @@ const Login = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { user, token, isAuthChecked } = useSelector((state) => state.auth);
   const [login, { isLoading, error }] = useLoginMutation();
   const [mergeGuestCart] = useMergeGuestCartMutation();
   const [mergeWishlist] = useMergeWishlistMutation();
@@ -37,18 +38,23 @@ const Login = () => {
   const [formError, setFormError] = useState("");
 
   const redirectPath = searchParams.get("redirect");
-
   const [form, setForm] = useState({ email: "", password: "" });
+
+  useEffect(() => {
+    if (isAuthChecked && user && token) {
+      if (user.role === "admin") {
+        navigate("/admin/dashboard", { replace: true });
+      } else if (user.role === "vendor") {
+        navigate("/vendor/dashboard", { replace: true });
+      } else {
+        navigate(redirectPath || "/", { replace: true });
+      }
+    }
+  }, [isAuthChecked, user, token]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
     setFormError("");
-  };
-
-  const getRoleDashboard = (role) => {
-    if (role === "admin") return "/admin/dashboard";
-    if (role === "vendor") return "/vendor/dashboard";
-    return "/dashboard";
   };
 
   const handleSubmit = async (e) => {
@@ -100,13 +106,15 @@ const Login = () => {
         }
       }
 
-      setTimeout(() => {
-        if (redirectPath) {
-          navigate(redirectPath, { replace: true });
-        } else {
-          navigate(getRoleDashboard(res.user.role), { replace: true });
-        }
-      }, 200);
+      const role = res.user?.role;
+      if (role === "admin") {
+        navigate("/admin/dashboard", { replace: true });
+      } else if (role === "vendor") {
+        navigate("/vendor/dashboard", { replace: true });
+      } else {
+        navigate(redirectPath || "/", { replace: true });
+      }
+
     } catch (err) {
       console.log(err);
     }
@@ -147,7 +155,6 @@ const Login = () => {
         <div className="hidden lg:flex flex-col justify-center items-center bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#0f172a] p-10 xl:p-12 relative overflow-hidden">
           <div className="absolute top-10 left-10 w-48 h-48 bg-[#D85A30]/20 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute bottom-10 right-10 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-
           <div className="relative text-center">
             <div className="w-16 h-16 bg-gradient-to-br from-[#D85A30] to-[#e8734d] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-[#D85A30]/30">
               <span className="text-white font-extrabold text-2xl">E</span>
@@ -176,27 +183,13 @@ const Login = () => {
           </div>
 
           {redirectPath === "/checkout" && (
-            <RedirectBanner
-              icon="🛒"
-              text="Sign in to complete your checkout. Your cart items are saved."
-              color="bg-blue-50 border border-blue-200 text-blue-700"
-            />
+            <RedirectBanner icon="🛒" text="Sign in to complete your checkout. Your cart items are saved." color="bg-blue-50 border border-blue-200 text-blue-700" />
           )}
-
           {redirectPath === "/wishlist" && (
-            <RedirectBanner
-              icon="❤️"
-              text="Sign in to save your wishlist permanently."
-              color="bg-pink-50 border border-pink-200 text-pink-700"
-            />
+            <RedirectBanner icon="❤️" text="Sign in to save your wishlist permanently." color="bg-pink-50 border border-pink-200 text-pink-700" />
           )}
-
           {redirectPath === "/cart" && (
-            <RedirectBanner
-              icon="🛍️"
-              text="Sign in to view and manage your cart."
-              color="bg-orange-50 border border-orange-200 text-orange-700"
-            />
+            <RedirectBanner icon="🛍️" text="Sign in to view and manage your cart." color="bg-orange-50 border border-orange-200 text-orange-700" />
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
@@ -293,10 +286,7 @@ const Login = () => {
 
           <div className="mt-4 sm:mt-6 grid grid-cols-2 gap-3">
             {socialBtns.map((btn) => (
-              <button
-                key={btn.label}
-                className="flex items-center justify-center gap-2 border border-gray-200 py-2.5 sm:py-3 rounded-xl hover:bg-gray-50 transition-all text-sm font-medium text-gray-700 cursor-pointer bg-white font-[inherit]"
-              >
+              <button key={btn.label} className="flex items-center justify-center gap-2 border border-gray-200 py-2.5 sm:py-3 rounded-xl hover:bg-gray-50 transition-all text-sm font-medium text-gray-700 cursor-pointer bg-white font-[inherit]">
                 {btn.icon}
                 {btn.label}
               </button>

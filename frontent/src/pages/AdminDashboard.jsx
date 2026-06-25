@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { logout } from "../features/auth/authSlice";
+import { useSelector } from "react-redux";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
-  authApi, useLogoutMutation, useGetPendingVendorsQuery,
+  useGetPendingVendorsQuery,
   useGetAllVendorsQuery, useApproveVendorMutation, useRejectVendorMutation,
   useGetAdminStatsQuery, useGetAllAdminsQuery, useGetAllCustomersQuery,
   useGetSingleCustomerQuery, useBlockCustomerMutation, useUnblockCustomerMutation,
@@ -22,7 +22,6 @@ import {
 import {
   useAdminGetAllReviewsQuery, useDeleteReviewMutation,
 } from "../features/review/reviewApi";
-import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "../components/Toast";
 
 const formatRupee = (amt) =>
@@ -32,20 +31,26 @@ const formatDate = (d) =>
   new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
 const statusMap = {
-  confirmed: "bg-green-100 text-green-800",
-  pending: "bg-yellow-100 text-yellow-800", processing: "bg-blue-100 text-blue-800",
-  shipped: "bg-purple-100 text-purple-800", out_for_delivery: "bg-orange-100 text-orange-800",
-  delivered: "bg-green-100 text-green-800", cancelled: "bg-red-100 text-red-800",
-  returned: "bg-gray-100 text-gray-700", refunded: "bg-pink-100 text-pink-800",
-  approved: "bg-green-100 text-green-800", rejected: "bg-red-100 text-red-800",
-  suspended: "bg-orange-100 text-orange-800", active: "bg-green-100 text-green-800",
-  blocked: "bg-red-100 text-red-800", inactive: "bg-gray-100 text-gray-700",
-  delisted: "bg-gray-100 text-gray-600",
+  confirmed: { bg: "bg-emerald-100", text: "text-emerald-800", dot: "bg-emerald-500" },
+  pending: { bg: "bg-amber-100", text: "text-amber-800", dot: "bg-amber-500" },
+  processing: { bg: "bg-indigo-100", text: "text-indigo-800", dot: "bg-indigo-500" },
+  shipped: { bg: "bg-violet-100", text: "text-violet-800", dot: "bg-violet-500" },
+  out_for_delivery: { bg: "bg-amber-100", text: "text-amber-800", dot: "bg-amber-500" },
+  delivered: { bg: "bg-green-100", text: "text-green-800", dot: "bg-green-500" },
+  cancelled: { bg: "bg-red-100", text: "text-red-800", dot: "bg-red-500" },
+  returned: { bg: "bg-gray-100", text: "text-gray-700", dot: "bg-gray-400" },
+  refunded: { bg: "bg-pink-100", text: "text-pink-800", dot: "bg-pink-500" },
+  approved: { bg: "bg-emerald-100", text: "text-emerald-800", dot: "bg-emerald-500" },
+  rejected: { bg: "bg-red-100", text: "text-red-800", dot: "bg-red-500" },
+  suspended: { bg: "bg-amber-100", text: "text-amber-800", dot: "bg-amber-500" },
+  active: { bg: "bg-emerald-100", text: "text-emerald-800", dot: "bg-emerald-500" },
+  blocked: { bg: "bg-red-100", text: "text-red-800", dot: "bg-red-500" },
+  inactive: { bg: "bg-gray-100", text: "text-gray-700", dot: "bg-gray-400" },
+  delisted: { bg: "bg-gray-100", text: "text-gray-600", dot: "bg-gray-400" },
 };
 
 const statusLabel = {
-  confirmed: "Confirmed",
-  pending: "Pending", processing: "Processing", shipped: "Shipped",
+  confirmed: "Confirmed", pending: "Pending", processing: "Processing", shipped: "Shipped",
   out_for_delivery: "Out for Delivery", delivered: "Delivered",
   cancelled: "Cancelled", returned: "Returned", refunded: "Refunded",
   approved: "Live", rejected: "Rejected", suspended: "Suspended",
@@ -53,14 +58,18 @@ const statusLabel = {
   delisted: "Delisted",
 };
 
-const Badge = ({ status }) => (
-  <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${statusMap[status] || "bg-gray-100 text-gray-700"}`}>
-    {statusLabel[status] || status}
-  </span>
-);
+const Badge = ({ status }) => {
+  const cfg = statusMap[status] || { bg: "bg-gray-100", text: "text-gray-700", dot: "bg-gray-400" };
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${cfg.bg} ${cfg.text}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+      {statusLabel[status] || status}
+    </span>
+  );
+};
 
 const InfoRow = ({ label, value, mono }) => (
-  <div className="flex justify-between items-start py-2 border-b border-gray-100">
+  <div className="flex justify-between items-start py-2 border-b border-gray-100 last:border-0">
     <span className="text-xs text-gray-500 font-medium shrink-0 mr-4">{label}</span>
     <span className={`text-xs text-gray-900 font-semibold text-right break-all ${mono ? "font-mono" : ""}`}>{value || "—"}</span>
   </div>
@@ -69,7 +78,7 @@ const InfoRow = ({ label, value, mono }) => (
 const SecTitle = ({ icon, title }) => (
   <div className="flex items-center gap-2 pt-3 pb-2 mt-2">
     <span className="text-sm">{icon}</span>
-    <span className="text-[10px] font-black uppercase tracking-[0.08em] text-purple-700">{title}</span>
+    <span className="text-[10px] font-black uppercase tracking-[0.08em] text-[#4338ca]">{title}</span>
   </div>
 );
 
@@ -82,7 +91,7 @@ const DocPreview = ({ label, doc }) => {
   );
   const isPdf = doc.url.endsWith(".pdf") || doc.filename?.endsWith(".pdf");
   return (
-    <div className="py-2 border-b border-gray-100">
+    <div className="py-2 border-b border-gray-100 last:border-0">
       <p className="text-xs text-gray-500 font-medium mb-1.5 m-0">{label}</p>
       <div className="flex items-center gap-2.5">
         {isPdf ? (
@@ -94,7 +103,7 @@ const DocPreview = ({ label, doc }) => {
         )}
         <div>
           <p className="text-[11px] text-gray-700 font-semibold m-0">{doc.filename || "Document"}</p>
-          <a href={doc.url} target="_blank" rel="noreferrer" className="text-[11px] text-purple-700 font-semibold no-underline hover:underline">View Document →</a>
+          <a href={doc.url} target="_blank" rel="noreferrer" className="text-[11px] text-[#4338ca] font-semibold no-underline hover:underline">View Document →</a>
         </div>
       </div>
     </div>
@@ -102,14 +111,33 @@ const DocPreview = ({ label, doc }) => {
 };
 
 const TabBtn = ({ active, onClick, icon, label, badge }) => (
-  <button onClick={onClick} className={`relative flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-[12px] sm:text-[13px] font-bold cursor-pointer border transition-all font-[inherit] ${active ? "bg-[#131921] text-white border-[#131921]" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"}`}>
-    <span>{icon}</span>{label}
-    {badge > 0 && <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-[#D85A30] text-white text-[9px] font-extrabold rounded-full flex items-center justify-center">{badge > 9 ? "9+" : badge}</span>}
+  <button
+    onClick={onClick}
+    className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-bold cursor-pointer border transition-all duration-200 font-[inherit] ${
+      active
+        ? "bg-white text-[#4338ca] border-white shadow-md"
+        : "bg-white/10 text-white border-white/20 hover:bg-white/20"
+    }`}
+  >
+    <span className="text-base">{icon}</span>
+    {label}
+    {badge > 0 && (
+      <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[9px] font-extrabold rounded-full flex items-center justify-center shadow">
+        {badge > 9 ? "9+" : badge}
+      </span>
+    )}
   </button>
 );
 
 const FilterBtn = ({ active, onClick, children }) => (
-  <button onClick={onClick} className={`px-3.5 py-2 rounded-lg text-xs font-bold cursor-pointer border transition-all capitalize font-[inherit] ${active ? "bg-[#131921] text-white border-[#131921]" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"}`}>
+  <button
+    onClick={onClick}
+    className={`px-3.5 py-2 rounded-lg text-xs font-bold cursor-pointer border transition-all capitalize font-[inherit] ${
+      active
+        ? "bg-[#4338ca] text-white border-[#4338ca]"
+        : "bg-white text-gray-600 border-gray-200 hover:border-[#4338ca] hover:text-[#4338ca]"
+    }`}
+  >
     {children}
   </button>
 );
@@ -118,9 +146,9 @@ const ActionBtn = ({ variant = "view", onClick, children, className = "" }) => {
   const cls = {
     approve: "bg-green-100 text-green-800 border-green-200 hover:bg-green-500 hover:text-white",
     reject: "bg-red-100 text-red-800 border-red-200 hover:bg-red-500 hover:text-white",
-    view: "bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-600 hover:text-white",
+    view: "bg-indigo-100 text-[#4338ca] border-indigo-200 hover:bg-[#4338ca] hover:text-white",
     delete: "bg-red-50 text-red-800 border-red-200 hover:bg-red-100",
-    warn: "bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-500 hover:text-white",
+    warn: "bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-500 hover:text-white",
     info: "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-500 hover:text-white",
   };
   return (
@@ -131,22 +159,30 @@ const ActionBtn = ({ variant = "view", onClick, children, className = "" }) => {
 };
 
 const PageBtn = ({ active, onClick, disabled, children }) => (
-  <button onClick={onClick} disabled={disabled} className={`px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer border transition-all font-[inherit] disabled:opacity-40 disabled:cursor-not-allowed ${active ? "bg-[#131921] text-white border-[#131921]" : "bg-white text-gray-900 border-gray-200 hover:bg-gray-50"}`}>
+  <button
+    onClick={onClick}
+    disabled={disabled}
+    className={`px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer border transition-all font-[inherit] disabled:opacity-40 disabled:cursor-not-allowed ${
+      active
+        ? "bg-[#4338ca] text-white border-[#4338ca]"
+        : "bg-white text-gray-900 border-gray-200 hover:bg-gray-50"
+    }`}
+  >
     {children}
   </button>
 );
 
 const EmptyState = ({ icon, title, subtitle }) => (
-  <div className="text-center py-12 bg-white rounded-2xl border border-gray-100">
-    <p className="text-4xl mb-3">{icon}</p>
+  <div className="text-center py-16 bg-white rounded-2xl border border-gray-100 shadow-sm">
+    <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl">{icon}</div>
     <p className="text-base font-bold text-gray-900 m-0">{title}</p>
-    {subtitle && <p className="text-[13px] text-gray-500 mt-1 m-0">{subtitle}</p>}
+    {subtitle && <p className="text-[13px] text-gray-500 mt-2 m-0">{subtitle}</p>}
   </div>
 );
 
 const Spinner = ({ text }) => (
-  <div className="text-center py-10">
-    <div className="w-7 h-7 border-[3px] border-[#D85A30] border-t-transparent rounded-full animate-spin mx-auto mb-2.5" />
+  <div className="text-center py-12">
+    <div className="w-8 h-8 border-[3px] border-[#4338ca] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
     <p className="text-gray-500 text-[13px] m-0">{text}</p>
   </div>
 );
@@ -160,28 +196,26 @@ const RejectPanel = ({ show, reason, setReason, onConfirm, onCancel, placeholder
         <input type="text" placeholder={placeholder || "Reason..."} value={reason} onChange={(e) => setReason(e.target.value)}
           className="flex-1 border border-red-200 rounded-lg px-3 py-2.5 text-[13px] outline-none focus:border-red-400 bg-white font-[inherit]"
         />
-        <button onClick={onConfirm} className="bg-red-500 text-white border-none rounded-lg px-4 py-2.5 text-xs font-bold cursor-pointer font-[inherit]">Confirm</button>
-        <button onClick={onCancel} className="bg-white text-gray-700 border border-gray-200 rounded-lg px-3 py-2.5 text-xs font-semibold cursor-pointer font-[inherit]">Cancel</button>
+        <button onClick={onConfirm} className="bg-red-500 text-white border-none rounded-lg px-4 py-2.5 text-xs font-bold cursor-pointer hover:bg-red-600 transition font-[inherit]">Confirm</button>
+        <button onClick={onCancel} className="bg-white text-gray-700 border border-gray-200 rounded-lg px-3 py-2.5 text-xs font-semibold cursor-pointer hover:bg-gray-50 transition font-[inherit]">Cancel</button>
       </div>
     </div>
   );
 };
 
-const StatCard = ({ icon, label, value, sub, iconBg = "bg-gray-50", trend }) => (
-  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-5 flex flex-col gap-3">
-    <div className="flex items-center justify-between">
-      <div className={`w-10 h-10 ${iconBg} rounded-xl flex items-center justify-center text-xl`}>{icon}</div>
+const StatCard = ({ icon, label, value, sub, iconBg = "bg-indigo-50", iconColor = "text-[#4338ca]", trend }) => (
+  <div className="bg-white rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100">
+    <div className="flex items-center justify-between mb-4">
+      <div className={`w-12 h-12 ${iconBg} ${iconColor} rounded-xl flex items-center justify-center text-xl`}>{icon}</div>
       {trend !== undefined && (
-        <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${trend >= 0 ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"}`}>
+        <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${trend >= 0 ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"}`}>
           {trend >= 0 ? "▲" : "▼"} {Math.abs(trend)}%
         </span>
       )}
     </div>
-    <div>
-      <p className="text-xl sm:text-2xl font-extrabold text-gray-900 m-0">{value}</p>
-      <p className="text-xs text-gray-500 mt-0.5 m-0">{label}</p>
-      {sub && <p className="text-[11px] text-gray-400 mt-0.5 m-0">{sub}</p>}
-    </div>
+    <p className="text-2xl font-black text-gray-900 m-0 leading-none">{value}</p>
+    <p className="text-sm text-gray-500 mt-1.5 m-0">{label}</p>
+    {sub && <p className="text-xs text-gray-400 mt-0.5 m-0">{sub}</p>}
   </div>
 );
 
@@ -192,10 +226,8 @@ const ProductImg = ({ src, alt, size = "72px" }) => (
 );
 
 const AdminDashboard = () => {
-  const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { user, refreshToken } = useSelector((state) => state.auth);
-  const [logoutAPI] = useLogoutMutation();
+  const { user } = useSelector((state) => state.auth);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "overview";
@@ -276,11 +308,6 @@ const AdminDashboard = () => {
   const { data: reviewsData, isLoading: reviewsLoading } = useAdminGetAllReviewsQuery({ rating: reviewRatingFilter, sort: reviewSort, page: reviewPage, limit: 10 });
   const [deleteReview] = useDeleteReviewMutation();
 
-  const handleLogout = async () => {
-    try { await logoutAPI({ refreshToken }).unwrap(); } catch (err) { console.log(err); }
-    finally { dispatch(authApi.util.resetApiState()); dispatch(logout()); navigate("/login"); }
-  };
-
   const handleApprove = async (vendorId) => { try { await approveVendor(vendorId).unwrap(); setExpandedVendor(null); toast.success("Vendor approved!"); } catch { toast.error("Failed to approve vendor"); } };
   const handleReject = async (vendorId) => { try { await rejectVendor({ vendorId, reason: rejectReason }).unwrap(); setRejectingId(null); setRejectReason(""); setExpandedVendor(null); toast.success("Vendor rejected"); } catch { toast.error("Failed to reject vendor"); } };
   const handleSuspend = async (vendorId) => { try { await suspendVendor({ vendorId, reason: suspendReason }).unwrap(); setSuspendingId(null); setSuspendReason(""); toast.success("Vendor suspended"); } catch { toast.error("Failed to suspend vendor"); } };
@@ -321,10 +348,17 @@ const AdminDashboard = () => {
   };
 
   const pendingVendorCount = pendingData?.data?.length || 0;
-  const inputCls = "w-full border-[1.5px] border-gray-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-[#D85A30] focus:ring-2 focus:ring-[#D85A30]/10 transition bg-white font-[inherit]";
+  const inputCls = "w-full border-[1.5px] border-gray-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-[#4338ca] focus:ring-2 focus:ring-[#4338ca]/10 transition bg-white font-[inherit]";
 
   const dailyData = stats?.revenue?.daily ? Object.entries(stats.revenue.daily) : [];
-  const maxDaily = Math.max(...dailyData.map(([, v]) => v), 1);
+  const maxDaily = dailyData.length > 0 ? Math.max(...dailyData.map(([, v]) => v), 1) : 1;
+
+  const greeting = () => {
+    const h = new Date().getHours();
+    if (h < 12) return "Good Morning";
+    if (h < 17) return "Good Afternoon";
+    return "Good Evening";
+  };
 
   const tabs = [
     { key: "overview", label: "Overview", icon: "📊" },
@@ -339,131 +373,190 @@ const AdminDashboard = () => {
 
   return (
     <div className="bg-gray-50 min-h-screen">
+      <style>{`
+        @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+        .fade-up { animation: fadeUp 0.25s ease both; }
+      `}</style>
 
-      <div className="bg-[#131921] px-4 sm:px-6 py-4 sm:py-5">
-        <div className="max-w-[1200px] mx-auto flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 bg-gradient-to-br from-[#D85A30] to-[#FF8C5A] rounded-xl flex items-center justify-center text-white font-extrabold text-base shadow-md shadow-orange-500/30">
-              {user?.firstName?.[0]?.toUpperCase()}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <p className="text-white font-extrabold text-base sm:text-lg m-0">{user?.firstName} {user?.lastName}</p>
-                <span className="text-[9px] bg-red-500/20 text-red-300 border border-red-500/30 px-2 py-0.5 rounded-full font-bold uppercase">Admin</span>
+      <div className="bg-gradient-to-br from-[#3730a3] via-[#4338ca] to-[#4f46e5] shadow-lg shadow-indigo-200/50">
+        <div className="max-w-[1280px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => navigate("/admin/profile")}
+                className="relative cursor-pointer group bg-transparent border-none p-0"
+                title="Go to Profile"
+              >
+                <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-[#4338ca] font-black text-xl shadow-lg overflow-hidden group-hover:scale-105 transition-transform">
+                  {user?.avatar ? (
+                    <img src={user.avatar} alt="" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = "none"; }} />
+                  ) : (
+                    user?.firstName?.[0]?.toUpperCase()
+                  )}
+                </div>
+                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-red-400 rounded-full border-2 border-white shadow" />
+              </button>
+              <div>
+                <p className="text-indigo-200 text-xs font-medium m-0">{greeting()} 👋</p>
+                <h1 className="text-white font-black text-xl sm:text-2xl m-0 mt-0.5">
+                  {user?.firstName} {user?.lastName}
+                </h1>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <span className="bg-red-500/20 text-red-100 border border-red-400/30 text-xs font-bold px-2.5 py-1 rounded-full">
+                    👑 Admin
+                  </span>
+                  <span className="text-indigo-200 text-xs">{user?.email}</span>
+                </div>
               </div>
-              <p className="text-gray-500 text-[11px] m-0">{user?.email}</p>
+            </div>
+
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <button
+                onClick={() => navigate("/admin/profile")}
+                className="flex items-center gap-2 bg-white/10 border border-white/20 text-white text-sm font-semibold px-4 py-2.5 rounded-xl cursor-pointer hover:bg-white/20 transition font-[inherit]"
+              >
+                <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round">
+                  <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+                My Profile
+              </button>
             </div>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            {pendingVendorCount > 0 && (
-              <button onClick={() => { setActiveTab("vendors"); setVendorView("pending"); }} className="bg-yellow-500/15 border border-yellow-400/30 text-yellow-300 text-xs font-bold px-3 py-2 rounded-lg cursor-pointer hover:bg-yellow-500/25 transition font-[inherit]">
-                🕐 {pendingVendorCount} pending vendor{pendingVendorCount > 1 ? "s" : ""}
-              </button>
-            )}
-            <button onClick={handleLogout} className="bg-white/8 border border-white/15 text-white text-sm font-bold px-4 py-2 rounded-xl cursor-pointer hover:bg-white/15 transition font-[inherit]">
-              Sign Out
-            </button>
+
+          {!statsLoading && stats && (
+            <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { label: "Total Revenue", value: formatRupee(stats?.revenue?.total), icon: "💰" },
+                { label: "Total Orders", value: stats?.orders?.total || 0, icon: "🛒" },
+                { label: "Customers", value: stats?.customers?.total || 0, icon: "👥" },
+                { label: "Vendors", value: stats?.vendors?.total || 0, icon: "🏪" },
+              ].map((item) => (
+                <div key={item.label} className="bg-white/15 backdrop-blur-sm border border-white/20 rounded-2xl px-4 py-3.5 flex items-center gap-3">
+                  <span className="text-2xl">{item.icon}</span>
+                  <div>
+                    <p className="text-white font-extrabold text-lg m-0 leading-none">{item.value}</p>
+                    <p className="text-indigo-200 text-[11px] mt-0.5 m-0">{item.label}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex gap-1.5 mt-6 flex-wrap">
+            {tabs.map((tab) => (
+              <TabBtn key={tab.key} active={activeTab === tab.key} onClick={() => setActiveTab(tab.key)} icon={tab.icon} label={tab.label} badge={tab.badge} />
+            ))}
           </div>
         </div>
       </div>
 
-      <div className="max-w-[1200px] mx-auto px-3 sm:px-4 py-5 sm:py-6">
-
-        <div className="flex gap-1.5 sm:gap-2 mb-6 flex-wrap">
-          {tabs.map((tab) => (
-            <TabBtn key={tab.key} active={activeTab === tab.key} onClick={() => setActiveTab(tab.key)} icon={tab.icon} label={tab.label} badge={tab.badge} />
-          ))}
-        </div>
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
 
         {activeTab === "overview" && (
-          <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-5 fade-up">
             {statsLoading ? <Spinner text="Loading dashboard..." /> : (
               <>
                 {pendingVendorCount > 0 && (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-2xl px-5 py-3.5 flex items-center gap-3">
-                    <span className="text-xl">⚠️</span>
-                    <div className="flex-1"><p className="text-sm font-bold text-yellow-800 m-0">{pendingVendorCount} vendor application{pendingVendorCount > 1 ? "s" : ""} awaiting review</p></div>
-                    <button onClick={() => { setActiveTab("vendors"); setVendorView("pending"); }} className="text-xs font-bold text-yellow-700 bg-yellow-100 border border-yellow-200 rounded-lg px-3 py-1.5 cursor-pointer font-[inherit]">Review Now →</button>
+                  <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 flex items-center gap-3.5">
+                    <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center text-xl shrink-0">⚠️</div>
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-amber-800 m-0">{pendingVendorCount} vendor application{pendingVendorCount > 1 ? "s" : ""} awaiting review</p>
+                      <p className="text-xs text-amber-600 m-0 mt-0.5">Review and approve to grow your marketplace</p>
+                    </div>
+                    <button onClick={() => { setActiveTab("vendors"); setVendorView("pending"); }} className="text-xs font-bold text-amber-700 bg-amber-100 border border-amber-200 rounded-lg px-3 py-1.5 cursor-pointer hover:bg-amber-200 transition font-[inherit] whitespace-nowrap">Review Now →</button>
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <StatCard icon="💰" label="Total Revenue" value={formatRupee(stats?.revenue?.total)} sub="All delivered orders" iconBg="bg-green-50" />
-                  <StatCard icon="📅" label="This Month" value={formatRupee(stats?.revenue?.thisMonth)} sub={`Last month: ${formatRupee(stats?.revenue?.lastMonth)}`} iconBg="bg-blue-50" />
-                  <StatCard icon="🛒" label="Total Orders" value={stats?.orders?.total || 0} sub={`${stats?.orders?.thisMonth || 0} this month`} iconBg="bg-purple-50" />
-                  <StatCard icon="👥" label="Customers" value={stats?.customers?.total || 0} sub={`${stats?.customers?.active || 0} active`} iconBg="bg-orange-50" />
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  <StatCard icon="💰" label="Total Revenue" value={formatRupee(stats?.revenue?.total)} sub="All delivered orders" iconBg="bg-indigo-50" iconColor="text-[#4338ca]" />
+                  <StatCard icon="📅" label="This Month" value={formatRupee(stats?.revenue?.thisMonth)} sub={`Last: ${formatRupee(stats?.revenue?.lastMonth)}`} iconBg="bg-blue-50" iconColor="text-blue-600" />
+                  <StatCard icon="🛒" label="Total Orders" value={stats?.orders?.total || 0} sub={`${stats?.orders?.thisMonth || 0} this month`} iconBg="bg-violet-50" iconColor="text-violet-600" />
+                  <StatCard icon="👥" label="Customers" value={stats?.customers?.total || 0} sub={`${stats?.customers?.active || 0} active`} iconBg="bg-emerald-50" iconColor="text-emerald-600" />
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <StatCard icon="🏪" label="Total Vendors" value={stats?.vendors?.total || 0} sub={`${stats?.vendors?.approved || 0} approved`} iconBg="bg-indigo-50" />
-                  <StatCard icon="⏳" label="Pending Vendors" value={stats?.vendors?.pending || 0} sub="Awaiting review" iconBg="bg-yellow-50" />
-                  <StatCard icon="📦" label="Total Products" value={stats?.products?.total || 0} sub={`${stats?.products?.approved || 0} live`} iconBg="bg-teal-50" />
-                  <StatCard icon="👑" label="Admins" value={stats?.admins?.total || 0} sub="Platform admins" iconBg="bg-red-50" />
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  <StatCard icon="🏪" label="Total Vendors" value={stats?.vendors?.total || 0} sub={`${stats?.vendors?.approved || 0} approved`} iconBg="bg-pink-50" iconColor="text-pink-600" />
+                  <StatCard icon="⏳" label="Pending Vendors" value={stats?.vendors?.pending || 0} sub="Awaiting review" iconBg="bg-amber-50" iconColor="text-amber-600" />
+                  <StatCard icon="📦" label="Total Products" value={stats?.products?.total || 0} sub={`${stats?.products?.approved || 0} live`} iconBg="bg-teal-50" iconColor="text-teal-600" />
+                  <StatCard icon="👑" label="Admins" value={stats?.admins?.total || 0} sub="Platform admins" iconBg="bg-red-50" iconColor="text-red-600" />
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                    <div className="flex items-center justify-between mb-5">
+                  <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
+                    <div className="flex items-center justify-between mb-6">
                       <div>
                         <h3 className="text-sm font-extrabold text-gray-900 m-0">Revenue — Last 7 Days</h3>
                         <p className="text-xs text-gray-400 mt-0.5 m-0">{formatRupee(dailyData.reduce((s, [, v]) => s + v, 0))} this week</p>
                       </div>
+                      <div className="w-9 h-9 bg-indigo-50 text-[#4338ca] rounded-xl flex items-center justify-center text-lg">📈</div>
                     </div>
                     {dailyData.length > 0 ? (
-                      <div className="flex items-end gap-2 h-32">
+                      <div className="flex items-end gap-2 sm:gap-3 h-36">
                         {dailyData.map(([date, value]) => {
                           const pct = maxDaily > 0 ? (value / maxDaily) * 100 : 0;
                           const label = new Date(date).toLocaleDateString("en-IN", { weekday: "short" });
+                          const isToday = new Date(date).toDateString() === new Date().toDateString();
                           return (
-                            <div key={date} className="flex-1 flex flex-col items-center gap-1.5 group">
-                              <div className="relative w-full flex items-end justify-center" style={{ height: "96px" }}>
-                                <div className="w-full bg-gradient-to-t from-[#D85A30] to-[#FF8C5A] rounded-t-lg transition-all duration-500 group-hover:from-[#C04A20]" style={{ height: `${Math.max(pct, 4)}%` }} title={`${label}: ${formatRupee(value)}`} />
+                            <div key={date} className="flex-1 flex flex-col items-center gap-2 group">
+                              <div className="relative w-full flex items-end justify-center" style={{ height: "112px" }}>
+                                <div
+                                  className={`w-full rounded-t-xl transition-all duration-700 cursor-pointer ${isToday ? "bg-gradient-to-t from-[#4338ca] to-[#6366f1] shadow-md shadow-indigo-200" : "bg-gray-100 group-hover:bg-gray-200"}`}
+                                  style={{ height: `${Math.max(pct, 4)}%` }}
+                                  title={`${label}: ${formatRupee(value)}`}
+                                />
                                 {value > 0 && (
-                                  <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[9px] font-bold px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[9px] font-bold px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 shadow-lg">
                                     {formatRupee(value)}
                                   </div>
                                 )}
                               </div>
-                              <span className="text-[10px] text-gray-400 font-medium">{label}</span>
+                              <span className={`text-[10px] font-semibold ${isToday ? "text-[#4338ca]" : "text-gray-400"}`}>{label}</span>
                             </div>
                           );
                         })}
                       </div>
-                    ) : <div className="h-32 flex items-center justify-center text-gray-400 text-sm">No data yet</div>}
+                    ) : (
+                      <div className="h-36 flex flex-col items-center justify-center text-gray-400">
+                        <p className="text-3xl mb-2">📊</p>
+                        <p className="text-sm">No data yet</p>
+                      </div>
+                    )}
                   </div>
 
-                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                    <h3 className="text-sm font-extrabold text-gray-900 mb-4 m-0">Platform Overview</h3>
-                    <div className="flex flex-col gap-3">
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
+                    <h3 className="text-sm font-extrabold text-gray-900 mb-5 m-0">Platform Health</h3>
+                    <div className="flex flex-col gap-3.5">
                       {[
-                        { label: "Delivered Orders", value: stats?.orders?.delivered || 0, color: "bg-green-500", total: stats?.orders?.total },
-                        { label: "Pending Orders", value: stats?.orders?.pending || 0, color: "bg-yellow-400", total: stats?.orders?.total },
+                        { label: "Delivered", value: stats?.orders?.delivered || 0, color: "bg-emerald-500", total: stats?.orders?.total },
+                        { label: "Pending", value: stats?.orders?.pending || 0, color: "bg-amber-500", total: stats?.orders?.total },
                         { label: "Cancelled", value: stats?.orders?.cancelled || 0, color: "bg-red-400", total: stats?.orders?.total },
-                        { label: "Active Customers", value: stats?.customers?.active || 0, color: "bg-blue-500", total: stats?.customers?.total },
-                        { label: "Blocked Customers", value: stats?.customers?.blocked || 0, color: "bg-gray-400", total: stats?.customers?.total },
+                        { label: "Active Users", value: stats?.customers?.active || 0, color: "bg-indigo-500", total: stats?.customers?.total },
+                        { label: "Blocked", value: stats?.customers?.blocked || 0, color: "bg-gray-400", total: stats?.customers?.total },
                       ].map((item) => (
-                        <div key={item.label} className="flex items-center gap-2.5">
-                          <span className="text-xs text-gray-500 w-28 shrink-0">{item.label}</span>
+                        <div key={item.label} className="flex items-center gap-3">
+                          <span className="text-xs text-gray-500 w-24 shrink-0">{item.label}</span>
                           <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
-                            <div className={`h-full ${item.color} rounded-full transition-all duration-500`} style={{ width: `${item.total ? (item.value / item.total) * 100 : 0}%` }} />
+                            <div className={`h-full ${item.color} rounded-full transition-all duration-700`} style={{ width: `${item.total ? (item.value / item.total) * 100 : 0}%` }} />
                           </div>
                           <span className="text-xs font-bold text-gray-700 w-6 text-right shrink-0">{item.value}</span>
                         </div>
                       ))}
                     </div>
-                    <div className="mt-4 grid grid-cols-2 gap-2">
-                      <button onClick={() => setActiveTab("vendors")} className="bg-gray-50 border border-gray-200 rounded-xl py-2.5 text-xs font-bold text-gray-700 cursor-pointer hover:bg-gray-100 transition font-[inherit]">Manage Vendors</button>
-                      <button onClick={() => setActiveTab("customers")} className="bg-[#131921] text-white border-none rounded-xl py-2.5 text-xs font-bold cursor-pointer font-[inherit]">Manage Users</button>
+                    <div className="flex gap-2 mt-5 pt-4 border-t border-gray-100">
+                      <button onClick={() => setActiveTab("vendors")} className="flex-1 bg-gray-900 text-white border-none rounded-xl py-2.5 text-xs font-bold cursor-pointer hover:bg-gray-800 transition font-[inherit]">Vendors</button>
+                      <button onClick={() => setActiveTab("customers")} className="flex-1 bg-gradient-to-r from-[#4338ca] to-[#6366f1] text-white border-none rounded-xl py-2.5 text-xs font-bold cursor-pointer hover:brightness-110 transition font-[inherit]">Users</button>
                     </div>
                   </div>
                 </div>
+
               </>
             )}
           </div>
         )}
 
         {activeTab === "vendors" && (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 fade-up">
             <div className="flex items-center gap-2 flex-wrap">
               <FilterBtn active={vendorView === "pending"} onClick={() => setVendorView("pending")}>🕐 Pending ({pendingVendorCount})</FilterBtn>
               <FilterBtn active={vendorView === "all"} onClick={() => setVendorView("all")}>📋 All Vendors</FilterBtn>
@@ -471,19 +564,19 @@ const AdminDashboard = () => {
 
             {vendorView === "pending" && (
               <div>
-                <h2 className="text-lg font-extrabold text-gray-900 mb-4 m-0">Pending Vendor Applications</h2>
+                <h2 className="text-xl font-extrabold text-gray-900 mb-4 m-0">Pending Vendor Applications</h2>
                 {vendorsLoading && <Spinner text="Loading vendors..." />}
                 {pendingData?.data?.length === 0 && !vendorsLoading && <EmptyState icon="🎉" title="All caught up!" subtitle="No pending vendor applications" />}
                 <div className="flex flex-col gap-3">
                   {pendingData?.data?.map((vendor) => (
-                    <div key={vendor._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div key={vendor._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-all">
                       <div className="p-4 sm:p-5 flex flex-col sm:flex-row items-start justify-between gap-4">
                         <div className="flex gap-3.5 flex-1 min-w-0">
-                          <div className="w-12 h-12 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl flex items-center justify-center text-2xl shrink-0 border border-purple-200">🏪</div>
+                          <div className="w-12 h-12 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl flex items-center justify-center text-2xl shrink-0 border border-indigo-200">🏪</div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap mb-1">
                               <h3 className="text-[15px] font-extrabold text-gray-900 m-0">{vendor.storeName}</h3>
-                              {vendor.businessType && <span className="text-[10px] bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full font-bold capitalize">{vendor.businessType.replace(/_/g, " ")}</span>}
+                              {vendor.businessType && <span className="text-[10px] bg-indigo-100 text-[#4338ca] px-2 py-0.5 rounded-full font-bold capitalize">{vendor.businessType.replace(/_/g, " ")}</span>}
                             </div>
                             <p className="text-[13px] text-gray-700 font-semibold m-0 mb-0.5">{vendor.userId?.firstName} {vendor.userId?.lastName}</p>
                             <div className="flex gap-3 flex-wrap text-xs text-gray-500">
@@ -554,7 +647,7 @@ const AdminDashboard = () => {
             {vendorView === "all" && (
               <div>
                 <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-                  <h2 className="text-lg font-extrabold text-gray-900 m-0">All Vendors ({allVendorsData?.pagination?.total || 0})</h2>
+                  <h2 className="text-xl font-extrabold text-gray-900 m-0">All Vendors ({allVendorsData?.pagination?.total || 0})</h2>
                   <div className="flex gap-1.5 flex-wrap">
                     {["", "approved", "pending", "rejected", "suspended"].map((s) => (
                       <FilterBtn key={s} active={vendorStatusFilter === s} onClick={() => { setVendorStatusFilter(s); setVendorPage(1); }}>{s || "All"}</FilterBtn>
@@ -565,10 +658,10 @@ const AdminDashboard = () => {
                 {allVendorsData?.data?.length === 0 && !allVendorsLoading && <EmptyState icon="🏪" title="No vendors found" />}
                 <div className="flex flex-col gap-3">
                   {allVendorsData?.data?.map((vendor) => (
-                    <div key={vendor._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                    <div key={vendor._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 hover:shadow-md transition-all">
                       <div className="flex items-start justify-between gap-4 flex-wrap">
                         <div className="flex gap-3 flex-1 min-w-0">
-                          <div className="w-11 h-11 bg-purple-50 rounded-xl flex items-center justify-center text-xl border border-purple-100 shrink-0">🏪</div>
+                          <div className="w-11 h-11 bg-indigo-50 rounded-xl flex items-center justify-center text-xl border border-indigo-100 shrink-0">🏪</div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <h3 className="text-sm font-extrabold text-gray-900 m-0">{vendor.storeName}</h3>
@@ -596,8 +689,8 @@ const AdminDashboard = () => {
                         <div className="mt-3 flex gap-2 items-center bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
                           <span className="text-xs font-bold text-blue-800">Commission %:</span>
                           <input type="number" min="0" max="100" value={commissionValue} onChange={(e) => setCommissionValue(e.target.value)} className="border border-blue-200 rounded-lg px-3 py-1.5 text-sm w-20 outline-none focus:border-blue-500 font-[inherit]" />
-                          <button onClick={() => handleUpdateCommission(vendor._id)} className="bg-blue-600 text-white border-none rounded-lg px-4 py-1.5 text-xs font-bold cursor-pointer font-[inherit]">Save</button>
-                          <button onClick={() => setCommissionEdit({})} className="bg-white text-gray-700 border border-gray-200 rounded-lg px-3 py-1.5 text-xs cursor-pointer font-[inherit]">Cancel</button>
+                          <button onClick={() => handleUpdateCommission(vendor._id)} className="bg-blue-600 text-white border-none rounded-lg px-4 py-1.5 text-xs font-bold cursor-pointer hover:bg-blue-700 transition font-[inherit]">Save</button>
+                          <button onClick={() => setCommissionEdit({})} className="bg-white text-gray-700 border border-gray-200 rounded-lg px-3 py-1.5 text-xs cursor-pointer hover:bg-gray-50 transition font-[inherit]">Cancel</button>
                         </div>
                       )}
                       {suspendingId === vendor._id && <RejectPanel show={true} reason={suspendReason} setReason={setSuspendReason} onConfirm={() => handleSuspend(vendor._id)} onCancel={() => setSuspendingId(null)} placeholder="Reason for suspension..." />}
@@ -610,7 +703,7 @@ const AdminDashboard = () => {
                   ))}
                 </div>
                 {allVendorsData?.pagination?.pages > 1 && (
-                  <div className="flex justify-center gap-1.5 mt-5">
+                  <div className="flex justify-center gap-1.5 mt-6">
                     <PageBtn onClick={() => setVendorPage(p => Math.max(1, p - 1))} disabled={vendorPage === 1}>← Prev</PageBtn>
                     {Array.from({ length: allVendorsData.pagination.pages }, (_, i) => i + 1).map(p => <PageBtn key={p} active={vendorPage === p} onClick={() => setVendorPage(p)}>{p}</PageBtn>)}
                     <PageBtn onClick={() => setVendorPage(p => Math.min(allVendorsData.pagination.pages, p + 1))} disabled={vendorPage === allVendorsData.pagination.pages}>Next →</PageBtn>
@@ -622,14 +715,14 @@ const AdminDashboard = () => {
         )}
 
         {activeTab === "customers" && (
-          <div>
+          <div className="fade-up">
             {selectedCustomer && customerDetailData?.data ? (
               <div>
                 <button onClick={() => setSelectedCustomer(null)} className="flex items-center gap-2 text-sm font-bold text-gray-600 bg-white border border-gray-200 rounded-xl px-4 py-2 cursor-pointer hover:bg-gray-50 transition mb-4 font-[inherit]">← Back to Customers</button>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                     <div className="flex items-center gap-3 mb-4">
-                      <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#D85A30] to-[#FF8C5A] flex items-center justify-center text-white font-extrabold text-xl shrink-0">
+                      <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#4338ca] to-[#6366f1] flex items-center justify-center text-white font-extrabold text-xl shrink-0">
                         {customerDetailData.data.firstName?.[0]?.toUpperCase()}
                       </div>
                       <div>
@@ -651,8 +744,8 @@ const AdminDashboard = () => {
                       )}
                       {deletingCustomerId === customerDetailData.data._id ? (
                         <div className="flex gap-1.5 flex-1">
-                          <button onClick={() => handleDeleteCustomer(customerDetailData.data._id)} className="flex-1 bg-red-500 text-white border-none rounded-xl py-2.5 text-xs font-bold cursor-pointer font-[inherit]">Confirm</button>
-                          <button onClick={() => setDeletingCustomerId(null)} className="bg-white text-gray-700 border border-gray-200 rounded-xl px-3 py-2.5 text-xs cursor-pointer font-[inherit]">Cancel</button>
+                          <button onClick={() => handleDeleteCustomer(customerDetailData.data._id)} className="flex-1 bg-red-500 text-white border-none rounded-xl py-2.5 text-xs font-bold cursor-pointer hover:bg-red-600 transition font-[inherit]">Confirm</button>
+                          <button onClick={() => setDeletingCustomerId(null)} className="bg-white text-gray-700 border border-gray-200 rounded-xl px-3 py-2.5 text-xs cursor-pointer hover:bg-gray-50 transition font-[inherit]">Cancel</button>
                         </div>
                       ) : (
                         <button onClick={() => setDeletingCustomerId(customerDetailData.data._id)} className="flex-1 bg-gray-50 text-gray-700 border border-gray-200 rounded-xl py-2.5 text-xs font-bold cursor-pointer hover:bg-gray-100 transition font-[inherit]">🗑️ Delete</button>
@@ -664,14 +757,14 @@ const AdminDashboard = () => {
                     {customerDetailData.data.recentOrders?.length === 0 ? <EmptyState icon="📦" title="No orders yet" /> : (
                       <div className="flex flex-col gap-2.5">
                         {customerDetailData.data.recentOrders?.map((order) => (
-                          <div key={order._id} className="flex items-center justify-between gap-3 border border-gray-100 rounded-xl px-4 py-3">
+                          <div key={order._id} className="flex items-center justify-between gap-3 border border-gray-100 rounded-xl px-4 py-3 hover:border-gray-200 transition">
                             <div>
                               <p className="text-xs font-bold text-gray-900 m-0">{order.orderNumber}</p>
                               <p className="text-[11px] text-gray-400 m-0">{formatDate(order.createdAt)} · {order.items?.length} item{order.items?.length > 1 ? "s" : ""}</p>
                             </div>
                             <div className="flex items-center gap-2">
                               <Badge status={order.orderStatus} />
-                              <span className="text-sm font-extrabold text-[#B12704]">{formatRupee(order.total)}</span>
+                              <span className="text-sm font-extrabold text-gray-900">{formatRupee(order.total)}</span>
                             </div>
                           </div>
                         ))}
@@ -684,15 +777,15 @@ const AdminDashboard = () => {
               <div>
                 <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
                   <div>
-                    <h2 className="text-lg font-extrabold text-gray-900 m-0">Customer Management</h2>
+                    <h2 className="text-xl font-extrabold text-gray-900 m-0">Customer Management</h2>
                     <p className="text-xs text-gray-500 mt-1 m-0">{customersData?.pagination?.total || 0} total customers</p>
                   </div>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3 mb-4">
                   <form onSubmit={(e) => { e.preventDefault(); setCustomerSearch(customerSearchInput); setCustomerPage(1); }} className="flex gap-2 flex-1">
                     <input type="text" placeholder="Search by name, email, phone..." value={customerSearchInput} onChange={(e) => setCustomerSearchInput(e.target.value)} className={`${inputCls} flex-1`} />
-                    <button type="submit" className="bg-[#131921] text-white border-none rounded-xl px-4 py-2.5 text-sm font-bold cursor-pointer font-[inherit]">Search</button>
-                    {customerSearch && <button type="button" onClick={() => { setCustomerSearch(""); setCustomerSearchInput(""); }} className="bg-white text-gray-700 border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-bold cursor-pointer font-[inherit]">Clear</button>}
+                    <button type="submit" className="bg-[#4338ca] text-white border-none rounded-xl px-4 py-2.5 text-sm font-bold cursor-pointer hover:bg-[#3730a3] transition font-[inherit]">Search</button>
+                    {customerSearch && <button type="button" onClick={() => { setCustomerSearch(""); setCustomerSearchInput(""); }} className="bg-white text-gray-700 border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-bold cursor-pointer hover:bg-gray-50 transition font-[inherit]">Clear</button>}
                   </form>
                   <div className="flex gap-1.5 flex-wrap">
                     {["", "active", "blocked"].map((s) => <FilterBtn key={s} active={customerStatusFilter === s} onClick={() => { setCustomerStatusFilter(s); setCustomerPage(1); }}>{s || "All"}</FilterBtn>)}
@@ -702,8 +795,8 @@ const AdminDashboard = () => {
                 {customersData?.data?.length === 0 && !customersLoading && <EmptyState icon="👥" title="No customers found" />}
                 <div className="flex flex-col gap-2.5">
                   {customersData?.data?.map((customer) => (
-                    <div key={customer._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-4 flex-wrap">
-                      <div className="w-11 h-11 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center font-bold text-base text-gray-700 shrink-0">
+                    <div key={customer._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-4 flex-wrap hover:shadow-md transition-all">
+                      <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-100 to-indigo-200 flex items-center justify-center font-bold text-base text-[#4338ca] shrink-0">
                         {customer.firstName?.[0]?.toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -719,12 +812,12 @@ const AdminDashboard = () => {
                         </div>
                       </div>
                       <div className="flex gap-1.5 shrink-0 flex-wrap">
-                        <button onClick={() => setSelectedCustomer(customer._id)} className="bg-purple-100 text-purple-800 border border-purple-200 rounded-lg px-3 py-1.5 text-[11px] font-bold cursor-pointer hover:bg-purple-200 transition font-[inherit]">View Details</button>
+                        <button onClick={() => setSelectedCustomer(customer._id)} className="bg-indigo-100 text-[#4338ca] border border-indigo-200 rounded-lg px-3 py-1.5 text-[11px] font-bold cursor-pointer hover:bg-indigo-200 transition font-[inherit]">View Details</button>
                         {customer.status === "active" ? (
                           blockingId === customer._id ? (
                             <div className="flex gap-1">
-                              <button onClick={() => handleBlockCustomer(customer._id)} className="bg-red-500 text-white border-none rounded-lg px-3 py-1.5 text-[11px] font-bold cursor-pointer font-[inherit]">Confirm</button>
-                              <button onClick={() => setBlockingId(null)} className="bg-white text-gray-700 border border-gray-200 rounded-lg px-2 py-1.5 text-[11px] cursor-pointer font-[inherit]">Cancel</button>
+                              <button onClick={() => handleBlockCustomer(customer._id)} className="bg-red-500 text-white border-none rounded-lg px-3 py-1.5 text-[11px] font-bold cursor-pointer hover:bg-red-600 transition font-[inherit]">Confirm</button>
+                              <button onClick={() => setBlockingId(null)} className="bg-white text-gray-700 border border-gray-200 rounded-lg px-2 py-1.5 text-[11px] cursor-pointer hover:bg-gray-50 transition font-[inherit]">Cancel</button>
                             </div>
                           ) : (
                             <button onClick={() => setBlockingId(customer._id)} className="bg-red-50 text-red-700 border border-red-200 rounded-lg px-3 py-1.5 text-[11px] font-bold cursor-pointer hover:bg-red-100 transition font-[inherit]">🚫 Block</button>
@@ -737,7 +830,7 @@ const AdminDashboard = () => {
                   ))}
                 </div>
                 {customersData?.pagination?.pages > 1 && (
-                  <div className="flex justify-center gap-1.5 mt-5">
+                  <div className="flex justify-center gap-1.5 mt-6">
                     <PageBtn onClick={() => setCustomerPage(p => Math.max(1, p - 1))} disabled={customerPage === 1}>← Prev</PageBtn>
                     {Array.from({ length: customersData.pagination.pages }, (_, i) => i + 1).map(p => <PageBtn key={p} active={customerPage === p} onClick={() => setCustomerPage(p)}>{p}</PageBtn>)}
                     <PageBtn onClick={() => setCustomerPage(p => Math.min(customersData.pagination.pages, p + 1))} disabled={customerPage === customersData.pagination.pages}>Next →</PageBtn>
@@ -749,13 +842,13 @@ const AdminDashboard = () => {
         )}
 
         {activeTab === "admins" && (
-          <div>
+          <div className="fade-up">
             <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
               <div>
-                <h2 className="text-lg font-extrabold text-gray-900 m-0">Admin Management</h2>
+                <h2 className="text-xl font-extrabold text-gray-900 m-0">Admin Management</h2>
                 <p className="text-xs text-gray-500 mt-1 m-0">{adminsData?.data?.length || 0} admins total</p>
               </div>
-              <button onClick={() => setShowAdminForm(!showAdminForm)} className="bg-[#131921] text-white border-none rounded-xl px-5 py-2.5 text-sm font-bold cursor-pointer font-[inherit] hover:bg-gray-800 transition">
+              <button onClick={() => setShowAdminForm(!showAdminForm)} className="bg-gradient-to-r from-[#4338ca] to-[#6366f1] text-white border-none rounded-xl px-5 py-2.5 text-sm font-bold cursor-pointer font-[inherit] hover:brightness-110 transition shadow-lg shadow-indigo-200">
                 {showAdminForm ? "✕ Cancel" : "+ Create Admin"}
               </button>
             </div>
@@ -787,10 +880,10 @@ const AdminDashboard = () => {
                   </div>
                   {adminFormError && <div className="sm:col-span-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3"><p className="text-xs text-red-600 font-semibold m-0">⚠️ {adminFormError}</p></div>}
                   <div className="sm:col-span-2 flex gap-3">
-                    <button type="submit" disabled={adminFormLoading} className="flex-1 bg-[#131921] text-white border-none rounded-xl py-3 text-sm font-bold cursor-pointer disabled:opacity-50 transition font-[inherit] hover:bg-gray-800">
+                    <button type="submit" disabled={adminFormLoading} className="flex-1 bg-gradient-to-r from-[#4338ca] to-[#6366f1] text-white border-none rounded-xl py-3 text-sm font-bold cursor-pointer disabled:opacity-50 transition font-[inherit] hover:brightness-110 shadow-lg shadow-indigo-200">
                       {adminFormLoading ? <span className="flex items-center justify-center gap-2"><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Creating...</span> : "Create Admin Account"}
                     </button>
-                    <button type="button" onClick={() => { setShowAdminForm(false); setAdminFormError(""); setAdminForm({ firstName: "", lastName: "", email: "", phone: "", password: "" }); }} className="bg-white text-gray-700 border border-gray-200 rounded-xl px-6 py-3 text-sm font-bold cursor-pointer font-[inherit]">Cancel</button>
+                    <button type="button" onClick={() => { setShowAdminForm(false); setAdminFormError(""); setAdminForm({ firstName: "", lastName: "", email: "", phone: "", password: "" }); }} className="bg-white text-gray-700 border border-gray-200 rounded-xl px-6 py-3 text-sm font-bold cursor-pointer hover:bg-gray-50 transition font-[inherit]">Cancel</button>
                   </div>
                 </form>
               </div>
@@ -798,13 +891,13 @@ const AdminDashboard = () => {
             {adminsLoading && <Spinner text="Loading admins..." />}
             <div className="flex flex-col gap-2.5">
               {adminsData?.data?.map((admin) => (
-                <div key={admin._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-4 flex-wrap">
+                <div key={admin._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-4 flex-wrap hover:shadow-md transition-all">
                   <div className="w-11 h-11 rounded-full bg-gradient-to-br from-red-100 to-red-200 flex items-center justify-center font-extrabold text-base text-red-700 shrink-0">{admin.firstName?.[0]?.toUpperCase()}</div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="text-sm font-extrabold text-gray-900 m-0">{admin.firstName} {admin.lastName}</h3>
-                      <span className="text-[9px] bg-red-100 text-red-700 border border-red-200 px-2 py-0.5 rounded-full font-extrabold uppercase">Admin</span>
-                      {admin._id === (user?.id || user?._id) && <span className="text-[9px] bg-blue-100 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full font-extrabold">You</span>}
+                      <span className="text-[9px] bg-red-100 text-red-700 border border-red-200 px-2 py-0.5 rounded-full font-extrabold uppercase">👑 Admin</span>
+                      {admin._id === (user?.id || user?._id) && <span className="text-[9px] bg-indigo-100 text-[#4338ca] border border-indigo-200 px-2 py-0.5 rounded-full font-extrabold">You</span>}
                     </div>
                     <p className="text-xs text-gray-500 mt-0.5 m-0">{admin.email} · {admin.phone}</p>
                     <p className="text-[11px] text-gray-400 mt-0.5 m-0">Joined {formatDate(admin.createdAt)}</p>
@@ -817,21 +910,21 @@ const AdminDashboard = () => {
         )}
 
         {activeTab === "categories" && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
-            <h2 className="text-lg font-extrabold text-gray-900 mb-5 m-0">Category Management</h2>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6 fade-up">
+            <h2 className="text-xl font-extrabold text-gray-900 mb-5 m-0">Category Management</h2>
             <form onSubmit={handleCreateCategory} className="mb-6 flex flex-col gap-3 max-w-lg">
               <div><label className="block text-xs font-bold text-gray-700 mb-1.5">Category Name *</label><input type="text" placeholder="e.g. Electronics, Fashion" value={categoryForm.name} onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })} className={inputCls} /></div>
               <div><label className="block text-xs font-bold text-gray-700 mb-1.5">Description (optional)</label><input type="text" placeholder="Brief description" value={categoryForm.description} onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })} className={inputCls} /></div>
               <div><label className="block text-xs font-bold text-gray-700 mb-1.5">Parent Category</label><select value={categoryForm.parent} onChange={(e) => setCategoryForm({ ...categoryForm, parent: e.target.value })} className={inputCls}><option value="">No Parent (Main Category)</option>{categoryData?.data?.map((cat) => <option key={cat._id} value={cat._id}>{cat.name}</option>)}</select></div>
               {categoryError && <p className="text-red-500 text-xs font-semibold m-0">{categoryError}</p>}
-              <button type="submit" disabled={creatingCategory} className="bg-[#131921] text-white border-none rounded-xl py-3 text-sm font-bold cursor-pointer disabled:opacity-50 transition font-[inherit] hover:bg-gray-800">{creatingCategory ? "Creating..." : "Create Category"}</button>
+              <button type="submit" disabled={creatingCategory} className="bg-gradient-to-r from-[#4338ca] to-[#6366f1] text-white border-none rounded-xl py-3 text-sm font-bold cursor-pointer disabled:opacity-50 transition font-[inherit] hover:brightness-110 shadow-lg shadow-indigo-200">{creatingCategory ? "Creating..." : "Create Category"}</button>
             </form>
             <div className="border-t border-gray-100 pt-5">
               <h3 className="text-sm font-extrabold text-gray-700 mb-3">All Categories ({categoryData?.data?.length || 0})</h3>
               {categoriesLoading && <Spinner text="Loading..." />}
               <div className="flex flex-col gap-2.5">
                 {categoryData?.data?.map((cat) => (
-                  <div key={cat._id} className="border border-gray-100 rounded-xl px-4 py-3.5 hover:border-gray-200 transition">
+                  <div key={cat._id} className="border border-gray-100 rounded-xl px-4 py-3.5 hover:border-[#4338ca]/20 transition">
                     <div className="flex justify-between items-center">
                       <div>
                         <h3 className="text-sm font-bold text-gray-900 m-0">{cat.name}</h3>
@@ -841,11 +934,11 @@ const AdminDashboard = () => {
                       <ActionBtn variant="delete" onClick={() => handleDeleteCategory(cat._id)}>Delete</ActionBtn>
                     </div>
                     {cat.children?.length > 0 && (
-                      <div className="mt-2.5 ml-5 border-l-2 border-gray-100 pl-3.5 flex flex-col gap-1.5">
+                      <div className="mt-2.5 ml-5 border-l-2 border-indigo-100 pl-3.5 flex flex-col gap-1.5">
                         {cat.children.map((sub) => (
                           <div key={sub._id} className="flex justify-between items-center">
                             <p className="text-xs font-semibold text-gray-700 m-0">{sub.name}</p>
-                            <button onClick={() => handleDeleteCategory(sub._id)} className="bg-red-50 text-red-800 border border-red-200 rounded-md px-2.5 py-1 text-[11px] font-bold cursor-pointer font-[inherit]">Delete</button>
+                            <button onClick={() => handleDeleteCategory(sub._id)} className="bg-red-50 text-red-800 border border-red-200 rounded-md px-2.5 py-1 text-[11px] font-bold cursor-pointer hover:bg-red-100 transition font-[inherit]">Delete</button>
                           </div>
                         ))}
                       </div>
@@ -858,10 +951,10 @@ const AdminDashboard = () => {
         )}
 
         {activeTab === "products" && (
-          <div>
+          <div className="fade-up">
             <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
               <div>
-                <h2 className="text-lg font-extrabold text-gray-900 m-0">Product Monitoring</h2>
+                <h2 className="text-xl font-extrabold text-gray-900 m-0">Product Monitoring</h2>
                 <p className="text-xs text-gray-500 mt-1 m-0">{productsData?.pagination?.total || 0} total products</p>
               </div>
             </div>
@@ -869,8 +962,8 @@ const AdminDashboard = () => {
             <div className="flex flex-col sm:flex-row gap-3 mb-4">
               <form onSubmit={(e) => { e.preventDefault(); setProductSearch(productSearchInput); }} className="flex gap-2 flex-1">
                 <input type="text" placeholder="Search by name, brand, SKU..." value={productSearchInput} onChange={(e) => setProductSearchInput(e.target.value)} className={`${inputCls} flex-1`} />
-                <button type="submit" className="bg-[#131921] text-white border-none rounded-xl px-4 py-2.5 text-sm font-bold cursor-pointer font-[inherit]">Search</button>
-                {productSearch && <button type="button" onClick={() => { setProductSearch(""); setProductSearchInput(""); }} className="bg-white text-gray-700 border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-bold cursor-pointer font-[inherit]">Clear</button>}
+                <button type="submit" className="bg-[#4338ca] text-white border-none rounded-xl px-4 py-2.5 text-sm font-bold cursor-pointer hover:bg-[#3730a3] transition font-[inherit]">Search</button>
+                {productSearch && <button type="button" onClick={() => { setProductSearch(""); setProductSearchInput(""); }} className="bg-white text-gray-700 border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-bold cursor-pointer hover:bg-gray-50 transition font-[inherit]">Clear</button>}
               </form>
               <div className="flex gap-1.5 flex-wrap">
                 {[{ l: "All", v: "" }, { l: "Live", v: "approved" }, { l: "Delisted", v: "delisted" }].map((s) => (
@@ -884,7 +977,7 @@ const AdminDashboard = () => {
 
             <div className="flex flex-col gap-3">
               {productsData?.data?.map((product) => (
-                <div key={product._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div key={product._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-all">
                   <div className="p-4 sm:p-5 flex items-start gap-3.5">
                     <ProductImg src={product.images?.[0]?.url} alt={product.name} />
                     <div className="flex-1 min-w-0">
@@ -895,10 +988,10 @@ const AdminDashboard = () => {
                             <span>📂 {product.category?.name}</span>
                             <span>🏪 {product.vendorStore?.storeName || `${product.vendor?.firstName} ${product.vendor?.lastName}`}</span>
                             {product.brand && <span>🏷️ {product.brand}</span>}
-                            {product.sku && <span className="font-mono">SKU: {product.sku}</span>}
+                            {product.sku && <span className="font-mono bg-gray-100 px-2 py-0.5 rounded">SKU: {product.sku}</span>}
                           </div>
                           <div className="flex gap-3 mt-1.5 items-center flex-wrap">
-                            <span className="text-base font-extrabold text-[#B12704]">{formatRupee(product.price)}</span>
+                            <span className="text-base font-extrabold text-gray-900">{formatRupee(product.price)}</span>
                             {product.comparePrice > 0 && <span className="text-xs text-gray-400 line-through">{formatRupee(product.comparePrice)}</span>}
                             <span className="text-xs text-gray-500">Stock: {product.stock}</span>
                             <span className="text-xs text-gray-500">👁 {product.views || 0} views</span>
@@ -940,9 +1033,9 @@ const AdminDashboard = () => {
                     <div className="px-5 py-3 bg-red-50 border-t border-red-200">
                       <p className="text-xs font-bold text-red-600 mb-2 m-0">⚠️ Reason for delisting (will be shown to vendor)</p>
                       <div className="flex gap-2">
-                        <input type="text" placeholder="e.g. Counterfeit product, Policy violation, False description..." value={delistReason} onChange={(e) => setDelistReason(e.target.value)} className="flex-1 border border-red-200 rounded-lg px-3 py-2.5 text-[13px] outline-none focus:border-red-400 bg-white font-[inherit]" />
-                        <button onClick={() => handleDelistProduct(product._id)} className="bg-red-500 text-white border-none rounded-lg px-4 py-2.5 text-xs font-bold cursor-pointer font-[inherit]">Confirm Delist</button>
-                        <button onClick={() => { setDelistingId(null); setDelistReason(""); }} className="bg-white text-gray-700 border border-gray-200 rounded-lg px-3 py-2.5 text-xs font-semibold cursor-pointer font-[inherit]">Cancel</button>
+                        <input type="text" placeholder="e.g. Counterfeit product, Policy violation..." value={delistReason} onChange={(e) => setDelistReason(e.target.value)} className="flex-1 border border-red-200 rounded-lg px-3 py-2.5 text-[13px] outline-none focus:border-red-400 bg-white font-[inherit]" />
+                        <button onClick={() => handleDelistProduct(product._id)} className="bg-red-500 text-white border-none rounded-lg px-4 py-2.5 text-xs font-bold cursor-pointer hover:bg-red-600 transition font-[inherit]">Confirm Delist</button>
+                        <button onClick={() => { setDelistingId(null); setDelistReason(""); }} className="bg-white text-gray-700 border border-gray-200 rounded-lg px-3 py-2.5 text-xs font-semibold cursor-pointer hover:bg-gray-50 transition font-[inherit]">Cancel</button>
                       </div>
                     </div>
                   )}
@@ -1012,10 +1105,10 @@ const AdminDashboard = () => {
         )}
 
         {activeTab === "orders" && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6 fade-up">
             <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
               <div>
-                <h2 className="text-lg font-extrabold text-gray-900 m-0">Order Monitoring</h2>
+                <h2 className="text-xl font-extrabold text-gray-900 m-0">Order Monitoring</h2>
                 <p className="text-xs text-gray-500 mt-1 m-0">{ordersData?.pagination?.total || 0} total orders · {formatRupee(ordersData?.summary?.totalRevenue)} revenue</p>
               </div>
             </div>
@@ -1023,8 +1116,8 @@ const AdminDashboard = () => {
             <div className="flex flex-col sm:flex-row gap-3 mb-4">
               <form onSubmit={(e) => { e.preventDefault(); setOrderSearch(orderSearchInput); setOrderPage(1); }} className="flex gap-2 flex-1">
                 <input type="text" placeholder="Search order number..." value={orderSearchInput} onChange={(e) => setOrderSearchInput(e.target.value)} className={`${inputCls} flex-1`} />
-                <button type="submit" className="bg-[#131921] text-white border-none rounded-xl px-4 py-2.5 text-sm font-bold cursor-pointer font-[inherit]">Search</button>
-                {orderSearch && <button type="button" onClick={() => { setOrderSearch(""); setOrderSearchInput(""); }} className="bg-white text-gray-700 border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-bold cursor-pointer font-[inherit]">Clear</button>}
+                <button type="submit" className="bg-[#4338ca] text-white border-none rounded-xl px-4 py-2.5 text-sm font-bold cursor-pointer hover:bg-[#3730a3] transition font-[inherit]">Search</button>
+                {orderSearch && <button type="button" onClick={() => { setOrderSearch(""); setOrderSearchInput(""); }} className="bg-white text-gray-700 border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-bold cursor-pointer hover:bg-gray-50 transition font-[inherit]">Clear</button>}
               </form>
               <div className="flex gap-1.5 flex-wrap">
                 {[{ l: "All", v: "" }, { l: "Confirmed", v: "confirmed" }, { l: "Processing", v: "processing" }, { l: "Shipped", v: "shipped" }, { l: "Delivered", v: "delivered" }, { l: "Cancelled", v: "cancelled" }].map((item) => (
@@ -1038,7 +1131,7 @@ const AdminDashboard = () => {
 
             <div className="flex flex-col gap-3">
               {ordersData?.data?.map((order) => (
-                <div key={order._id} className="border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
+                <div key={order._id} className="border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all">
                   <div className="p-4">
                     <div className="flex flex-wrap justify-between items-start gap-3 mb-3">
                       <div>
@@ -1048,14 +1141,14 @@ const AdminDashboard = () => {
                       </div>
                       <div className="text-right">
                         <Badge status={order.orderStatus} />
-                        <p className="text-lg font-extrabold text-[#B12704] mt-1.5 m-0">{formatRupee(order.total)}</p>
+                        <p className="text-lg font-extrabold text-gray-900 mt-1.5 m-0">{formatRupee(order.total)}</p>
                       </div>
                     </div>
 
                     <div className="flex flex-col gap-2 mb-3">
                       {order.items?.map((item, idx) => (
-                        <div key={idx} className="flex gap-2.5 items-center">
-                          <div className="w-11 h-11 bg-gray-50 rounded-lg border border-gray-100 flex items-center justify-center overflow-hidden shrink-0">
+                        <div key={idx} className="flex gap-2.5 items-center bg-gray-50 rounded-xl p-2.5">
+                          <div className="w-11 h-11 bg-white rounded-lg border border-gray-100 flex items-center justify-center overflow-hidden shrink-0">
                             <img src={item.image || "https://placehold.co/44?text=P"} alt={item.name} className="w-full h-full object-contain p-0.5" onError={(e) => { e.target.src = "https://placehold.co/44?text=P"; }} />
                           </div>
                           <div className="flex-1 min-w-0">
@@ -1066,7 +1159,7 @@ const AdminDashboard = () => {
                       ))}
                     </div>
 
-                    <div className="bg-gray-50 rounded-xl px-3.5 py-2.5 mb-3 text-xs">
+                    <div className="bg-gray-50 border border-gray-100 rounded-xl px-3.5 py-2.5 mb-3 text-xs">
                       <p className="text-gray-600 m-0 font-medium">📍 {order.shippingAddress?.fullName}, {order.shippingAddress?.phone}</p>
                       <p className="text-gray-500 m-0">{order.shippingAddress?.street}, {order.shippingAddress?.city}, {order.shippingAddress?.state} — {order.shippingAddress?.postalCode}</p>
                     </div>
@@ -1074,7 +1167,7 @@ const AdminDashboard = () => {
                     <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2.5 border-t border-gray-100">
                       <p className="text-xs text-gray-500 m-0">
                         <strong>{order.paymentMethod === "cod" ? "💵 COD" : "💳 Online"}</strong> ·{" "}
-                        <span className={`font-bold ${order.paymentStatus === "paid" ? "text-green-600" : order.paymentStatus === "refunded" ? "text-pink-600" : "text-yellow-600"}`}>
+                        <span className={`font-bold ${order.paymentStatus === "paid" ? "text-green-600" : order.paymentStatus === "refunded" ? "text-pink-600" : "text-amber-600"}`}>
                           {order.paymentStatus}
                         </span>
                       </p>
@@ -1103,8 +1196,8 @@ const AdminDashboard = () => {
                       <p className="text-xs font-bold text-red-600 mb-2 m-0">⚠️ Admin cancellation — extreme cases only (fraud, dispute)</p>
                       <div className="flex gap-2">
                         <input type="text" placeholder="Reason for admin cancellation..." value={cancelOrderReason} onChange={(e) => setCancelOrderReason(e.target.value)} className="flex-1 border border-red-200 rounded-lg px-3 py-2.5 text-[13px] outline-none focus:border-red-400 bg-white font-[inherit]" />
-                        <button onClick={() => handleAdminCancelOrder(order._id, cancelOrderReason)} className="bg-red-500 text-white border-none rounded-lg px-4 py-2.5 text-xs font-bold cursor-pointer font-[inherit]">Confirm</button>
-                        <button onClick={() => { setCancellingOrderId(null); setCancelOrderReason(""); }} className="bg-white text-gray-700 border border-gray-200 rounded-lg px-3 py-2.5 text-xs font-semibold cursor-pointer font-[inherit]">Back</button>
+                        <button onClick={() => handleAdminCancelOrder(order._id, cancelOrderReason)} className="bg-red-500 text-white border-none rounded-lg px-4 py-2.5 text-xs font-bold cursor-pointer hover:bg-red-600 transition font-[inherit]">Confirm</button>
+                        <button onClick={() => { setCancellingOrderId(null); setCancelOrderReason(""); }} className="bg-white text-gray-700 border border-gray-200 rounded-lg px-3 py-2.5 text-xs font-semibold cursor-pointer hover:bg-gray-50 transition font-[inherit]">Back</button>
                       </div>
                     </div>
                   )}
@@ -1113,7 +1206,7 @@ const AdminDashboard = () => {
             </div>
 
             {ordersData?.pagination?.pages > 1 && (
-              <div className="flex justify-center gap-1.5 mt-5">
+              <div className="flex justify-center gap-1.5 mt-6">
                 <PageBtn onClick={() => setOrderPage(p => Math.max(1, p - 1))} disabled={orderPage === 1}>← Prev</PageBtn>
                 {Array.from({ length: ordersData.pagination.pages }, (_, i) => i + 1).map(p => <PageBtn key={p} active={orderPage === p} onClick={() => setOrderPage(p)}>{p}</PageBtn>)}
                 <PageBtn onClick={() => setOrderPage(p => Math.min(ordersData.pagination.pages, p + 1))} disabled={orderPage === ordersData.pagination.pages}>Next →</PageBtn>
@@ -1123,10 +1216,10 @@ const AdminDashboard = () => {
         )}
 
         {activeTab === "reviews" && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
-            <h2 className="text-lg font-extrabold text-gray-900 mb-4 m-0">Review Management</h2>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6 fade-up">
+            <h2 className="text-xl font-extrabold text-gray-900 mb-4 m-0">Review Management</h2>
             <div className="flex flex-wrap gap-2.5 mb-5">
-              <select value={reviewSort} onChange={(e) => { setReviewSort(e.target.value); setReviewPage(1); }} className="border border-gray-200 rounded-lg px-3 py-2 text-[13px] outline-none focus:border-gray-900 transition font-[inherit]">
+              <select value={reviewSort} onChange={(e) => { setReviewSort(e.target.value); setReviewPage(1); }} className="bg-white border border-gray-200 text-gray-700 rounded-xl px-3.5 py-2.5 text-[13px] outline-none focus:border-[#4338ca] transition font-[inherit] cursor-pointer shadow-sm">
                 <option value="newest">Most Recent</option>
                 <option value="oldest">Oldest First</option>
                 <option value="highest">Highest Rated</option>
@@ -1134,17 +1227,17 @@ const AdminDashboard = () => {
               </select>
               <div className="flex gap-1.5 flex-wrap">
                 {[5, 4, 3, 2, 1].map((star) => <FilterBtn key={star} active={reviewRatingFilter === star} onClick={() => { setReviewRatingFilter(reviewRatingFilter === star ? undefined : star); setReviewPage(1); }}>{star} ★</FilterBtn>)}
-                {reviewRatingFilter && <button onClick={() => { setReviewRatingFilter(undefined); setReviewPage(1); }} className="px-3 py-2 text-xs text-gray-500 bg-transparent border-none cursor-pointer font-[inherit]">Clear</button>}
+                {reviewRatingFilter && <button onClick={() => { setReviewRatingFilter(undefined); setReviewPage(1); }} className="px-3 py-2 text-xs text-gray-500 bg-transparent border-none cursor-pointer hover:text-gray-700 font-[inherit]">Clear</button>}
               </div>
             </div>
             {reviewsLoading && <Spinner text="Loading reviews..." />}
             {reviewsData?.data?.length === 0 && !reviewsLoading && <EmptyState icon="💬" title="No reviews found" />}
             <div className="flex flex-col gap-3">
               {reviewsData?.data?.map((review) => (
-                <div key={review._id} className="border border-gray-100 rounded-2xl p-4 hover:border-gray-200 transition-colors">
+                <div key={review._id} className="border border-gray-100 rounded-2xl p-4 hover:border-[#4338ca]/20 hover:shadow-md transition-all">
                   <div className="flex justify-between items-start gap-3">
                     <div className="flex gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0 font-bold text-sm text-gray-700">{review.user?.firstName?.[0]?.toUpperCase() || "U"}</div>
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-100 to-indigo-200 flex items-center justify-center shrink-0 font-bold text-sm text-[#4338ca]">{review.user?.firstName?.[0]?.toUpperCase() || "U"}</div>
                       <div>
                         <p className="font-bold text-[13px] text-gray-900 m-0">{review.user?.firstName} {review.user?.lastName}</p>
                         <p className="text-[11px] text-gray-400 mt-0.5 m-0">{review.user?.email}</p>
@@ -1158,8 +1251,8 @@ const AdminDashboard = () => {
                       <p className="text-[11px] text-gray-400 m-0">{formatDate(review.createdAt)}</p>
                       {deletingReviewId === review._id ? (
                         <div className="flex gap-1.5">
-                          <button onClick={() => handleDeleteReview(review._id)} className="bg-red-500 text-white border-none rounded-md px-3 py-1.5 text-[11px] font-bold cursor-pointer font-[inherit]">Confirm</button>
-                          <button onClick={() => setDeletingReviewId(null)} className="bg-white text-gray-700 border border-gray-200 rounded-md px-2.5 py-1.5 text-[11px] cursor-pointer font-[inherit]">Cancel</button>
+                          <button onClick={() => handleDeleteReview(review._id)} className="bg-red-500 text-white border-none rounded-md px-3 py-1.5 text-[11px] font-bold cursor-pointer hover:bg-red-600 transition font-[inherit]">Confirm</button>
+                          <button onClick={() => setDeletingReviewId(null)} className="bg-white text-gray-700 border border-gray-200 rounded-md px-2.5 py-1.5 text-[11px] cursor-pointer hover:bg-gray-50 transition font-[inherit]">Cancel</button>
                         </div>
                       ) : (
                         <ActionBtn variant="delete" onClick={() => setDeletingReviewId(review._id)}>Delete</ActionBtn>
@@ -1182,7 +1275,7 @@ const AdminDashboard = () => {
               ))}
             </div>
             {reviewsData?.pagination?.pages > 1 && (
-              <div className="flex justify-center gap-1.5 mt-5">
+              <div className="flex justify-center gap-1.5 mt-6">
                 <PageBtn onClick={() => setReviewPage(p => Math.max(1, p - 1))} disabled={reviewPage === 1}>← Prev</PageBtn>
                 {Array.from({ length: reviewsData.pagination.pages }, (_, i) => i + 1).map(p => <PageBtn key={p} active={reviewPage === p} onClick={() => setReviewPage(p)}>{p}</PageBtn>)}
                 <PageBtn onClick={() => setReviewPage(p => Math.min(reviewsData.pagination.pages, p + 1))} disabled={reviewPage === reviewsData.pagination.pages}>Next →</PageBtn>

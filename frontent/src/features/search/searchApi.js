@@ -8,13 +8,14 @@ const searchApi = authApi.injectEndpoints({
     }),
     searchProducts: builder.query({
       query: (params) => {
-        const searchParams = new URLSearchParams();
-        if (params?.q) searchParams.set("q", params.q);
-        if (params?.page) searchParams.set("page", params.page);
-        if (params?.limit) searchParams.set("limit", params.limit);
-        if (params?.sort) searchParams.set("sort", params.sort);
-        return `/search?${searchParams.toString()}`;
+        const q = new URLSearchParams();
+        if (params?.q) q.set("q", params.q);
+        if (params?.page) q.set("page", params.page);
+        if (params?.limit) q.set("limit", params.limit);
+        if (params?.sort) q.set("sort", params.sort);
+        return `/search?${q.toString()}`;
       },
+      keepUnusedDataFor: 30,
     }),
   }),
 });

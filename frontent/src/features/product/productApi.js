@@ -25,15 +25,15 @@ export const productApi = authApi.injectEndpoints({
     }),
     createProduct: builder.mutation({
       query: (data) => ({ url: "/products", method: "POST", body: data }),
-      invalidatesTags: ["VendorProducts", "Products", "AdminProducts"],
+      invalidatesTags: ["VendorProducts", "Products", "AdminProducts", "VendorStats"],
     }),
     updateProduct: builder.mutation({
       query: ({ id, ...data }) => ({ url: `/products/${id}`, method: "PUT", body: data }),
-      invalidatesTags: ["VendorProducts", "Products", "AdminProducts"],
+      invalidatesTags: ["VendorProducts", "Products", "AdminProducts", "VendorStats"],
     }),
     deleteProduct: builder.mutation({
       query: (id) => ({ url: `/products/${id}`, method: "DELETE" }),
-      invalidatesTags: ["VendorProducts", "Products", "AdminProducts"],
+      invalidatesTags: ["VendorProducts", "Products", "AdminProducts", "VendorStats"],
     }),
     adminGetAllProducts: builder.query({
       query: (params) => {
@@ -51,18 +51,15 @@ export const productApi = authApi.injectEndpoints({
     }),
     delistProduct: builder.mutation({
       query: ({ id, reason }) => ({ url: `/products/admin/${id}/delist`, method: "PUT", body: { reason } }),
-      invalidatesTags: ["AdminProducts", "Products"],
+      invalidatesTags: ["AdminProducts", "Products", "VendorStats"],
     }),
     relistProduct: builder.mutation({
       query: (id) => ({ url: `/products/admin/${id}/relist`, method: "PUT" }),
-      invalidatesTags: ["AdminProducts", "Products"],
+      invalidatesTags: ["AdminProducts", "Products", "VendorStats"],
     }),
     getVendorStats: builder.query({
       query: () => "/products/vendor/stats",
-      providesTags: ["VendorProducts"],
-    }),
-    searchSuggestions: builder.query({
-      query: (q) => `/products/search/suggestions?q=${encodeURIComponent(q)}`,
+      providesTags: ["VendorStats"],
     }),
   }),
 });
@@ -79,5 +76,4 @@ export const {
   useDelistProductMutation,
   useRelistProductMutation,
   useGetVendorStatsQuery,
-  useSearchSuggestionsQuery,
 } = productApi;

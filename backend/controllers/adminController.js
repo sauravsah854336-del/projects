@@ -75,6 +75,100 @@ const getAllAdmins = async (req, res) => {
   }
 };
 
+const getAdminProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id)
+      .select("-password -refreshTokens -passwordResetOTP -passwordResetOTPExpiry");
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Admin not found" });
+    }
+
+    return res.status(200).json({ success: true, data: user });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+const updateAdminProfile = async (req, res) => {
+  try {
+    const { firstName, lastName, phone, dateOfBirth, avatar } = req.body;
+
+    if (firstName && firstName.trim().length < 2) {
+      return res.status(400).json({ success: false, message: "First name must be at least 2 characters" });
+    }
+
+    if (phone && !/^[6-9]\d{9}$/.test(phone.trim())) {
+      return res.status(400).json({ success: false, message: "Valid 10-digit Indian phone number required" });
+    }
+
+    if (phone) {
+      const existPhone = await User.findOne({
+        phone: phone.trim(),
+        _id: { $ne: req.user.id },
+      });
+      if (existPhone) {
+        return res.status(409).json({ success: false, message: "Phone number already in use" });
+      }
+    }
+
+    const updateData = {};
+    if (firstName !== undefined) updateData.firstName = firstName.trim();
+    if (lastName !== undefined) updateData.lastName = lastName.trim();
+    if (phone !== undefined) updateData.phone = phone.trim();
+    if (dateOfBirth !== undefined) updateData.dateOfBirth = dateOfBirth || null;
+    if (avatar !== undefined) updateData.avatar = avatar;
+
+    const user = await User.findByIdAndUpdate(req.user.id, updateData, { new: true })
+      .select("-password -refreshTokens -passwordResetOTP -passwordResetOTPExpiry");
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      data: user,
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+const changeAdminPassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, message: "Both passwords are required" });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: "Password must be at least 6 characters" });
+    }
+    if (!/[A-Z]/.test(newPassword)) {
+      return res.status(400).json({ success: false, message: "Must contain at least one uppercase letter" });
+    }
+    if (!/[0-9]/.test(newPassword)) {
+      return res.status(400).json({ success: false, message: "Must contain at least one number" });
+    }
+
+    const user = await User.findById(req.user.id).select("+password");
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: "Current password is incorrect" });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 12);
+    user.refreshTokens = [];
+    await user.save();
+
+    return res.status(200).json({ success: true, message: "Password changed successfully" });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 const getPendingVendors = async (req, res) => {
   try {
     const vendors = await Vendor.find({ approvalStatus: "pending", isDeleted: false })
@@ -406,6 +500,9 @@ const getAdminStats = async (req, res) => {
 module.exports = {
   createAdmin,
   getAllAdmins,
+  getAdminProfile,
+  updateAdminProfile,
+  changeAdminPassword,
   getPendingVendors,
   getAllVendors,
   approveVendor,
