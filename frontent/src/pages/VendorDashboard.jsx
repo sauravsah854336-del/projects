@@ -619,14 +619,6 @@ const VendorDashboard = () => {
                         </div>
                       ))}
                     </div>
-                    <div className="flex gap-2 mt-4">
-                      <button onClick={() => setActiveTab("products")} className="flex-1 bg-gray-900 text-white border-none rounded-xl py-2.5 text-xs font-bold cursor-pointer hover:bg-gray-800 transition font-[inherit]">
-                        Manage Products
-                      </button>
-                      <button onClick={openAddForm} className="flex-1 bg-gradient-to-r from-[#4338ca] to-[#6366f1] text-white border-none rounded-xl py-2.5 text-xs font-bold cursor-pointer font-[inherit] hover:brightness-110 transition">
-                        + Add Product
-                      </button>
-                    </div>
                   </div>
 
                   <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">

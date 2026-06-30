@@ -99,22 +99,45 @@ const AdminProfilePage = () => {
   };
 
   const handleProfileSubmit = async (e) => {
-    e.preventDefault(); setProfileMsg(null); setProfileError("");
-    if (!currentProfile.firstName.trim()) { setProfileError("First name required"); return; }
-    try {
-      const res = await updateProfile({
-        firstName: currentProfile.firstName.trim(),
-        lastName: currentProfile.lastName.trim(),
-        phone: currentProfile.phone.trim(),
-        dateOfBirth: currentProfile.dateOfBirth || null,
-        avatar: currentProfile.avatar,
-      }).unwrap();
+  e.preventDefault(); 
+  setProfileMsg(null); 
+  setProfileError("");
+  
+  if (!currentProfile.firstName.trim()) { 
+    setProfileError("First name required"); 
+    return; 
+  }
+  
+  try {
+    const payload = {
+      firstName: currentProfile.firstName.trim(),
+      lastName: currentProfile.lastName.trim() || "",
+      phone: currentProfile.phone.trim() || "",
+      dateOfBirth: currentProfile.dateOfBirth || null,
+      avatar: currentProfile.avatar || "",
+    };
+    
+    console.log("📤 Sending profile update:", payload);
+    
+    const res = await updateProfile(payload).unwrap();
+    
+    console.log("✅ Response:", res);
+    
+    if (res.success && res.data) {
       dispatch(setVerifiedUser(res.data));
       toast.success("Profile updated!");
       setProfileMsg({ type: "success", text: "Profile updated successfully" });
       setProfileForm(null);
-    } catch (err) { setProfileError(err?.data?.message || "Failed"); }
-  };
+    } else {
+      throw new Error(res.message || "Update failed");
+    }
+  } catch (err) { 
+    console.error("❌ Profile update error:", err);
+    const errorMsg = err?.data?.message || err?.message || "Failed to update profile";
+    setProfileError(errorMsg);
+    toast.error(errorMsg);
+  }
+};
 
   const handlePasswordSubmit = async (e) => {
     e.preventDefault(); setPasswordMsg(null); setPasswordError("");

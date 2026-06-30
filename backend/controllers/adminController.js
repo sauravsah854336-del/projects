@@ -77,15 +77,24 @@ const getAllAdmins = async (req, res) => {
 
 const getAdminProfile = async (req, res) => {
   try {
+    console.log("📋 Get admin profile:", req.user.id);
+    
     const user = await User.findById(req.user.id)
       .select("-password -refreshTokens -passwordResetOTP -passwordResetOTPExpiry");
 
     if (!user) {
+      console.log("❌ Admin not found:", req.user.id);
       return res.status(404).json({ success: false, message: "Admin not found" });
     }
 
+    if (user.role !== "admin") {
+      return res.status(403).json({ success: false, message: "Not an admin" });
+    }
+
+    console.log("✅ Admin profile loaded:", user.email);
     return res.status(200).json({ success: true, data: user });
   } catch (err) {
+    console.error("❌ getAdminProfile error:", err);
     return res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -93,16 +102,19 @@ const getAdminProfile = async (req, res) => {
 const updateAdminProfile = async (req, res) => {
   try {
     const { firstName, lastName, phone, dateOfBirth, avatar } = req.body;
+    
+    console.log("📝 Update admin profile - Admin ID:", req.user.id);
+    console.log("📝 Request body:", req.body);
 
-    if (firstName && firstName.trim().length < 2) {
+    if (firstName !== undefined && firstName.trim().length < 2) {
       return res.status(400).json({ success: false, message: "First name must be at least 2 characters" });
     }
 
-    if (phone && !/^[6-9]\d{9}$/.test(phone.trim())) {
+    if (phone !== undefined && phone.trim() !== "" && !/^[6-9]\d{9}$/.test(phone.trim())) {
       return res.status(400).json({ success: false, message: "Valid 10-digit Indian phone number required" });
     }
 
-    if (phone) {
+    if (phone && phone.trim() !== "") {
       const existPhone = await User.findOne({
         phone: phone.trim(),
         _id: { $ne: req.user.id },
@@ -119,8 +131,19 @@ const updateAdminProfile = async (req, res) => {
     if (dateOfBirth !== undefined) updateData.dateOfBirth = dateOfBirth || null;
     if (avatar !== undefined) updateData.avatar = avatar;
 
-    const user = await User.findByIdAndUpdate(req.user.id, updateData, { new: true })
-      .select("-password -refreshTokens -passwordResetOTP -passwordResetOTPExpiry");
+    console.log("📝 Update data:", updateData);
+
+    const user = await User.findByIdAndUpdate(
+      req.user.id, 
+      updateData, 
+      { new: true, runValidators: true }
+    ).select("-password -refreshTokens -passwordResetOTP -passwordResetOTPExpiry");
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Admin not found" });
+    }
+
+    console.log("✅ Admin updated successfully:", user.email);
 
     return res.status(200).json({
       success: true,
@@ -128,6 +151,7 @@ const updateAdminProfile = async (req, res) => {
       data: user,
     });
   } catch (err) {
+    console.error("❌ updateAdminProfile error:", err);
     return res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -135,6 +159,8 @@ const updateAdminProfile = async (req, res) => {
 const changeAdminPassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
+    
+    console.log("🔐 Change admin password:", req.user.id);
 
     if (!currentPassword || !newPassword) {
       return res.status(400).json({ success: false, message: "Both passwords are required" });
@@ -163,8 +189,11 @@ const changeAdminPassword = async (req, res) => {
     user.refreshTokens = [];
     await user.save();
 
+    console.log("✅ Password changed for:", user.email);
+
     return res.status(200).json({ success: true, message: "Password changed successfully" });
   } catch (err) {
+    console.error("❌ changeAdminPassword error:", err);
     return res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -365,27 +394,65 @@ const getSingleCustomer = async (req, res) => {
 const blockCustomer = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { reason } = req.body;
-    const user = await User.findOne({ _id: userId, role: "customer", isDeleted: false });
-    if (!user) return res.status(404).json({ success: false, message: "Customer not found" });
+    console.log("🚫 Blocking customer:", userId);
+    
+    const user = await User.findOne({ _id: userId, role: "customer" });
+    
+    if (!user) {
+      console.log("❌ Customer not found:", userId);
+      return res.status(404).json({ success: false, message: "Customer not found" });
+    }
+    
+    if (user.isDeleted) {
+      return res.status(400).json({ success: false, message: "Cannot block deleted customer" });
+    }
+    
     user.status = "blocked";
+    user.refreshTokens = [];
     await user.save();
-    return res.status(200).json({ success: true, message: "Customer blocked" });
+    
+    console.log("✅ Customer blocked:", user.email);
+    
+    return res.status(200).json({ 
+      success: true, 
+      message: "Customer blocked successfully",
+      data: { _id: user._id, status: user.status }
+    });
   } catch (err) {
-    return res.status(500).json({ success: false, message: "Server error" });
+    console.error("❌ blockCustomer error:", err);
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
 const unblockCustomer = async (req, res) => {
   try {
     const { userId } = req.params;
-    const user = await User.findOne({ _id: userId, role: "customer", isDeleted: false });
-    if (!user) return res.status(404).json({ success: false, message: "Customer not found" });
+    console.log("✅ Unblocking customer:", userId);
+    
+    const user = await User.findOne({ _id: userId, role: "customer" });
+    
+    if (!user) {
+      console.log("❌ Customer not found:", userId);
+      return res.status(404).json({ success: false, message: "Customer not found" });
+    }
+    
+    if (user.isDeleted) {
+      return res.status(400).json({ success: false, message: "Cannot unblock deleted customer" });
+    }
+    
     user.status = "active";
     await user.save();
-    return res.status(200).json({ success: true, message: "Customer unblocked" });
+    
+    console.log("✅ Customer unblocked:", user.email);
+    
+    return res.status(200).json({ 
+      success: true, 
+      message: "Customer unblocked successfully",
+      data: { _id: user._id, status: user.status }
+    });
   } catch (err) {
-    return res.status(500).json({ success: false, message: "Server error" });
+    console.error("❌ unblockCustomer error:", err);
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 

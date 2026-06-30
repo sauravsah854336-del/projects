@@ -328,8 +328,30 @@ const AdminDashboard = () => {
 
   const handleDeleteReview = async (reviewId) => { try { await deleteReview({ reviewId }).unwrap(); setDeletingReviewId(null); toast.success("Review deleted"); } catch { toast.error("Failed"); } };
 
-  const handleBlockCustomer = async (userId) => { try { await blockCustomer(userId).unwrap(); setBlockingId(null); toast.success("Customer blocked"); } catch { toast.error("Failed"); } };
-  const handleUnblockCustomer = async (userId) => { try { await unblockCustomer(userId).unwrap(); toast.success("Customer unblocked"); } catch { toast.error("Failed"); } };
+  const handleBlockCustomer = async (userId) => { 
+  try { 
+    console.log("🚫 Blocking customer:", userId);
+    const res = await blockCustomer(userId).unwrap(); 
+    console.log("✅ Block response:", res);
+    setBlockingId(null); 
+    toast.success("Customer blocked successfully"); 
+  } catch (err) { 
+    console.error("❌ Block error:", err);
+    toast.error(err?.data?.message || err?.error || "Failed to block customer"); 
+  } 
+};
+
+const handleUnblockCustomer = async (userId) => { 
+  try { 
+    console.log("✅ Unblocking customer:", userId);
+    const res = await unblockCustomer(userId).unwrap(); 
+    console.log("✅ Unblock response:", res);
+    toast.success("Customer unblocked successfully"); 
+  } catch (err) { 
+    console.error("❌ Unblock error:", err);
+    toast.error(err?.data?.message || err?.error || "Failed to unblock customer"); 
+  } 
+};
   const handleDeleteCustomer = async (userId) => { try { await deleteCustomer(userId).unwrap(); setDeletingCustomerId(null); setSelectedCustomer(null); toast.success("Customer deleted"); } catch { toast.error("Failed"); } };
 
   const handleCreateAdmin = async (e) => {

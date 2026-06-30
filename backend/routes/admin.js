@@ -4,6 +4,9 @@ const authorized = require("../middlewares/roleMiddleware");
 const {
   createAdmin,
   getAllAdmins,
+  getAdminProfile,
+  updateAdminProfile,
+  changeAdminPassword,
   getPendingVendors,
   getAllVendors,
   approveVendor,
@@ -22,6 +25,10 @@ const {
 const router = express.Router();
 
 router.get("/stats", protect, authorized("admin"), getAdminStats);
+
+router.get("/profile", protect, authorized("admin"), getAdminProfile);
+router.put("/profile", protect, authorized("admin"), updateAdminProfile);
+router.put("/change-password", protect, authorized("admin"), changeAdminPassword);
 
 router.post("/createAdmin", protect, authorized("admin"), createAdmin);
 router.get("/admins", protect, authorized("admin"), getAllAdmins);
