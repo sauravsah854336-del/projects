@@ -3,6 +3,7 @@ import { authApi, useSignupMutation } from "../features/auth/authApi";
 import { useMergeGuestCartMutation } from "../features/cart/cartApi";
 import { useMergeWishlistMutation } from "../features/wishlist/wishlistApi";
 import { setCredentials } from "../features/auth/authSlice";
+import { setCountry } from "../features/country/countrySlice";
 import { useDispatch } from "react-redux";
 import { useNavigate, Link } from "react-router-dom";
 import { getGuestCartForMerge, clearGuestCart } from "../utils/guestCart";
@@ -227,6 +228,13 @@ const Signup = () => {
 
       dispatch(setCredentials(res));
 
+      if (res.detectedCountry && !localStorage.getItem("userCountry")) {
+        dispatch(setCountry(res.detectedCountry));
+        toast.info(
+          `📍 Auto-detected: ${res.detectedCountry.flag} ${res.detectedCountry.name}`,
+        );
+      }
+
       if (res.user?.role === "customer") {
         const hasGuestData =
           guestCartItems.length > 0 || guestWishlistIds.length > 0;
@@ -264,7 +272,7 @@ const Signup = () => {
       }
 
       setTimeout(() => {
-        navigate("/dashboard", { replace: true });
+        navigate("/", { replace: true });
       }, 200);
     } catch (err) {
       console.log(err);
@@ -329,7 +337,6 @@ const Signup = () => {
         <div className="hidden lg:flex flex-col justify-center items-center bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#0f172a] p-10 xl:p-12 relative overflow-hidden">
           <div className="absolute top-10 right-10 w-48 h-48 bg-[#D85A30]/20 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute bottom-10 left-10 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
-
           <div className="relative text-center">
             <div className="w-16 h-16 bg-gradient-to-br from-[#D85A30] to-[#e8734d] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-[#D85A30]/30">
               <span className="text-white font-extrabold text-2xl">E</span>
@@ -402,7 +409,6 @@ const Signup = () => {
                   />
                 </div>
               </div>
-
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-1.5 block">
                   Email Address
@@ -417,9 +423,7 @@ const Signup = () => {
                   icon={<EmailIcon />}
                 />
               </div>
-
               {formError && <ErrorAlert message={formError} />}
-
               <button
                 type="button"
                 onClick={handleNextStep}
@@ -441,7 +445,7 @@ const Signup = () => {
                     <span className="text-gray-500 text-sm font-medium">
                       +91
                     </span>
-                    <div className="w-px h-5 bg-gray-300 ml-1"></div>
+                    <div className="w-px h-5 bg-gray-300 ml-1" />
                   </div>
                   <input
                     name="phone"
@@ -480,7 +484,6 @@ const Signup = () => {
                     <EyeIcon open={showPassword} />
                   </button>
                 </div>
-
                 {form.password && (
                   <div className="mt-2">
                     <div className="flex items-center justify-between mb-1">
@@ -577,20 +580,19 @@ const Signup = () => {
                 >
                   {isLoading ? (
                     <span className="flex items-center justify-center gap-2">
-                      <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                      <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                       Creating...
                     </span>
                   ) : mergingData ? (
                     <span className="flex items-center justify-center gap-2">
-                      <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                      Syncing your data...
+                      <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Syncing...
                     </span>
                   ) : (
                     "Create Account"
                   )}
                 </button>
               </div>
-
               <p className="text-center text-gray-400 text-xs mt-2">
                 By creating an account, you agree to our{" "}
                 <Link

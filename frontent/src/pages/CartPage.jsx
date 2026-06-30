@@ -1,24 +1,37 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "../hooks/useCart";
+import { useSelector } from "react-redux";
 import { PLACEHOLDER_MEDIUM } from "../utils/placeholder";
 import WishlistButton from "../components/WishlistButton";
-
-const formatRupee = (amount) =>
-  new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(amount);
+import { formatPrice, convertPrice, calculateTax, getShippingInfo } from "../utils/priceHelper";
 
 const CartPage = () => {
   const navigate = useNavigate();
+  const { currentCountry } = useSelector((state) => state.country);
   const { cart, isLoading, updateItem, removeItem, clear, isGuest } = useCart();
   const [updatingItems, setUpdatingItems] = useState({});
   const [removingItems, setRemovingItems] = useState({});
 
   const items = cart?.items || [];
   const getProductId = (item) => item.product?._id || item.productId || item.product;
+
+  const subtotalINR = cart?.subtotal || 0;
+  const couponDiscountINR = cart?.coupon?.discount || 0;
+  const subtotalAfterCouponINR = subtotalINR - couponDiscountINR;
+
+  const subtotalLocal = convertPrice(subtotalINR, currentCountry);
+  const couponDiscountLocal = convertPrice(couponDiscountINR, currentCountry);
+  const taxAmount = currentCountry.tax?.includedInPrice
+    ? 0
+    : calculateTax(convertPrice(subtotalAfterCouponINR, currentCountry), currentCountry);
+
+  const shippingInfo = getShippingInfo(subtotalAfterCouponINR, currentCountry);
+  const shippingCostINR = shippingInfo?.isFree ? 0 : (currentCountry.shipping?.standardCost || 0) / currentCountry.exchangeRate;
+  const shippingCostLocal = shippingInfo?.isFree ? 0 : (currentCountry.shipping?.standardCost || 0);
+
+  const totalINR = subtotalAfterCouponINR + shippingCostINR + (taxAmount / currentCountry.exchangeRate);
+  const totalLocal = convertPrice(totalINR, currentCountry);
 
   const handleQuantityChange = async (productId, newQty) => {
     if (newQty < 1) return;
@@ -82,9 +95,14 @@ const CartPage = () => {
 
         <div className="flex items-center justify-between mb-5 sm:mb-6 flex-wrap gap-3">
           <div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 m-0">Shopping Cart</h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 m-0">Shopping Cart</h1>
+              <span className="inline-flex items-center gap-1.5 bg-orange-50 text-[#D85A30] border border-orange-200 px-2.5 py-1 rounded-full text-xs font-bold">
+                {currentCountry.flag} {currentCountry.currency.code}
+              </span>
+            </div>
             <p className="text-gray-400 text-[13px] mt-1 m-0">
-              {cart?.totalItems} {cart?.totalItems === 1 ? "item" : "items"}
+              {cart?.totalItems} {cart?.totalItems === 1 ? "item" : "items"} · Showing prices in {currentCountry.name}
             </p>
           </div>
           <button onClick={handleClearCart} className="bg-transparent border border-red-200 text-red-400 rounded-lg px-4 py-2 text-xs font-semibold cursor-pointer hover:bg-red-50 hover:border-red-300 hover:text-red-500 transition font-[inherit]">
@@ -124,7 +142,6 @@ const CartPage = () => {
                   className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 flex gap-4 items-start shadow-sm transition-all"
                   style={{ opacity: removingItems[productId] ? 0.4 : 1, transition: "opacity 0.2s" }}
                 >
-                  {/* Product image — square with object-contain */}
                   <Link to={`/products/${item.product?.slug || ""}`} className="shrink-0">
                     <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl border border-gray-100 bg-gray-50 flex items-center justify-center overflow-hidden">
                       <img
@@ -161,11 +178,11 @@ const CartPage = () => {
 
                       <div className="text-right shrink-0">
                         <p className="text-base sm:text-lg font-extrabold text-[#B12704] m-0">
-                          {formatRupee(item.price * item.quantity)}
+                          {formatPrice(item.price * item.quantity, currentCountry)}
                         </p>
                         {item.comparePrice > 0 && (
                           <p className="text-[11px] text-gray-400 line-through mt-0.5 m-0">
-                            {formatRupee(item.comparePrice * item.quantity)}
+                            {formatPrice(item.comparePrice * item.quantity, currentCountry)}
                           </p>
                         )}
                       </div>
@@ -193,50 +210,107 @@ const CartPage = () => {
                           +
                         </button>
                       </div>
-                      <p className="text-[11px] text-gray-400 m-0">{formatRupee(item.price)} each</p>
+                      <p className="text-[11px] text-gray-400 m-0">{formatPrice(item.price, currentCountry)} each</p>
                     </div>
                   </div>
                 </div>
               );
             })}
 
-            <div className="bg-green-50 border border-green-100 rounded-2xl px-5 py-4 flex items-center gap-3 shadow-sm">
-              <div className="w-9 h-9 bg-green-100 rounded-xl flex items-center justify-center text-lg shrink-0">🚚</div>
-              <div>
-                <p className="text-[13px] font-bold text-green-800 m-0">Free Delivery Eligible</p>
-                <p className="text-xs text-green-600 m-0">Your order qualifies for free delivery across India</p>
+            {shippingInfo?.isFree ? (
+              <div className="bg-green-50 border border-green-100 rounded-2xl px-5 py-4 flex items-center gap-3 shadow-sm">
+                <div className="w-9 h-9 bg-green-100 rounded-xl flex items-center justify-center text-lg shrink-0">🚚</div>
+                <div>
+                  <p className="text-[13px] font-bold text-green-800 m-0">Free Delivery Eligible!</p>
+                  <p className="text-xs text-green-600 m-0">Your order qualifies for free delivery to {currentCountry.flag} {currentCountry.name}</p>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="bg-orange-50 border border-orange-200 rounded-2xl px-5 py-4 flex items-center gap-3 shadow-sm">
+                <div className="w-9 h-9 bg-orange-100 rounded-xl flex items-center justify-center text-lg shrink-0">🛒</div>
+                <div className="flex-1">
+                  <p className="text-[13px] font-bold text-orange-800 m-0">
+                    Add {formatPrice(shippingInfo?.remainingForFree / currentCountry.exchangeRate, currentCountry)} more for FREE delivery
+                  </p>
+                  <p className="text-xs text-orange-600 m-0">
+                    Free shipping over {formatPrice(currentCountry.shipping.freeShippingThreshold / currentCountry.exchangeRate, currentCountry)}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Order Summary */}
           <div className="w-full lg:sticky lg:top-20">
             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-              <div className="px-5 py-4 border-b border-gray-100">
+              <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-orange-50 to-white">
                 <h2 className="text-base font-extrabold text-gray-900 m-0">Order Summary</h2>
+                <p className="text-[11px] text-gray-500 mt-0.5 m-0">
+                  Prices in {currentCountry.flag} {currentCountry.currency.code}
+                </p>
               </div>
               <div className="p-5">
                 <div className="flex flex-col gap-3 mb-5">
+
                   <div className="flex justify-between">
-                    <span className="text-[13px] text-gray-500">Subtotal ({cart?.totalItems} {cart?.totalItems === 1 ? "item" : "items"})</span>
-                    <span className="text-[13px] font-semibold text-gray-900">{formatRupee(cart?.subtotal || 0)}</span>
+                    <span className="text-[13px] text-gray-500">
+                      Subtotal ({cart?.totalItems} {cart?.totalItems === 1 ? "item" : "items"})
+                    </span>
+                    <span className="text-[13px] font-semibold text-gray-900">
+                      {formatPrice(subtotalINR, currentCountry)}
+                    </span>
                   </div>
-                  {cart?.coupon?.discount > 0 && (
+
+                  {couponDiscountINR > 0 && (
                     <div className="flex justify-between">
                       <span className="text-[13px] text-green-600">Coupon Discount</span>
-                      <span className="text-[13px] font-semibold text-green-600">− {formatRupee(cart.coupon.discount)}</span>
+                      <span className="text-[13px] font-semibold text-green-600">
+                        − {formatPrice(couponDiscountINR, currentCountry)}
+                      </span>
                     </div>
                   )}
+
                   <div className="flex justify-between">
                     <span className="text-[13px] text-gray-500">Shipping</span>
-                    <span className="text-[13px] font-bold text-green-600 flex items-center gap-1">🚚 FREE</span>
+                    {shippingInfo?.isFree ? (
+                      <span className="text-[13px] font-bold text-green-600 flex items-center gap-1">🚚 FREE</span>
+                    ) : (
+                      <span className="text-[13px] font-semibold text-gray-900">
+                        {formatPrice(shippingCostINR, currentCountry)}
+                      </span>
+                    )}
                   </div>
+
+                  {currentCountry.tax?.rate > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-[13px] text-gray-500">
+                        {currentCountry.tax.label} ({currentCountry.tax.rate}%)
+                        {currentCountry.tax.includedInPrice && (
+                          <span className="text-[10px] text-green-600 ml-1">(included)</span>
+                        )}
+                      </span>
+                      <span className="text-[13px] font-semibold text-gray-900">
+                        {currentCountry.tax.includedInPrice
+                          ? "Included"
+                          : `${currentCountry.currency.symbol}${taxAmount.toFixed(2)}`}
+                      </span>
+                    </div>
+                  )}
+
                   <div className="border-t border-gray-100 pt-3 flex justify-between items-center">
                     <span className="text-base font-extrabold text-gray-900">Total</span>
                     <div className="text-right">
-                      <span className="text-2xl font-extrabold text-[#B12704]">{formatRupee(cart?.total || cart?.subtotal || 0)}</span>
-                      {cart?.coupon?.discount > 0 && (
-                        <p className="text-[11px] text-green-600 font-semibold m-0 mt-0.5">You save {formatRupee(cart.coupon.discount)}!</p>
+                      <span className="text-2xl font-extrabold text-[#B12704]">
+                        {formatPrice(totalINR, currentCountry)}
+                      </span>
+                      {couponDiscountINR > 0 && (
+                        <p className="text-[11px] text-green-600 font-semibold m-0 mt-0.5">
+                          You save {formatPrice(couponDiscountINR, currentCountry)}!
+                        </p>
+                      )}
+                      {currentCountry.code !== "IN" && (
+                        <p className="text-[10px] text-gray-400 m-0 mt-0.5">
+                          ≈ ₹{Math.round(totalINR).toLocaleString("en-IN")}
+                        </p>
                       )}
                     </div>
                   </div>
@@ -256,11 +330,33 @@ const CartPage = () => {
                   Continue Shopping
                 </button>
 
+                <div className="mt-4 pt-3 border-t border-gray-100">
+                  <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wide m-0 mb-2">Accepted Payment Methods</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {currentCountry.paymentMethods?.map((method) => {
+                      const methodIcons = {
+                        cod: "💵", card: "💳", upi: "📱", netbanking: "🏦",
+                        wallet: "👛", paypal: "🅿️", applepay: "🍎", googlepay: "🔵",
+                      };
+                      const methodNames = {
+                        cod: "COD", card: "Card", upi: "UPI", netbanking: "NetBanking",
+                        wallet: "Wallet", paypal: "PayPal", applepay: "Apple Pay", googlepay: "Google Pay",
+                      };
+                      return (
+                        <span key={method} className="inline-flex items-center gap-1 bg-gray-50 border border-gray-200 px-2 py-1 rounded-md text-[10px] font-bold text-gray-700">
+                          {methodIcons[method]} {methodNames[method]}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 <div className="mt-5 pt-4 border-t border-gray-100 flex flex-col gap-2.5">
                   {[
                     { icon: "🔒", text: "Secure & encrypted checkout" },
                     { icon: "🔄", text: "Easy 10-day returns" },
                     { icon: "✅", text: "All vendors verified" },
+                    { icon: "🌍", text: `Shipping to ${currentCountry.name}` },
                   ].map((item) => (
                     <div key={item.text} className="flex items-center gap-2.5">
                       <span className="text-base">{item.icon}</span>
@@ -271,11 +367,12 @@ const CartPage = () => {
               </div>
             </div>
 
-            {/* Savings card */}
-            {cart?.coupon?.discount > 0 && (
+            {couponDiscountINR > 0 && (
               <div className="mt-3 bg-green-50 border border-green-100 rounded-2xl px-5 py-4">
                 <p className="text-sm font-bold text-green-800 m-0">🎉 Great savings!</p>
-                <p className="text-xs text-green-600 mt-1 m-0">You're saving {formatRupee(cart.coupon.discount)} on this order</p>
+                <p className="text-xs text-green-600 mt-1 m-0">
+                  You're saving {formatPrice(couponDiscountINR, currentCountry)} on this order
+                </p>
               </div>
             )}
           </div>

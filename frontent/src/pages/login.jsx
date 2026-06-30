@@ -3,6 +3,7 @@ import { authApi, useLoginMutation } from "../features/auth/authApi";
 import { useMergeGuestCartMutation } from "../features/cart/cartApi";
 import { useMergeWishlistMutation } from "../features/wishlist/wishlistApi";
 import { setCredentials } from "../features/auth/authSlice";
+import { setCountry } from "../features/country/countrySlice";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { getGuestCartForMerge, clearGuestCart } from "../utils/guestCart";
@@ -36,11 +37,13 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [mergingData, setMergingData] = useState(false);
   const [formError, setFormError] = useState("");
+  const [justLoggedIn, setJustLoggedIn] = useState(false);
 
   const redirectPath = searchParams.get("redirect");
   const [form, setForm] = useState({ email: "", password: "" });
 
   useEffect(() => {
+    if (justLoggedIn) return;
     if (isAuthChecked && user && token) {
       if (user.role === "admin") {
         navigate("/admin/dashboard", { replace: true });
@@ -50,7 +53,7 @@ const Login = () => {
         navigate(redirectPath || "/", { replace: true });
       }
     }
-  }, [isAuthChecked, user, token]);
+  }, [isAuthChecked, user, token, justLoggedIn]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -66,12 +69,18 @@ const Login = () => {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setFormError("Please enter a valid email address"); return; }
 
     try {
+      setJustLoggedIn(true);
+
       const guestCartItems = getGuestCartForMerge();
       const guestWishlistIds = getGuestWishlistForMerge();
 
       dispatch(authApi.util.resetApiState());
       const res = await login({ email, password }).unwrap();
       dispatch(setCredentials(res));
+
+      if (res.preferredCountry && !localStorage.getItem("userCountry")) {
+        dispatch(setCountry(res.preferredCountry));
+      }
 
       if (res.user?.role === "customer") {
         const hasGuestData = guestCartItems.length > 0 || guestWishlistIds.length > 0;
@@ -104,18 +113,25 @@ const Login = () => {
         } else {
           toast.success(`Welcome back, ${res.user.firstName}!`);
         }
+      } else if (res.user?.role === "admin") {
+        toast.success(`Welcome Admin ${res.user.firstName}!`);
+      } else if (res.user?.role === "vendor") {
+        toast.success(`Welcome ${res.user.firstName}!`);
       }
 
       const role = res.user?.role;
-      if (role === "admin") {
-        navigate("/admin/dashboard", { replace: true });
-      } else if (role === "vendor") {
-        navigate("/vendor/dashboard", { replace: true });
-      } else {
-        navigate(redirectPath || "/", { replace: true });
-      }
+      setTimeout(() => {
+        if (role === "admin") {
+          navigate("/admin/dashboard", { replace: true });
+        } else if (role === "vendor") {
+          navigate("/vendor/dashboard", { replace: true });
+        } else {
+          navigate(redirectPath || "/", { replace: true });
+        }
+      }, 100);
 
     } catch (err) {
+      setJustLoggedIn(false);
       console.log(err);
     }
   };
@@ -201,24 +217,14 @@ const Login = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
                 </div>
-                <input
-                  name="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={form.email}
-                  autoComplete="username"
-                  onChange={handleChange}
-                  className="w-full border border-gray-200 pl-12 pr-4 py-3 sm:py-3.5 rounded-xl outline-none focus:border-[#D85A30] focus:ring-4 focus:ring-[#D85A30]/10 transition-all text-[15px] bg-gray-50 focus:bg-white"
-                />
+                <input name="email" type="email" placeholder="you@example.com" value={form.email} autoComplete="username" onChange={handleChange} className="w-full border border-gray-200 pl-12 pr-4 py-3 sm:py-3.5 rounded-xl outline-none focus:border-[#D85A30] focus:ring-4 focus:ring-[#D85A30]/10 transition-all text-[15px] bg-gray-50 focus:bg-white" />
               </div>
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-sm font-medium text-gray-700">Password</label>
-                <Link to="/forgot-password" className="text-[13px] text-[#D85A30] no-underline hover:underline font-medium">
-                  Forgot Password?
-                </Link>
+                <Link to="/forgot-password" className="text-[13px] text-[#D85A30] no-underline hover:underline font-medium">Forgot Password?</Link>
               </div>
               <div className="relative">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
@@ -226,20 +232,8 @@ const Login = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                   </svg>
                 </div>
-                <input
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
-                  value={form.password}
-                  autoComplete="current-password"
-                  onChange={handleChange}
-                  className="w-full border border-gray-200 pl-12 pr-12 py-3 sm:py-3.5 rounded-xl outline-none focus:border-[#D85A30] focus:ring-4 focus:ring-[#D85A30]/10 transition-all text-[15px] bg-gray-50 focus:bg-white"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-transparent border-none cursor-pointer p-0 text-gray-400 hover:text-gray-600 transition-colors"
-                >
+                <input name="password" type={showPassword ? "text" : "password"} placeholder="Enter your password" value={form.password} autoComplete="current-password" onChange={handleChange} className="w-full border border-gray-200 pl-12 pr-12 py-3 sm:py-3.5 rounded-xl outline-none focus:border-[#D85A30] focus:ring-4 focus:ring-[#D85A30]/10 transition-all text-[15px] bg-gray-50 focus:bg-white" />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 bg-transparent border-none cursor-pointer p-0 text-gray-400 hover:text-gray-600 transition-colors">
                   {showPassword ? (
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
@@ -257,31 +251,25 @@ const Login = () => {
             {formError && <ErrorAlert message={formError} />}
             {!formError && error && <ErrorAlert message={error?.data?.message} />}
 
-            <button
-              type="submit"
-              disabled={isLoading || mergingData}
-              className="w-full bg-gradient-to-r from-[#D85A30] to-[#e8734d] text-white py-3.5 sm:py-4 rounded-xl font-semibold shadow-lg shadow-[#D85A30]/20 hover:shadow-[#D85A30]/40 hover:scale-[1.01] transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100 text-[15px] border-none cursor-pointer font-[inherit]"
-            >
+            <button type="submit" disabled={isLoading || mergingData} className="w-full bg-gradient-to-r from-[#D85A30] to-[#e8734d] text-white py-3.5 sm:py-4 rounded-xl font-semibold shadow-lg shadow-[#D85A30]/20 hover:shadow-[#D85A30]/40 hover:scale-[1.01] transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100 text-[15px] border-none cursor-pointer font-[inherit]">
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   Logging in...
                 </span>
               ) : mergingData ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   Syncing your data...
                 </span>
-              ) : (
-                "Login"
-              )}
+              ) : "Login"}
             </button>
           </form>
 
           <div className="mt-5 sm:mt-6 flex items-center gap-3">
-            <div className="flex-1 h-px bg-gray-200"></div>
+            <div className="flex-1 h-px bg-gray-200" />
             <span className="text-gray-400 text-xs font-medium">OR CONTINUE WITH</span>
-            <div className="flex-1 h-px bg-gray-200"></div>
+            <div className="flex-1 h-px bg-gray-200" />
           </div>
 
           <div className="mt-4 sm:mt-6 grid grid-cols-2 gap-3">
@@ -295,9 +283,7 @@ const Login = () => {
 
           <p className="text-center mt-6 sm:mt-8 text-gray-500 text-sm">
             Don't have an account?{" "}
-            <Link to="/signup" className="text-[#D85A30] font-semibold no-underline hover:underline">
-              Create Account
-            </Link>
+            <Link to="/signup" className="text-[#D85A30] font-semibold no-underline hover:underline">Create Account</Link>
           </p>
         </div>
       </div>

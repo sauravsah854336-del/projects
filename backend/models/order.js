@@ -42,13 +42,38 @@ const orderSchema = new mongoose.Schema(
     },
     paymentMethod: {
       type: String,
-      enum: ["cod", "online"],
+      enum: ["cod", "card", "upi", "netbanking", "wallet", "paypal", "applepay", "googlepay", "online"],
       default: "cod",
     },
     paymentStatus: {
       type: String,
       enum: ["pending", "paid", "failed", "refunded"],
       default: "pending",
+    },
+    country: {
+      code: { type: String, default: "IN", uppercase: true },
+      name: { type: String, default: "India" },
+      flag: { type: String, default: "🇮🇳" },
+      currency: {
+        code: { type: String, default: "INR", uppercase: true },
+        symbol: { type: String, default: "₹" },
+        name: { type: String, default: "Indian Rupee" },
+      },
+      exchangeRate: { type: Number, default: 1 },
+    },
+    pricing: {
+      subtotalINR: { type: Number, default: 0 },
+      subtotalLocal: { type: Number, default: 0 },
+      taxAmount: { type: Number, default: 0 },
+      taxRate: { type: Number, default: 0 },
+      taxLabel: { type: String, default: "" },
+      taxIncluded: { type: Boolean, default: true },
+      shippingCost: { type: Number, default: 0 },
+      shippingCostINR: { type: Number, default: 0 },
+      discountINR: { type: Number, default: 0 },
+      discountLocal: { type: Number, default: 0 },
+      totalINR: { type: Number, default: 0 },
+      totalLocal: { type: Number, default: 0 },
     },
     orderStatus: {
       type: String,
@@ -74,7 +99,7 @@ const orderSchema = new mongoose.Schema(
     deliveredAt: { type: Date, default: null },
     cancelledAt: { type: Date, default: null },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
 orderSchema.index({ user: 1 });

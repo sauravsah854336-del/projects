@@ -1,17 +1,12 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useSelector } from "react-redux";
 import {
   useGetMyOrdersQuery,
   useCancelOrderMutation,
 } from "../features/order/orderApi";
 import { PLACEHOLDER_MEDIUM } from "../utils/placeholder";
-
-const formatRupee = (amount) =>
-  new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(amount);
+import { formatPrice } from "../utils/priceHelper";
 
 const formatDate = (date) =>
   new Date(date).toLocaleDateString("en-IN", {
@@ -63,6 +58,7 @@ const getStatusIcon = (status) => {
 };
 
 const OrdersPage = () => {
+  const { currentCountry } = useSelector((state) => state.country);
   const [page, setPage] = useState(1);
   const { data, isLoading } = useGetMyOrdersQuery({ page, limit: 10 });
   const [cancelOrder] = useCancelOrderMutation();
@@ -73,6 +69,11 @@ const OrdersPage = () => {
 
   const orders = data?.data || [];
   const pagination = data?.pagination;
+
+  const getOrderCountry = (order) => {
+    if (order.country?.currency) return order.country;
+    return currentCountry;
+  };
 
   const handleCancel = async (id) => {
     setCancelError("");
@@ -92,7 +93,7 @@ const OrdersPage = () => {
     return (
       <div className="min-h-[70vh] flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="w-9 h-9 border-[3px] border-[#D85A30] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-9 h-9 border-[3px] border-[#D85A30] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-500 text-sm">Loading orders...</p>
         </div>
       </div>
@@ -105,7 +106,7 @@ const OrdersPage = () => {
         <div className="text-center bg-white p-12 sm:p-14 rounded-2xl border border-gray-200 max-w-[440px] w-full">
           <p className="text-6xl mb-4">📦</p>
           <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 mb-2">No orders yet</h2>
-          <p className="text-gray-500 text-sm mb-7">You haven’t placed any orders yet. Start shopping!</p>
+          <p className="text-gray-500 text-sm mb-7">You haven't placed any orders yet. Start shopping!</p>
           <Link
             to="/products"
             className="inline-block bg-gradient-to-b from-yellow-300 to-yellow-400 text-gray-900 no-underline px-8 py-3 rounded-xl font-bold text-sm border border-yellow-400 hover:brightness-95 transition"
@@ -138,6 +139,7 @@ const OrdersPage = () => {
         {orders.map((order) => {
           const statusStyle = getStatusStyle(order.orderStatus);
           const isCancelOpen = cancellingId === order._id;
+          const orderCountry = getOrderCountry(order);
 
           return (
             <div key={order._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-4">
@@ -155,15 +157,20 @@ const OrdersPage = () => {
                     >
                       {getStatusIcon(order.orderStatus)} {getStatusLabel(order.orderStatus)}
                     </span>
+                    {order.country?.code && order.country.code !== "IN" && (
+                      <span className="text-[10px] bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full font-bold">
+                        {order.country.flag || "🌍"} {order.country.currency?.code || ""}
+                      </span>
+                    )}
                   </div>
                   <span className="text-xs text-gray-400">
-                    Placed on {formatDate(order.createdAt)} • {order.items.length} {order.items.length === 1 ? "item" : "items"}
+                    Placed on {formatDate(order.createdAt)} · {order.items.length} {order.items.length === 1 ? "item" : "items"}
                   </span>
                 </div>
 
                 <div className="flex items-center gap-2.5 flex-wrap">
                   <span className="text-lg sm:text-xl font-extrabold text-[#B12704]">
-                    {formatRupee(order.total)}
+                    {formatPrice(order.total, orderCountry)}
                   </span>
                   <Link
                     to={`/orders/${order._id}`}
@@ -188,11 +195,11 @@ const OrdersPage = () => {
                     <div className="flex-1 min-w-0">
                       <p className="text-[13px] font-semibold text-gray-900 m-0 truncate">{item.name}</p>
                       <p className="text-[11px] text-gray-400 mt-0.5 m-0">
-                        {item.storeName} • Qty: {item.quantity}
+                        {item.storeName} · Qty: {item.quantity}
                       </p>
                     </div>
                     <span className="text-[13px] font-bold text-gray-700 shrink-0">
-                      {formatRupee(item.price * item.quantity)}
+                      {formatPrice(item.price * item.quantity, orderCountry)}
                     </span>
                   </div>
                 ))}
@@ -212,7 +219,7 @@ const OrdersPage = () => {
               <div className="px-5 py-3 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2 text-xs text-gray-400 flex-wrap">
                   <span>{order.paymentMethod === "cod" ? "💵 Cash on Delivery" : "💳 Online"}</span>
-                  <span className="text-gray-200">•</span>
+                  <span className="text-gray-200">·</span>
                   <span className={`font-bold ${
                     order.paymentStatus === "paid"
                       ? "text-green-600"
@@ -322,4 +329,3 @@ const OrdersPage = () => {
 };
 
 export default OrdersPage;
-

@@ -6,9 +6,18 @@ import { useSelector } from "react-redux";
 import { useGetProfileQuery } from "../features/customer/customerApi";
 import { PLACEHOLDER_MEDIUM } from "../utils/placeholder";
 import { toast } from "../components/Toast";
+import { formatPrice, convertPrice, calculateTax, getShippingInfo } from "../utils/priceHelper";
 
-const formatRupee = (amount) =>
-  new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount);
+const PAYMENT_METHODS_CONFIG = {
+  cod: { label: "Cash on Delivery", sub: "Pay when your order arrives", icon: "💵" },
+  card: { label: "Credit/Debit Card", sub: "Visa, Mastercard, Amex", icon: "💳" },
+  upi: { label: "UPI", sub: "Google Pay, PhonePe, Paytm", icon: "📱" },
+  netbanking: { label: "Net Banking", sub: "All major banks supported", icon: "🏦" },
+  wallet: { label: "Wallet", sub: "Paytm, MobiKwik, Amazon Pay", icon: "👛" },
+  paypal: { label: "PayPal", sub: "Pay with your PayPal account", icon: "🅿️" },
+  applepay: { label: "Apple Pay", sub: "Quick & secure", icon: "🍎" },
+  googlepay: { label: "Google Pay", sub: "Pay with Google", icon: "🔵" },
+};
 
 const RadioDot = ({ selected }) => (
   <div className={`w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${selected ? "border-gray-900 bg-gray-900" : "border-gray-300 bg-white"}`}>
@@ -19,6 +28,7 @@ const RadioDot = ({ selected }) => (
 const CheckoutPage = () => {
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
+  const { currentCountry } = useSelector((state) => state.country);
   const { data: cartData } = useGetCartQuery();
   const { data: profileData } = useGetProfileQuery();
   const [placeOrder, { isLoading }] = usePlaceOrderMutation();
@@ -28,26 +38,58 @@ const CheckoutPage = () => {
   const savedAddresses = profileData?.data?.addresses || [];
   const defaultAddress = savedAddresses.find((a) => a.isDefault) || savedAddresses[0];
 
+  const availablePaymentMethods = currentCountry?.paymentMethods || ["cod", "card"];
+  const defaultPaymentMethod = availablePaymentMethods[0] || "cod";
+
   const [selectedAddressId, setSelectedAddressId] = useState(null);
   const [addressMode, setAddressMode] = useState("saved");
   const [form, setForm] = useState({
     fullName: user?.firstName + " " + (user?.lastName || ""),
-    phone: "", street: "", city: "", state: "", postalCode: "", country: "India",
+    phone: "", street: "", city: "", state: "", postalCode: "",
+    country: currentCountry?.name || "India",
   });
-  const [paymentMethod, setPaymentMethod] = useState("cod");
+  const [paymentMethod, setPaymentMethod] = useState(defaultPaymentMethod);
   const [formError, setFormError] = useState("");
   const [orderSuccess, setOrderSuccess] = useState(null);
   const [confirming, setConfirming] = useState(false);
+
+  const subtotalINR = cart?.subtotal || 0;
+  const couponDiscountINR = cart?.coupon?.discount || 0;
+  const subtotalAfterCouponINR = subtotalINR - couponDiscountINR;
+
+  const subtotalLocal = convertPrice(subtotalINR, currentCountry);
+  const couponDiscountLocal = convertPrice(couponDiscountINR, currentCountry);
+  const taxAmount = currentCountry.tax?.includedInPrice
+    ? 0
+    : calculateTax(convertPrice(subtotalAfterCouponINR, currentCountry), currentCountry);
+
+  const shippingInfo = getShippingInfo(subtotalAfterCouponINR, currentCountry);
+  const shippingCostINR = shippingInfo?.isFree ? 0 : (currentCountry.shipping?.standardCost || 0) / currentCountry.exchangeRate;
+  const shippingCostLocal = shippingInfo?.isFree ? 0 : (currentCountry.shipping?.standardCost || 0);
+
+  const totalINR = subtotalAfterCouponINR + shippingCostINR + (taxAmount / currentCountry.exchangeRate);
+  const totalLocal = convertPrice(totalINR, currentCountry);
 
   const getSelectedAddress = () => {
     if (addressMode === "new") return form;
     const id = selectedAddressId || defaultAddress?._id;
     const addr = savedAddresses.find((a) => a._id === id);
     if (!addr) return form;
-    return { fullName: addr.fullName, phone: addr.phone, street: addr.street, city: addr.city, state: addr.state, postalCode: addr.postalCode, country: addr.country || "India" };
+    return {
+      fullName: addr.fullName,
+      phone: addr.phone,
+      street: addr.street,
+      city: addr.city,
+      state: addr.state,
+      postalCode: addr.postalCode,
+      country: addr.country || currentCountry?.name || "India",
+    };
   };
 
-  const handleChange = (e) => { setForm({ ...form, [e.target.name]: e.target.value }); setFormError(""); };
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+    setFormError("");
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -61,17 +103,26 @@ const CheckoutPage = () => {
       return;
     }
 
-    if (!/^[6-9]\d{9}$/.test(shippingAddress.phone)) {
-      setFormError("Please enter a valid 10-digit phone number");
-      toast.error("Please enter a valid 10-digit phone number");
+    if (items.length === 0) {
+      setFormError("Your cart is empty");
       return;
     }
 
-    if (items.length === 0) { setFormError("Your cart is empty"); return; }
-
     try {
       setConfirming(true);
-      const res = await placeOrder({ shippingAddress, paymentMethod }).unwrap();
+      const res = await placeOrder({
+        shippingAddress,
+        paymentMethod,
+        country: {
+          code: currentCountry.code,
+          name: currentCountry.name,
+          flag: currentCountry.flag,
+          currency: currentCountry.currency,
+          exchangeRate: currentCountry.exchangeRate,
+          tax: currentCountry.tax,
+          shipping: currentCountry.shipping,
+        },
+      }).unwrap();
       setConfirming(false);
       setOrderSuccess(res.data);
       toast.success("🎉 Order placed successfully!");
@@ -119,13 +170,23 @@ const CheckoutPage = () => {
             </div>
 
             <div className="p-5 sm:p-6">
+              <div className="bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 mb-5 flex items-center gap-3">
+                <span className="text-2xl">{currentCountry.flag}</span>
+                <div className="flex-1">
+                  <p className="text-xs font-bold text-indigo-800 m-0">Shipping to {currentCountry.name}</p>
+                  <p className="text-[11px] text-indigo-600 m-0 mt-0.5">
+                    Payment in {currentCountry.currency.code} ({currentCountry.currency.symbol})
+                  </p>
+                </div>
+              </div>
+
               <div className="mb-5">
                 <h3 className="text-sm font-extrabold text-gray-900 mb-3">What happens next?</h3>
                 <div className="flex flex-col gap-3">
                   {[
                     { icon: "✅", title: "Order Confirmed", desc: "Your order has been received", done: true },
                     { icon: "⚙️", title: "Vendor Processing", desc: "Vendor will prepare your items", done: false },
-                    { icon: "🚚", title: "Shipped", desc: "Your order will be dispatched", done: false },
+                    { icon: "🚚", title: "Shipped", desc: `Estimated ${currentCountry.shipping?.estimatedDays?.standard || 5} days`, done: false },
                     { icon: "📦", title: "Delivered", desc: "Delivered to your address", done: false },
                   ].map((step, i) => (
                     <div key={i} className="flex items-start gap-3">
@@ -150,12 +211,19 @@ const CheckoutPage = () => {
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-sm text-gray-500">Payment Method</span>
                   <span className="text-sm font-bold text-gray-900">
-                    {orderSuccess.paymentMethod === "cod" ? "💵 Cash on Delivery" : "💳 Online"}
+                    {PAYMENT_METHODS_CONFIG[orderSuccess.paymentMethod]?.icon || "💳"} {PAYMENT_METHODS_CONFIG[orderSuccess.paymentMethod]?.label || "Online"}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500">Order Total</span>
-                  <span className="text-lg font-extrabold text-[#B12704]">{formatRupee(orderSuccess.total)}</span>
+                  <div className="text-right">
+                    <span className="text-lg font-extrabold text-[#B12704]">
+                      {formatPrice(orderSuccess.total, currentCountry)}
+                    </span>
+                    {currentCountry.code !== "IN" && (
+                      <p className="text-[10px] text-gray-400 m-0">≈ ₹{Math.round(orderSuccess.total).toLocaleString("en-IN")}</p>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -172,7 +240,9 @@ const CheckoutPage = () => {
                           <p className="text-xs font-semibold text-gray-900 m-0 truncate">{item.name}</p>
                           <p className="text-[11px] text-gray-400 m-0">Qty: {item.quantity}</p>
                         </div>
-                        <span className="text-xs font-bold text-gray-700 shrink-0">{formatRupee(item.price * item.quantity)}</span>
+                        <span className="text-xs font-bold text-gray-700 shrink-0">
+                          {formatPrice(item.price * item.quantity, currentCountry)}
+                        </span>
                       </div>
                     ))}
                     {orderSuccess.items.length > 3 && (
@@ -253,9 +323,14 @@ const CheckoutPage = () => {
       <div className="max-w-[1100px] mx-auto">
 
         <div className="mb-6">
-          <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 m-0">Checkout</h1>
-          <p className="text-gray-400 text-xs sm:text-sm mt-1 m-0">
-            {items.length} {items.length === 1 ? "item" : "items"} in your order
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 m-0">Checkout</h1>
+            <span className="inline-flex items-center gap-1.5 bg-orange-50 text-[#D85A30] border border-orange-200 px-2.5 py-1 rounded-full text-xs font-bold">
+              {currentCountry.flag} {currentCountry.currency.code}
+            </span>
+          </div>
+          <p className="text-gray-400 text-xs sm:text-sm m-0">
+            {items.length} {items.length === 1 ? "item" : "items"} · Paying in {currentCountry.currency.name}
           </p>
         </div>
 
@@ -342,34 +417,60 @@ const CheckoutPage = () => {
             </div>
 
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex items-center gap-2">
-                <span className="text-lg">💳</span>
-                <h2 className="text-sm sm:text-[15px] font-extrabold text-gray-900 m-0">Payment Method</h2>
+              <div className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">💳</span>
+                  <h2 className="text-sm sm:text-[15px] font-extrabold text-gray-900 m-0">Payment Method</h2>
+                </div>
+                <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                  {availablePaymentMethods.length} options for {currentCountry.flag} {currentCountry.code}
+                </span>
               </div>
               <div className="p-5 flex flex-col gap-2.5">
-                {[
-                  { value: "cod", label: "Cash on Delivery", sub: "Pay when your order arrives", icon: "💵" },
-                  { value: "online", label: "Online Payment", sub: "UPI, Cards, Net Banking", icon: "💳" },
-                ].map((opt) => (
-                  <div key={opt.value} onClick={() => setPaymentMethod(opt.value)}
-                    className={`flex items-center gap-3.5 p-4 rounded-2xl border-2 cursor-pointer transition-all ${paymentMethod === opt.value ? "border-gray-900 bg-gray-50" : "border-gray-200 hover:border-[#D85A30]"}`}>
-                    <RadioDot selected={paymentMethod === opt.value} />
-                    <div className="flex-1">
-                      <p className="text-sm font-extrabold text-gray-900 m-0">{opt.label}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">{opt.sub}</p>
+                {availablePaymentMethods.map((methodKey) => {
+                  const opt = PAYMENT_METHODS_CONFIG[methodKey];
+                  if (!opt) return null;
+
+                  return (
+                    <div key={methodKey} onClick={() => setPaymentMethod(methodKey)}
+                      className={`flex items-center gap-3.5 p-4 rounded-2xl border-2 cursor-pointer transition-all ${paymentMethod === methodKey ? "border-gray-900 bg-gray-50" : "border-gray-200 hover:border-[#D85A30]"}`}>
+                      <RadioDot selected={paymentMethod === methodKey} />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-extrabold text-gray-900 m-0">{opt.label}</p>
+                          {methodKey === "cod" && (
+                            <span className="text-[9px] bg-green-100 text-green-700 border border-green-200 px-1.5 py-0.5 rounded-full font-bold">RECOMMENDED</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-0.5">{opt.sub}</p>
+                      </div>
+                      <span className="text-2xl">{opt.icon}</span>
                     </div>
-                    <span className="text-2xl">{opt.icon}</span>
+                  );
+                })}
+
+                {availablePaymentMethods.length === 0 && (
+                  <div className="text-center py-6">
+                    <p className="text-3xl mb-2">⚠️</p>
+                    <p className="text-sm text-gray-500 m-0">No payment methods available for {currentCountry.name}</p>
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </div>
 
           <div className="w-full lg:sticky lg:top-20">
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex items-center gap-2">
-                <span className="text-lg">🧾</span>
-                <h2 className="text-sm sm:text-[15px] font-extrabold text-gray-900 m-0">Order Summary</h2>
+              <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-orange-50 to-white">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🧾</span>
+                    <h2 className="text-sm sm:text-[15px] font-extrabold text-gray-900 m-0">Order Summary</h2>
+                  </div>
+                  <span className="text-[10px] font-bold text-gray-500">
+                    {currentCountry.flag} {currentCountry.currency.code}
+                  </span>
+                </div>
               </div>
 
               <div className="max-h-60 overflow-y-auto">
@@ -381,7 +482,9 @@ const CheckoutPage = () => {
                     <div className="flex-1 min-w-0">
                       <p className="text-xs sm:text-sm font-semibold text-gray-900 m-0 truncate">{item.name}</p>
                       <p className="text-[11px] text-gray-400 m-0">Qty: {item.quantity}</p>
-                      <p className="text-xs sm:text-sm font-extrabold text-[#B12704] mt-0.5">{formatRupee(item.price * item.quantity)}</p>
+                      <p className="text-xs sm:text-sm font-extrabold text-[#B12704] mt-0.5">
+                        {formatPrice(item.price * item.quantity, currentCountry)}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -389,23 +492,62 @@ const CheckoutPage = () => {
 
               <div className="px-5 py-4 border-t-2 border-gray-100">
                 <div className="flex flex-col gap-2">
+
                   <div className="flex justify-between">
                     <span className="text-xs sm:text-sm text-gray-500">Subtotal ({items.length} items)</span>
-                    <span className="text-xs sm:text-sm font-semibold text-gray-900">{formatRupee(cart?.subtotal || 0)}</span>
+                    <span className="text-xs sm:text-sm font-semibold text-gray-900">
+                      {formatPrice(subtotalINR, currentCountry)}
+                    </span>
                   </div>
-                  {cart?.coupon?.discount > 0 && (
+
+                  {couponDiscountINR > 0 && (
                     <div className="flex justify-between">
                       <span className="text-xs sm:text-sm text-green-600">Discount</span>
-                      <span className="text-xs sm:text-sm font-semibold text-green-600">− {formatRupee(cart.coupon.discount)}</span>
+                      <span className="text-xs sm:text-sm font-semibold text-green-600">
+                        − {formatPrice(couponDiscountINR, currentCountry)}
+                      </span>
                     </div>
                   )}
+
                   <div className="flex justify-between">
                     <span className="text-xs sm:text-sm text-gray-500">Shipping</span>
-                    <span className="text-xs sm:text-sm font-bold text-green-600">🚚 FREE</span>
+                    {shippingInfo?.isFree ? (
+                      <span className="text-xs sm:text-sm font-bold text-green-600 flex items-center gap-1">🚚 FREE</span>
+                    ) : (
+                      <span className="text-xs sm:text-sm font-semibold text-gray-900">
+                        {formatPrice(shippingCostINR, currentCountry)}
+                      </span>
+                    )}
                   </div>
+
+                  {currentCountry.tax?.rate > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-xs sm:text-sm text-gray-500">
+                        {currentCountry.tax.label} ({currentCountry.tax.rate}%)
+                        {currentCountry.tax.includedInPrice && (
+                          <span className="text-[10px] text-green-600 ml-1">(included)</span>
+                        )}
+                      </span>
+                      <span className="text-xs sm:text-sm font-semibold text-gray-900">
+                        {currentCountry.tax.includedInPrice
+                          ? "Included"
+                          : `${currentCountry.currency.symbol}${taxAmount.toFixed(2)}`}
+                      </span>
+                    </div>
+                  )}
+
                   <div className="border-t-2 border-gray-100 pt-2.5 flex justify-between items-center">
                     <span className="text-base font-extrabold text-gray-900">Total</span>
-                    <span className="text-xl sm:text-2xl font-extrabold text-[#B12704]">{formatRupee(cart?.total || 0)}</span>
+                    <div className="text-right">
+                      <span className="text-xl sm:text-2xl font-extrabold text-[#B12704]">
+                        {formatPrice(totalINR, currentCountry)}
+                      </span>
+                      {currentCountry.code !== "IN" && (
+                        <p className="text-[10px] text-gray-400 m-0 mt-0.5">
+                          ≈ ₹{Math.round(totalINR).toLocaleString("en-IN")}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -426,7 +568,7 @@ const CheckoutPage = () => {
                       Confirming...
                     </span>
                   ) : (
-                    `Place Order • ${formatRupee(cart?.total || 0)}`
+                    `Place Order • ${formatPrice(totalINR, currentCountry)}`
                   )}
                 </button>
 
@@ -435,7 +577,12 @@ const CheckoutPage = () => {
                 </p>
 
                 <div className="mt-4 pt-4 border-t border-gray-100 flex flex-col gap-2">
-                  {[{ icon: "🔒", text: "Secure & encrypted checkout" }, { icon: "🔄", text: "Easy 10-day returns" }, { icon: "✅", text: "Verified vendors only" }].map((item) => (
+                  {[
+                    { icon: "🔒", text: "Secure & encrypted checkout" },
+                    { icon: "🔄", text: "Easy 10-day returns" },
+                    { icon: "✅", text: "Verified vendors only" },
+                    { icon: "🌍", text: `Delivery to ${currentCountry.name} in ${currentCountry.shipping?.estimatedDays?.standard || 5}-${currentCountry.shipping?.estimatedDays?.standard + 3 || 7} days` },
+                  ].map((item) => (
                     <div key={item.text} className="flex items-center gap-2">
                       <span className="text-sm">{item.icon}</span>
                       <span className="text-[11px] text-gray-400">{item.text}</span>

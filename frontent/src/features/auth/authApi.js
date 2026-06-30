@@ -72,6 +72,7 @@ export const authApi = createApi({
     "Search",
     "VendorProfile",
     "AdminProfile",
+    "Countries",
   ],
   endpoints: (builder) => ({
     signup: builder.mutation({

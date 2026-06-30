@@ -5,20 +5,18 @@ import { logout } from "../features/auth/authSlice";
 import { authApi, useLogoutMutation } from "../features/auth/authApi";
 import { useSearchSuggestionsQuery } from "../features/search/searchApi";
 import { useGetCategoryTreeQuery } from "../features/category/categoryApi";
+import { useGetAllCountriesQuery, useDetectUserCountryQuery } from "../features/country/countryApi";
+import { setCountry, setAllCountries } from "../features/country/countrySlice";
 import { useDebounce } from "../hooks/useDebounce";
 import { useCart } from "../hooks/useCart";
 import { useWishlist } from "../hooks/useWishlist";
 import { PLACEHOLDER_TINY } from "../utils/placeholder";
-
-const formatRupee = (amount) =>
-  new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(amount);
+import { formatPrice } from "../utils/priceHelper";
+import { toast } from "./Toast";
 
 const Navbar = () => {
   const { user, refreshToken } = useSelector((state) => state.auth);
+  const { currentCountry } = useSelector((state) => state.country);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
@@ -31,13 +29,8 @@ const Navbar = () => {
   const [highlightIndex, setHighlightIndex] = useState(-1);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const [locationOpen, setLocationOpen] = useState(false);
-  const [currentLocation, setCurrentLocation] = useState(() => {
-    return localStorage.getItem("deliveryLocation") || "India";
-  });
-  const [pincodeInput, setPincodeInput] = useState("");
-  const [locationError, setLocationError] = useState("");
-  const [detectingLocation, setDetectingLocation] = useState(false);
+  const [countryModalOpen, setCountryModalOpen] = useState(false);
+  const [countrySearch, setCountrySearch] = useState("");
 
   const accountTimer = useRef(null);
   const searchBoxRef = useRef(null);
@@ -55,6 +48,24 @@ const Navbar = () => {
   const cartCount = cart?.totalItems || 0;
   const { total: wishlistCount } = useWishlist();
   const showShoppingFeatures = isCustomer || isGuest;
+
+  const { data: countriesData } = useGetAllCountriesQuery();
+  const { data: detectedData } = useDetectUserCountryQuery(undefined, {
+    skip: !!localStorage.getItem("userCountry"),
+  });
+
+  useEffect(() => {
+    if (countriesData?.data) {
+      dispatch(setAllCountries(countriesData.data));
+    }
+  }, [countriesData, dispatch]);
+
+  useEffect(() => {
+    if (detectedData?.data && !localStorage.getItem("userCountry")) {
+      dispatch(setCountry(detectedData.data));
+      toast.info(`📍 Showing prices for ${detectedData.data.flag} ${detectedData.data.name}`);
+    }
+  }, [detectedData, dispatch]);
 
   const shouldSkipSearch = debouncedQuery.length < 1 || (!isCustomer && !isGuest);
 
@@ -97,7 +108,7 @@ const Navbar = () => {
     setSearchFocus(false);
     setSearchQuery("");
     setHighlightIndex(-1);
-    setLocationOpen(false);
+    setCountryModalOpen(false);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -120,14 +131,14 @@ const Navbar = () => {
     setMobileOpen(false);
     setSearchFocus(false);
     setSearchQuery("");
-    setLocationOpen(false);
+    setCountryModalOpen(false);
     navigate(path);
   };
 
   const dash = (role) => {
     if (role === "admin") return "/admin/dashboard";
     if (role === "vendor") return "/vendor/dashboard";
-    return "/dashboard";
+    return "/";
   };
 
   const doSearch = (customQuery) => {
@@ -181,59 +192,18 @@ const Navbar = () => {
     navigate("/login");
   };
 
-  const handleSetLocation = (loc) => {
-    setCurrentLocation(loc);
-    localStorage.setItem("deliveryLocation", loc);
-    setLocationOpen(false);
-    setPincodeInput("");
-    setLocationError("");
+  const handleSelectCountry = (country) => {
+    dispatch(setCountry(country));
+    setCountryModalOpen(false);
+    setCountrySearch("");
+    toast.success(`${country.flag} Switched to ${country.name}`);
   };
 
-  const handlePincodeSubmit = () => {
-    const pin = pincodeInput.trim();
-    if (!pin || pin.length !== 6 || !/^\d{6}$/.test(pin)) {
-      setLocationError("Enter a valid 6-digit PIN code");
-      return;
-    }
-    handleSetLocation(`PIN ${pin}`);
-  };
-
-  const handleDetectLocation = () => {
-    setDetectingLocation(true);
-    setLocationError("");
-    if (!navigator.geolocation) {
-      setLocationError("Geolocation not supported by your browser");
-      setDetectingLocation(false);
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          const { latitude, longitude } = position.coords;
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
-          );
-          const data = await res.json();
-          const city =
-            data.address?.city ||
-            data.address?.town ||
-            data.address?.village ||
-            data.address?.state ||
-            "Unknown";
-          const country = data.address?.country || "India";
-          handleSetLocation(`${city}, ${country}`);
-        } catch {
-          setLocationError("Failed to detect location. Try entering PIN instead.");
-        } finally {
-          setDetectingLocation(false);
-        }
-      },
-      () => {
-        setLocationError("Location access denied. Enter PIN manually.");
-        setDetectingLocation(false);
-      }
-    );
-  };
+  const filteredCountries = countriesData?.data?.filter(c =>
+    c.name.toLowerCase().includes(countrySearch.toLowerCase()) ||
+    c.code.toLowerCase().includes(countrySearch.toLowerCase()) ||
+    c.currency.code.toLowerCase().includes(countrySearch.toLowerCase())
+  ) || [];
 
   const highlightText = (text, query) => {
     if (!query || !text) return text;
@@ -298,7 +268,7 @@ const Navbar = () => {
         @keyframes slideRight { from { transform:translateX(-100%); } to { transform:translateX(0); } }
         .search-dd { animation: ddIn 0.12s ease both; }
         .account-dd { animation: ddIn 0.15s ease both; }
-        .loc-modal { animation: modalIn 0.2s ease both; }
+        .country-modal { animation: modalIn 0.2s ease both; }
         .slide-panel { animation: slideRight 0.2s ease both; }
         .sd-item { border-left: 3px solid transparent; }
         .sd-item.highlighted { border-left: 3px solid #D85A30; background-color: #fff7f0; }
@@ -311,15 +281,7 @@ const Navbar = () => {
           onClick={() => setMobileOpen(true)}
           className="lg:hidden p-2 border border-transparent rounded hover:border-white text-white bg-transparent cursor-pointer shrink-0"
         >
-          <svg
-            width="22"
-            height="22"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-          >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
             <path d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
@@ -347,18 +309,22 @@ const Navbar = () => {
         </div>
 
         {showShoppingFeatures && (
-          <NavLink
-            top={user ? `Deliver to ${user.firstName}` : "Deliver to"}
-            bottom={
-              <>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
+          <button
+            onClick={() => setCountryModalOpen(true)}
+            className="hidden lg:flex items-center gap-2 px-2.5 py-2 border border-transparent rounded hover:border-white transition-colors cursor-pointer bg-transparent shrink-0 text-left font-[inherit]"
+            title={`Shipping to ${currentCountry.name} (${currentCountry.currency.code})`}
+          >
+            <span className="text-xl">{currentCountry.flag}</span>
+            <div className="flex flex-col leading-tight">
+              <span className="text-[10px] text-gray-400">Ship to</span>
+              <span className="text-[12px] font-extrabold text-white flex items-center gap-1">
+                {currentCountry.code}
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M7 10l5 5 5-5z" />
                 </svg>
-                <span className="max-w-[100px] truncate">{currentLocation}</span>
-              </>
-            }
-            onClick={() => setLocationOpen(true)}
-          />
+              </span>
+            </div>
+          </button>
         )}
 
         {showShoppingFeatures && (
@@ -409,15 +375,7 @@ const Navbar = () => {
                   }}
                   className="px-2 text-gray-400 hover:text-gray-600 bg-transparent border-none cursor-pointer"
                 >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                  >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                     <path d="M18 6L6 18M6 6l12 12" />
                   </svg>
                 </button>
@@ -427,15 +385,7 @@ const Navbar = () => {
                 onClick={() => doSearch()}
                 className="bg-gradient-to-b from-yellow-300 to-yellow-400 border-none px-4 sm:px-5 cursor-pointer text-gray-900 flex items-center justify-center rounded-r-lg hover:brightness-95 transition"
               >
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                   <circle cx="11" cy="11" r="7" />
                   <path d="M21 21l-4.35-4.35" />
                 </svg>
@@ -459,8 +409,7 @@ const Navbar = () => {
                         No results found
                       </p>
                       <p className="text-xs text-gray-500 m-0">
-                        Nothing matches &ldquo;
-                        <strong>{searchQuery}</strong>&rdquo;
+                        Nothing matches &ldquo;<strong>{searchQuery}</strong>&rdquo;
                       </p>
                       <button
                         onClick={() => doSearch()}
@@ -486,9 +435,7 @@ const Navbar = () => {
                           {suggestions.categories.map((c, idx) => (
                             <button
                               key={c._id}
-                              onClick={() =>
-                                handleSuggestionClick({ type: "category", data: c })
-                              }
+                              onClick={() => handleSuggestionClick({ type: "category", data: c })}
                               onMouseEnter={() => setHighlightIndex(idx)}
                               onMouseLeave={() => setHighlightIndex(-1)}
                               className={`sd-item flex items-center gap-3 w-full px-4 py-2.5 border-none bg-transparent cursor-pointer text-left hover:bg-orange-50 transition-colors ${
@@ -496,15 +443,7 @@ const Navbar = () => {
                               }`}
                             >
                               <div className="w-8 h-8 bg-orange-50 rounded-md flex items-center justify-center shrink-0">
-                                <svg
-                                  width="16"
-                                  height="16"
-                                  fill="none"
-                                  stroke="#D85A30"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  viewBox="0 0 24 24"
-                                >
+                                <svg width="16" height="16" fill="none" stroke="#D85A30" strokeWidth="2" strokeLinecap="round" viewBox="0 0 24 24">
                                   <path d="M4 6h16M4 12h16M4 18h7" />
                                 </svg>
                               </div>
@@ -512,19 +451,9 @@ const Navbar = () => {
                                 <p className="text-[13px] font-semibold text-gray-900 m-0">
                                   {highlightText(c.name, debouncedQuery)}
                                 </p>
-                                <p className="text-[11px] text-gray-400 m-0">
-                                  in Categories
-                                </p>
+                                <p className="text-[11px] text-gray-400 m-0">in Categories</p>
                               </div>
-                              <svg
-                                width="14"
-                                height="14"
-                                fill="none"
-                                stroke="#999"
-                                strokeWidth="2.5"
-                                strokeLinecap="round"
-                                viewBox="0 0 24 24"
-                              >
+                              <svg width="14" height="14" fill="none" stroke="#999" strokeWidth="2.5" strokeLinecap="round" viewBox="0 0 24 24">
                                 <path d="M9 5l7 7-7 7" />
                               </svg>
                             </button>
@@ -547,9 +476,7 @@ const Navbar = () => {
                             return (
                               <button
                                 key={v._id}
-                                onClick={() =>
-                                  handleSuggestionClick({ type: "vendor", data: v })
-                                }
+                                onClick={() => handleSuggestionClick({ type: "vendor", data: v })}
                                 onMouseEnter={() => setHighlightIndex(gIdx)}
                                 onMouseLeave={() => setHighlightIndex(-1)}
                                 className={`sd-item flex items-center gap-3 w-full px-4 py-2.5 border-none bg-transparent cursor-pointer text-left hover:bg-orange-50 transition-colors ${
@@ -563,19 +490,9 @@ const Navbar = () => {
                                   <p className="text-[13px] font-semibold text-gray-900 m-0">
                                     {highlightText(v.storeName, debouncedQuery)}
                                   </p>
-                                  <p className="text-[11px] text-gray-400 m-0">
-                                    Official Store
-                                  </p>
+                                  <p className="text-[11px] text-gray-400 m-0">Official Store</p>
                                 </div>
-                                <svg
-                                  width="14"
-                                  height="14"
-                                  fill="none"
-                                  stroke="#999"
-                                  strokeWidth="2.5"
-                                  strokeLinecap="round"
-                                  viewBox="0 0 24 24"
-                                >
+                                <svg width="14" height="14" fill="none" stroke="#999" strokeWidth="2.5" strokeLinecap="round" viewBox="0 0 24 24">
                                   <path d="M9 5l7 7-7 7" />
                                 </svg>
                               </button>
@@ -599,9 +516,7 @@ const Navbar = () => {
                             return (
                               <button
                                 key={p._id}
-                                onClick={() =>
-                                  handleSuggestionClick({ type: "product", data: p })
-                                }
+                                onClick={() => handleSuggestionClick({ type: "product", data: p })}
                                 onMouseEnter={() => setHighlightIndex(gIdx)}
                                 onMouseLeave={() => setHighlightIndex(-1)}
                                 className={`sd-item flex items-center gap-3 w-full px-4 py-2.5 border-none bg-transparent cursor-pointer text-left hover:bg-orange-50 transition-colors ${
@@ -623,11 +538,11 @@ const Navbar = () => {
                                   </p>
                                   <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                                     <span className="text-[13px] font-bold text-[#B12704]">
-                                      {formatRupee(p.price)}
+                                      {formatPrice(p.price, currentCountry)}
                                     </span>
                                     {p.comparePrice > p.price && (
                                       <span className="text-[11px] text-gray-400 line-through">
-                                        {formatRupee(p.comparePrice)}
+                                        {formatPrice(p.comparePrice, currentCountry)}
                                       </span>
                                     )}
                                     {p.brand && (
@@ -736,6 +651,7 @@ const Navbar = () => {
                   {isVendor && (
                     <>
                       <DDLink onClick={() => go("/vendor/dashboard")}>Dashboard</DDLink>
+                      <DDLink onClick={() => go("/vendor/profile")}>My Profile</DDLink>
                       <DDLink onClick={() => go("/vendor/dashboard?tab=products")}>
                         My Products
                       </DDLink>
@@ -753,6 +669,7 @@ const Navbar = () => {
                   {isAdmin && (
                     <>
                       <DDLink onClick={() => go("/admin/dashboard")}>Dashboard</DDLink>
+                      <DDLink onClick={() => go("/admin/profile")}>My Profile</DDLink>
                       <DDLink onClick={() => go("/admin/dashboard?tab=vendors")}>
                         Vendors
                       </DDLink>
@@ -798,6 +715,9 @@ const Navbar = () => {
                   </p>
                   {isCustomer && (
                     <>
+                      <DDLink onClick={() => setCountryModalOpen(true)}>
+                        🌍 Change Country ({currentCountry.flag} {currentCountry.code})
+                      </DDLink>
                       <DDLink onClick={() => go("/help")}>Customer Service</DDLink>
                       <DDLink onClick={() => go("/contact")}>Contact Us</DDLink>
                       <DDLink onClick={() => go("/policy/returns")}>Returns Policy</DDLink>
@@ -824,11 +744,17 @@ const Navbar = () => {
                     <>
                       <DDLink onClick={() => go("/")}>View Storefront</DDLink>
                       <DDLink onClick={() => go("/products")}>All Products</DDLink>
+                      <DDLink onClick={() => go("/admin/dashboard?tab=countries")}>
+                        🌍 Countries
+                      </DDLink>
                       <DDLink onClick={() => go("/help")}>Help Center</DDLink>
                     </>
                   )}
                   {isGuest && (
                     <>
+                      <DDLink onClick={() => setCountryModalOpen(true)}>
+                        🌍 Change Country ({currentCountry.flag} {currentCountry.code})
+                      </DDLink>
                       <DDLink onClick={() => go("/vendor/signup")}>
                         Become a Seller
                       </DDLink>
@@ -860,16 +786,7 @@ const Navbar = () => {
                   {wishlistCount > 99 ? "99+" : wishlistCount}
                 </span>
               )}
-              <svg
-                width="26"
-                height="26"
-                viewBox="0 0 24 24"
-                fill={wishlistCount > 0 ? "#EF4444" : "none"}
-                stroke={wishlistCount > 0 ? "#EF4444" : "currentColor"}
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
+              <svg width="26" height="26" viewBox="0 0 24 24" fill={wishlistCount > 0 ? "#EF4444" : "none"} stroke={wishlistCount > 0 ? "#EF4444" : "currentColor"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
               </svg>
             </div>
@@ -893,16 +810,7 @@ const Navbar = () => {
                   {cartCount > 99 ? "99+" : cartCount}
                 </span>
               )}
-              <svg
-                width="28"
-                height="28"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
               </svg>
             </div>
@@ -920,221 +828,139 @@ const Navbar = () => {
         )}
       </nav>
 
-      {locationOpen && (
+      {countryModalOpen && (
         <>
           <div
             className="fixed inset-0 bg-black/50 z-[99998]"
             onClick={() => {
-              setLocationOpen(false);
-              setPincodeInput("");
-              setLocationError("");
+              setCountryModalOpen(false);
+              setCountrySearch("");
             }}
           />
-          <div className="loc-modal fixed top-1/2 left-1/2 w-[92vw] max-w-[460px] bg-white rounded-2xl z-[99999] shadow-2xl overflow-hidden">
+          <div className="country-modal fixed top-1/2 left-1/2 w-[92vw] max-w-[480px] max-h-[85vh] bg-white rounded-2xl z-[99999] shadow-2xl overflow-hidden flex flex-col">
+
             <div className="bg-gradient-to-r from-[#131921] to-[#232F3E] px-5 sm:px-6 py-4 sm:py-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <h2 className="text-base sm:text-lg font-black text-white m-0">
-                    Choose Your Location
+                    🌍 Choose Your Country
                   </h2>
-                  <p className="text-xs text-slate-400 mt-0.5 m-0">
-                    Select delivery location for accurate prices
+                  <p className="text-xs text-slate-400 mt-1 m-0">
+                    Prices, taxes, and shipping will update accordingly
                   </p>
                 </div>
                 <button
                   onClick={() => {
-                    setLocationOpen(false);
-                    setPincodeInput("");
-                    setLocationError("");
+                    setCountryModalOpen(false);
+                    setCountrySearch("");
                   }}
                   className="bg-white/10 border border-white/15 text-white rounded-lg w-8 h-8 flex items-center justify-center cursor-pointer hover:bg-white/20 transition shrink-0"
                 >
-                  <svg
-                    width="14"
-                    height="14"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    viewBox="0 0 24 24"
-                    strokeLinecap="round"
-                  >
+                  <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" strokeLinecap="round">
                     <path d="M18 6L6 18M6 6l12 12" />
                   </svg>
                 </button>
               </div>
             </div>
 
-            <div className="p-5 sm:p-6 max-h-[80vh] overflow-y-auto">
-              <div className="flex items-center gap-3 bg-gradient-to-r from-orange-50 to-orange-50/50 border border-orange-200 rounded-xl p-3.5 mb-4">
-                <div className="w-9 h-9 bg-white rounded-lg flex items-center justify-center text-lg shrink-0">
-                  📍
-                </div>
-                <div className="flex-1">
-                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wide m-0">
-                    Current Location
-                  </p>
-                  <p className="text-sm font-extrabold text-gray-900 mt-0.5 m-0">
-                    {currentLocation}
-                  </p>
+            <div className="px-5 py-3 border-b border-gray-100 bg-gray-50">
+              <div className="relative">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Search country or currency..."
+                  value={countrySearch}
+                  onChange={(e) => setCountrySearch(e.target.value)}
+                  autoFocus
+                  className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#D85A30] focus:ring-2 focus:ring-[#D85A30]/10 font-[inherit] bg-white"
+                />
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto">
+
+              <div className="px-5 py-3 bg-orange-50 border-b border-orange-100">
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">{currentCountry.flag}</span>
+                  <div className="flex-1">
+                    <p className="text-[10px] text-orange-600 font-bold uppercase tracking-wide m-0">
+                      Current Country
+                    </p>
+                    <p className="text-sm font-extrabold text-gray-900 m-0">
+                      {currentCountry.name}
+                    </p>
+                    <p className="text-[11px] text-gray-600 m-0 mt-0.5">
+                      {currentCountry.currency.symbol} {currentCountry.currency.code} ·
+                      {" "}{currentCountry.tax?.label} {currentCountry.tax?.rate}%
+                    </p>
+                  </div>
+                  <span className="text-[10px] bg-[#D85A30] text-white px-2 py-0.5 rounded-full font-extrabold">
+                    SELECTED
+                  </span>
                 </div>
               </div>
 
-              <button
-                onClick={handleDetectLocation}
-                disabled={detectingLocation}
-                className={`w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl text-sm font-extrabold text-white border-none cursor-pointer transition-all mb-4 ${
-                  detectingLocation
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-gradient-to-r from-[#D85A30] to-[#FF8C5A] hover:brightness-95 shadow-lg shadow-orange-500/20"
-                }`}
-              >
-                {detectingLocation ? (
-                  <>
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Detecting your location...
-                  </>
-                ) : (
-                  <>
-                    <svg
-                      width="18"
-                      height="18"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      viewBox="0 0 24 24"
-                      strokeLinecap="round"
-                    >
-                      <circle cx="12" cy="12" r="10" />
-                      <circle cx="12" cy="12" r="4" />
-                      <path d="M12 2v2M12 20v2M2 12h2M20 12h2" />
-                    </svg>
-                    Use Current Location
-                  </>
-                )}
-              </button>
-
-              <div className="flex items-center gap-2.5 mb-4">
-                <div className="flex-1 h-px bg-gray-200" />
-                <span className="text-[11px] text-gray-400 font-bold uppercase tracking-wide">
-                  OR
-                </span>
-                <div className="flex-1 h-px bg-gray-200" />
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
-                  Enter PIN Code
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="e.g. 400001"
-                    value={pincodeInput}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, "").slice(0, 6);
-                      setPincodeInput(val);
-                      setLocationError("");
-                    }}
-                    onKeyDown={(e) => e.key === "Enter" && handlePincodeSubmit()}
-                    maxLength={6}
-                    className={`flex-1 border-[1.5px] rounded-xl px-3.5 py-3 text-sm font-bold text-gray-900 bg-gray-50 outline-none font-mono tracking-widest transition ${
-                      locationError
-                        ? "border-red-300"
-                        : "border-gray-200 focus:border-gray-900"
-                    }`}
-                  />
-                  <button
-                    onClick={handlePincodeSubmit}
-                    disabled={pincodeInput.length !== 6}
-                    className={`px-5 py-3 rounded-xl text-sm font-extrabold border-none cursor-pointer transition font-[inherit] ${
-                      pincodeInput.length === 6
-                        ? "bg-gray-900 text-white hover:bg-gray-800"
-                        : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                    }`}
-                  >
-                    Apply
-                  </button>
+              {filteredCountries.length === 0 ? (
+                <div className="text-center py-12 px-4">
+                  <p className="text-4xl mb-2">🌍</p>
+                  <p className="text-sm text-gray-500 m-0">No countries found</p>
                 </div>
-                {locationError && (
-                  <p className="text-[11px] text-red-500 font-semibold mt-1.5 m-0">
-                    ⚠️ {locationError}
+              ) : (
+                <div>
+                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide px-5 pt-3 pb-1.5 m-0">
+                    All Countries ({filteredCountries.length})
                   </p>
-                )}
-              </div>
-
-              <div className="border-t border-gray-100 pt-4">
-                <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wide mb-2.5 m-0">
-                  Popular Cities
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    "Mumbai","Delhi","Bangalore","Hyderabad","Chennai",
-                    "Kolkata","Pune","Ahmedabad","Jaipur","Lucknow",
-                  ].map((city) => {
-                    const isActive = currentLocation.includes(city);
+                  {filteredCountries.map((country) => {
+                    const isActive = currentCountry.code === country.code;
                     return (
                       <button
-                        key={city}
-                        onClick={() => handleSetLocation(`${city}, India`)}
-                        className={`text-xs font-semibold px-3.5 py-1.5 rounded-full border cursor-pointer transition font-[inherit] ${
-                          isActive
-                            ? "bg-orange-50 text-[#D85A30] border-orange-200 font-extrabold"
-                            : "bg-gray-50 text-gray-700 border-gray-200 hover:border-[#D85A30] hover:text-[#D85A30]"
+                        key={country.code}
+                        onClick={() => handleSelectCountry(country)}
+                        disabled={isActive}
+                        className={`w-full flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition border-none cursor-pointer text-left font-[inherit] disabled:cursor-default ${
+                          isActive ? "bg-orange-50/50" : "bg-transparent"
                         }`}
                       >
-                        {isActive && "✓ "}
-                        {city}
+                        <span className="text-3xl shrink-0">{country.flag}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className={`text-sm font-bold m-0 truncate ${isActive ? "text-[#D85A30]" : "text-gray-900"}`}>
+                              {country.name}
+                            </p>
+                            {country.isDefault && !isActive && (
+                              <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-bold">DEFAULT</span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-gray-500 m-0 mt-0.5">
+                            {country.currency.symbol} {country.currency.code} ·
+                            {" "}{country.tax?.label || "No tax"} {country.tax?.rate || 0}%
+                            {country.shipping?.freeShippingThreshold > 0 && (
+                              <span> · Free ship over {country.currency.symbol}{country.shipping.freeShippingThreshold}</span>
+                            )}
+                          </p>
+                        </div>
+                        {isActive ? (
+                          <svg width="18" height="18" fill="none" stroke="#D85A30" strokeWidth="3" viewBox="0 0 24 24" className="shrink-0">
+                            <path d="M5 13l4 4L19 7" strokeLinecap="round" />
+                          </svg>
+                        ) : (
+                          <svg width="14" height="14" fill="none" stroke="#999" strokeWidth="2.5" viewBox="0 0 24 24" className="shrink-0">
+                            <path d="M9 5l7 7-7 7" strokeLinecap="round" />
+                          </svg>
+                        )}
                       </button>
                     );
                   })}
                 </div>
-              </div>
-
-              {user && (
-                <div className="mt-4 flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl p-3.5">
-                  <span className="text-xl">💡</span>
-                  <div className="flex-1">
-                    <p className="text-xs font-bold text-green-800 m-0">
-                      Save delivery addresses
-                    </p>
-                    <p className="text-[11px] text-green-600 m-0">
-                      Add addresses to your profile for faster checkout
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setLocationOpen(false);
-                      go("/profile");
-                    }}
-                    className="bg-green-500 text-white text-[11px] font-bold px-3.5 py-1.5 rounded-lg border-none cursor-pointer hover:bg-green-600 transition whitespace-nowrap font-[inherit]"
-                  >
-                    Go to Profile
-                  </button>
-                </div>
               )}
+            </div>
 
-              {!user && (
-                <div className="mt-4 flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-xl p-3.5">
-                  <span className="text-xl">🔐</span>
-                  <div className="flex-1">
-                    <p className="text-xs font-bold text-blue-800 m-0">
-                      Sign in for better experience
-                    </p>
-                    <p className="text-[11px] text-blue-600 m-0">
-                      Save addresses and get faster delivery
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setLocationOpen(false);
-                      go("/login");
-                    }}
-                    className="bg-blue-600 text-white text-[11px] font-bold px-3.5 py-1.5 rounded-lg border-none cursor-pointer hover:bg-blue-700 transition whitespace-nowrap font-[inherit]"
-                  >
-                    Sign In
-                  </button>
-                </div>
-              )}
+            <div className="px-5 py-3 border-t border-gray-100 bg-gray-50">
+              <p className="text-[11px] text-gray-500 m-0 flex items-center gap-1.5">
+                💡 <span>Prices auto-convert based on your country</span>
+              </p>
             </div>
           </div>
         </>
@@ -1160,15 +986,7 @@ const Navbar = () => {
                 onClick={() => setMobileOpen(false)}
                 className="bg-transparent border-none text-white cursor-pointer ml-auto"
               >
-                <svg
-                  width="22"
-                  height="22"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                   <path d="M18 6L6 18M6 6l12 12" />
                 </svg>
               </button>
@@ -1179,22 +997,14 @@ const Navbar = () => {
                 <SlideItem
                   onClick={() => {
                     setMobileOpen(false);
-                    setLocationOpen(true);
+                    setCountryModalOpen(true);
                   }}
                   className="bg-orange-50 font-bold"
                 >
                   <span className="flex items-center gap-2">
-                    📍 Deliver to {currentLocation}
+                    {currentCountry.flag} Ship to {currentCountry.name}
                   </span>
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                  >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                     <path d="M9 5l7 7-7 7" />
                   </svg>
                 </SlideItem>
@@ -1213,15 +1023,7 @@ const Navbar = () => {
                   >
                     <span>{cat.name}</span>
                     {cat.children?.length > 0 && (
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                      >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                         <path d="M9 5l7 7-7 7" />
                       </svg>
                     )}
@@ -1266,6 +1068,7 @@ const Navbar = () => {
                   Vendor Panel
                 </p>
                 <SlideItem onClick={() => go("/vendor/dashboard")}>Dashboard</SlideItem>
+                <SlideItem onClick={() => go("/vendor/profile")}>My Profile</SlideItem>
                 <SlideItem onClick={() => go("/vendor/dashboard?tab=products")}>
                   My Products
                 </SlideItem>
@@ -1287,8 +1090,15 @@ const Navbar = () => {
                   Admin Panel
                 </p>
                 <SlideItem onClick={() => go("/admin/dashboard")}>Dashboard</SlideItem>
+                <SlideItem onClick={() => go("/admin/profile")}>My Profile</SlideItem>
                 <SlideItem onClick={() => go("/admin/dashboard?tab=vendors")}>
                   Vendors
+                </SlideItem>
+                <SlideItem onClick={() => go("/admin/dashboard?tab=customers")}>
+                  Customers
+                </SlideItem>
+                <SlideItem onClick={() => go("/admin/dashboard?tab=countries")}>
+                  🌍 Countries
                 </SlideItem>
                 <SlideItem onClick={() => go("/admin/dashboard?tab=categories")}>
                   Categories

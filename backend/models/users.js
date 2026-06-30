@@ -115,6 +115,16 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    preferredCountry: {
+      type: String,
+      default: "IN",
+      uppercase: true,
+    },
+    preferredCurrency: {
+      type: String,
+      default: "INR",
+      uppercase: true,
+    },
   },
   { timestamps: true },
 );

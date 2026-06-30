@@ -1,6 +1,7 @@
 const Order = require("../models/order");
 const Cart = require("../models/cart");
 const Product = require("../models/product");
+const User = require("../models/users");
 
 const generateOrderNumber = () => {
   const timestamp = Date.now().toString();
@@ -10,7 +11,7 @@ const generateOrderNumber = () => {
 
 const placeOrder = async (req, res) => {
   try {
-    const { shippingAddress, paymentMethod = "cod", notes = "" } = req.body;
+    const { shippingAddress, paymentMethod = "cod", notes = "", country } = req.body;
 
     if (!shippingAddress?.fullName || !shippingAddress?.phone || !shippingAddress?.street ||
         !shippingAddress?.city || !shippingAddress?.state || !shippingAddress?.postalCode) {
@@ -24,7 +25,7 @@ const placeOrder = async (req, res) => {
     }
 
     const orderItems = [];
-    let subtotal = 0;
+    let subtotalINR = 0;
 
     for (const item of cart.items) {
       const product = await Product.findById(item.product._id).populate("vendorStore", "storeName");
@@ -53,12 +54,37 @@ const placeOrder = async (req, res) => {
         storeName: product.vendorStore?.storeName || "",
       });
 
-      subtotal += product.price * item.quantity;
+      subtotalINR += product.price * item.quantity;
     }
 
-    const discount = cart.coupon?.discount || 0;
-    const shippingCharge = 0;
-    const total = subtotal - discount + shippingCharge;
+    const discountINR = cart.coupon?.discount || 0;
+    const subtotalAfterDiscountINR = subtotalINR - discountINR;
+
+    const countryInfo = country || {
+      code: "IN",
+      name: "India",
+      flag: "🇮🇳",
+      currency: { code: "INR", symbol: "₹", name: "Indian Rupee" },
+      exchangeRate: 1,
+      tax: { rate: 18, label: "GST", includedInPrice: true },
+      shipping: { standardCost: 0, freeShippingThreshold: 499 },
+    };
+
+    const exchangeRate = countryInfo.exchangeRate || 1;
+    const subtotalLocal = subtotalINR * exchangeRate;
+    const discountLocal = discountINR * exchangeRate;
+
+    const taxRate = countryInfo.tax?.rate || 0;
+    const taxIncluded = countryInfo.tax?.includedInPrice !== false;
+    const taxAmount = taxIncluded ? 0 : (subtotalAfterDiscountINR * exchangeRate * taxRate) / 100;
+
+    const freeThreshold = countryInfo.shipping?.freeShippingThreshold || 0;
+    const standardShippingCost = countryInfo.shipping?.standardCost || 0;
+    const shippingCostLocal = (subtotalLocal - discountLocal) >= freeThreshold ? 0 : standardShippingCost;
+    const shippingCostINR = exchangeRate > 0 ? shippingCostLocal / exchangeRate : 0;
+
+    const totalINR = subtotalAfterDiscountINR + shippingCostINR + (exchangeRate > 0 ? taxAmount / exchangeRate : 0);
+    const totalLocal = totalINR * exchangeRate;
 
     const order = await Order.create({
       orderNumber: generateOrderNumber(),
@@ -68,12 +94,37 @@ const placeOrder = async (req, res) => {
       paymentMethod,
       paymentStatus: "pending",
       orderStatus: "confirmed",
-      subtotal,
-      discount,
-      shippingCharge,
-      total,
+      subtotal: subtotalINR,
+      discount: discountINR,
+      shippingCharge: shippingCostINR,
+      total: totalINR,
       notes,
       confirmedAt: new Date(),
+      country: {
+        code: countryInfo.code || "IN",
+        name: countryInfo.name || "India",
+        flag: countryInfo.flag || "🇮🇳",
+        currency: {
+          code: countryInfo.currency?.code || "INR",
+          symbol: countryInfo.currency?.symbol || "₹",
+          name: countryInfo.currency?.name || "Indian Rupee",
+        },
+        exchangeRate: exchangeRate,
+      },
+      pricing: {
+        subtotalINR,
+        subtotalLocal,
+        taxAmount,
+        taxRate,
+        taxLabel: countryInfo.tax?.label || "",
+        taxIncluded,
+        shippingCost: shippingCostLocal,
+        shippingCostINR,
+        discountINR,
+        discountLocal,
+        totalINR,
+        totalLocal,
+      },
     });
 
     for (const item of orderItems) {
@@ -87,12 +138,20 @@ const placeOrder = async (req, res) => {
       { items: [], totalItems: 0, subtotal: 0, total: 0, coupon: { code: "", discount: 0, discountType: "fixed" } }
     );
 
+    if (countryInfo.code) {
+      await User.findByIdAndUpdate(req.user.id, {
+        preferredCountry: countryInfo.code,
+        preferredCurrency: countryInfo.currency?.code || "INR",
+      });
+    }
+
     return res.status(201).json({
       success: true,
       message: "Order placed successfully",
       data: order,
     });
   } catch (err) {
+    console.error("placeOrder error:", err);
     return res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -116,7 +175,8 @@ const getMyOrders = async (req, res) => {
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     });
   } catch (err) {
-    return res.status(500).json({ success: false, message: "Server error" });
+    console.error("getMyOrders error:", err);
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
@@ -132,7 +192,8 @@ const getSingleOrder = async (req, res) => {
 
     return res.status(200).json({ success: true, data: order });
   } catch (err) {
-    return res.status(500).json({ success: false, message: "Server error" });
+    console.error("getSingleOrder error:", err);
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
@@ -154,15 +215,14 @@ const cancelOrder = async (req, res) => {
       });
     }
 
-    order.orderStatus = "cancelled";
-    order.cancelReason = reason || "Cancelled by customer";
-    order.cancelledAt = new Date();
-
-    if (order.paymentMethod === "online" && order.paymentStatus === "paid") {
-      order.paymentStatus = "refunded";
-    }
-
-    await order.save();
+    await Order.findByIdAndUpdate(id, {
+      orderStatus: "cancelled",
+      cancelReason: reason || "Cancelled by customer",
+      cancelledAt: new Date(),
+      ...(order.paymentMethod !== "cod" && order.paymentStatus === "paid"
+        ? { paymentStatus: "refunded" }
+        : {}),
+    });
 
     for (const item of order.items) {
       await Product.findByIdAndUpdate(item.product, {
@@ -172,7 +232,8 @@ const cancelOrder = async (req, res) => {
 
     return res.status(200).json({ success: true, message: "Order cancelled successfully" });
   } catch (err) {
-    return res.status(500).json({ success: false, message: "Server error" });
+    console.error("cancelOrder error:", err);
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
@@ -185,10 +246,10 @@ const adminGetAllOrders = async (req, res) => {
 
     const filter = {};
     if (status) filter.orderStatus = status;
+
     if (search) {
-      filter.$or = [
-        { orderNumber: { $regex: search, $options: "i" } },
-      ];
+      const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      filter.orderNumber = { $regex: escaped, $options: "i" };
     }
 
     const orders = await Order.find(filter)
@@ -214,7 +275,8 @@ const adminGetAllOrders = async (req, res) => {
       },
     });
   } catch (err) {
-    return res.status(500).json({ success: false, message: "Server error" });
+    console.error("adminGetAllOrders error:", err);
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
@@ -230,15 +292,14 @@ const adminCancelOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: "Cannot cancel this order" });
     }
 
-    order.orderStatus = "cancelled";
-    order.cancelReason = reason || "Cancelled by admin";
-    order.cancelledAt = new Date();
-
-    if (order.paymentMethod === "online" && order.paymentStatus === "paid") {
-      order.paymentStatus = "refunded";
-    }
-
-    await order.save();
+    await Order.findByIdAndUpdate(id, {
+      orderStatus: "cancelled",
+      cancelReason: reason || "Cancelled by admin",
+      cancelledAt: new Date(),
+      ...(order.paymentMethod !== "cod" && order.paymentStatus === "paid"
+        ? { paymentStatus: "refunded" }
+        : {}),
+    });
 
     for (const item of order.items) {
       await Product.findByIdAndUpdate(item.product, {
@@ -248,7 +309,8 @@ const adminCancelOrder = async (req, res) => {
 
     return res.status(200).json({ success: true, message: "Order cancelled by admin" });
   } catch (err) {
-    return res.status(500).json({ success: false, message: "Server error" });
+    console.error("adminCancelOrder error:", err);
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
@@ -294,16 +356,16 @@ const vendorUpdateOrderStatus = async (req, res) => {
       });
     }
 
-    order.orderStatus = status;
+    const updateData = { orderStatus: status };
 
     if (status === "delivered") {
-      order.deliveredAt = new Date();
-      order.paymentStatus = "paid";
+      updateData.deliveredAt = new Date();
+      updateData.paymentStatus = "paid";
     }
 
     if (status === "cancelled") {
-      order.cancelReason = req.body.reason || "Cancelled by vendor";
-      order.cancelledAt = new Date();
+      updateData.cancelReason = req.body.reason || "Cancelled by vendor";
+      updateData.cancelledAt = new Date();
       for (const item of vendorItems) {
         await Product.findByIdAndUpdate(item.product, {
           $inc: { stock: item.quantity, totalSold: -item.quantity },
@@ -311,11 +373,12 @@ const vendorUpdateOrderStatus = async (req, res) => {
       }
     }
 
-    await order.save();
+    const updatedOrder = await Order.findByIdAndUpdate(id, updateData, { new: true });
 
-    return res.status(200).json({ success: true, message: "Order status updated", data: order });
+    return res.status(200).json({ success: true, message: "Order status updated", data: updatedOrder });
   } catch (err) {
-    return res.status(500).json({ success: false, message: "Server error" });
+    console.error("vendorUpdateOrderStatus error:", err);
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
@@ -348,12 +411,18 @@ const vendorGetOrders = async (req, res) => {
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     });
   } catch (err) {
-    return res.status(500).json({ success: false, message: "Server error" });
+    console.error("vendorGetOrders error:", err);
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
 module.exports = {
-  placeOrder, getMyOrders, getSingleOrder, cancelOrder,
-  adminGetAllOrders, adminCancelOrder,
-  vendorUpdateOrderStatus, vendorGetOrders,
+  placeOrder,
+  getMyOrders,
+  getSingleOrder,
+  cancelOrder,
+  adminGetAllOrders,
+  adminCancelOrder,
+  vendorUpdateOrderStatus,
+  vendorGetOrders,
 };

@@ -4,6 +4,7 @@ const cors = require("cors");
 const morgan = require("morgan");
 const helmet = require("helmet");
 const path = require("path");
+const { startRateUpdateCron } = require("./utils/rateUpdateCron");
 
 const connectDB = require("./config/db");
 const authRouter = require("./routes/auth");
@@ -18,12 +19,14 @@ const orderRouter = require("./routes/order");
 const uploadRouter = require("./routes/upload");
 const searchRouter = require("./routes/search");
 const reviewRouter = require("./routes/review");
+const countryRoutes = require("./routes/countryRoutes");
 
 const PORT = process.env.PORT || 5005;
 
 const app = express();
 
 connectDB();
+startRateUpdateCron();
 
 app.use(
   helmet({
@@ -62,6 +65,7 @@ app.use("/api/orders", orderRouter);
 app.use("/api/upload", uploadRouter);
 app.use("/api/search", searchRouter);
 app.use("/api/reviews", reviewRouter);
+app.use("/api/countries", countryRoutes);
 
 app.use((req, res) => {
   res.status(404).json({

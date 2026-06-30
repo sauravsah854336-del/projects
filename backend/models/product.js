@@ -38,6 +38,15 @@ const productSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+    basePrice: {
+      type: Number,
+      min: 0,
+    },
+    baseCurrency: {
+      type: String,
+      default: "INR",
+      uppercase: true,
+    },
     comparePrice: {
       type: Number,
       default: 0,
@@ -48,6 +57,19 @@ const productSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    countryPricing: [
+      {
+        countryCode: { type: String, uppercase: true, required: true },
+        price: { type: Number, required: true, min: 0 },
+        comparePrice: { type: Number, default: 0 },
+        isAvailable: { type: Boolean, default: true },
+        stock: { type: Number, default: 0 },
+        isOverride: { type: Boolean, default: false },
+      },
+    ],
+    availableCountries: [{ type: String, uppercase: true }],
+    restrictedCountries: [{ type: String, uppercase: true }],
+    shippingCountries: [{ type: String, uppercase: true }],
     images: [
       {
         url: { type: String, required: true },
@@ -157,6 +179,16 @@ const productSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
+
+productSchema.pre("save", function (next) {
+  if (this.price && !this.basePrice) {
+    this.basePrice = this.price;
+  }
+  if (this.basePrice && !this.price) {
+    this.price = this.basePrice;
+  }
+  next();
+});
 
 productSchema.index({ slug: 1 }, { unique: true });
 productSchema.index({ vendor: 1 });

@@ -44,6 +44,8 @@ const createProduct = async (req, res) => {
       category,
       brand: brand || "",
       price,
+      basePrice: price,
+      baseCurrency: "INR",
       comparePrice: comparePrice || 0,
       costPrice: costPrice || 0,
       images: images || [],
@@ -67,6 +69,7 @@ const createProduct = async (req, res) => {
       data: product,
     });
   } catch (err) {
+    console.error("createProduct error:", err);
     return res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -78,7 +81,7 @@ const getVendorProducts = async (req, res) => {
     const skip = (page - 1) * limit;
     const status = req.query.status;
 
-    const filter = { vendor: req.user.id, isDeleted: false };
+    const filter = { vendor: req.user.id, isDeleted: { $ne: true } };
     if (status) filter.status = status;
 
     const products = await Product.find(filter)
@@ -95,7 +98,8 @@ const getVendorProducts = async (req, res) => {
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     });
   } catch (err) {
-    return res.status(500).json({ success: false, message: "Server error" });
+    console.error("getVendorProducts error:", err);
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
@@ -122,43 +126,50 @@ const updateProduct = async (req, res) => {
       specifications, stock, lowStockThreshold, sku, weight, dimensions, tags,
     } = req.body;
 
+    const updateData = {};
+
     if (name) {
-      product.name = name.trim();
+      updateData.name = name.trim();
       let slug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
       const existSlug = await Product.findOne({ slug, _id: { $ne: id } });
       if (existSlug) slug = `${slug}-${Date.now()}`;
-      product.slug = slug;
+      updateData.slug = slug;
     }
 
-    if (description) product.description = description.trim();
-    if (shortDescription !== undefined) product.shortDescription = shortDescription;
+    if (description) updateData.description = description.trim();
+    if (shortDescription !== undefined) updateData.shortDescription = shortDescription;
     if (category) {
       const catExists = await Category.findById(category);
       if (!catExists) return res.status(404).json({ success: false, message: "Category not found" });
-      product.category = category;
+      updateData.category = category;
     }
-    if (brand !== undefined) product.brand = brand;
-    if (price !== undefined) product.price = price;
-    if (comparePrice !== undefined) product.comparePrice = comparePrice;
-    if (costPrice !== undefined) product.costPrice = costPrice;
-    if (images) product.images = images;
-    if (variants) product.variants = variants;
-    if (specifications) product.specifications = specifications;
-    if (stock !== undefined) product.stock = stock;
-    if (lowStockThreshold !== undefined) product.lowStockThreshold = lowStockThreshold;
-    if (sku !== undefined) product.sku = sku;
-    if (weight !== undefined) product.weight = weight;
-    if (dimensions) product.dimensions = dimensions;
-    if (tags) product.tags = tags;
+    if (brand !== undefined) updateData.brand = brand;
+    if (price !== undefined) {
+      updateData.price = price;
+      updateData.basePrice = price;
+    }
+    if (comparePrice !== undefined) updateData.comparePrice = comparePrice;
+    if (costPrice !== undefined) updateData.costPrice = costPrice;
+    if (images) updateData.images = images;
+    if (variants) updateData.variants = variants;
+    if (specifications) updateData.specifications = specifications;
+    if (stock !== undefined) updateData.stock = stock;
+    if (lowStockThreshold !== undefined) updateData.lowStockThreshold = lowStockThreshold;
+    if (sku !== undefined) updateData.sku = sku;
+    if (weight !== undefined) updateData.weight = weight;
+    if (dimensions) updateData.dimensions = dimensions;
+    if (tags) updateData.tags = tags;
 
-    await product.save();
+    const updated = await Product.findByIdAndUpdate(id, updateData, { new: true })
+      .populate("category", "name slug");
 
     return res.status(200).json({
       success: true,
       message: "Product updated successfully.",
-      data: product,
+      data: updated,
     });
   } catch (err) {
+    console.error("updateProduct error:", err);
     return res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -173,13 +184,12 @@ const deleteProduct = async (req, res) => {
       return res.status(403).json({ success: false, message: "Not authorized" });
     }
 
-    product.isDeleted = true;
-    product.isActive = false;
-    await product.save();
+    await Product.findByIdAndUpdate(id, { isDeleted: true, isActive: false });
 
     return res.status(200).json({ success: true, message: "Product deleted successfully" });
   } catch (err) {
-    return res.status(500).json({ success: false, message: "Server error" });
+    console.error("deleteProduct error:", err);
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
@@ -190,7 +200,7 @@ const getAllProducts = async (req, res) => {
     const skip = (page - 1) * limit;
     const { category, brand, minPrice, maxPrice, sort, search } = req.query;
 
-    const filter = { status: "approved", isActive: true, isDeleted: false };
+    const filter = { status: "approved", isActive: true, isDeleted: { $ne: true } };
 
     if (category) {
       const subcategories = await Category.find({ parent: category }).select("_id");
@@ -212,7 +222,7 @@ const getAllProducts = async (req, res) => {
       const matchingVendors = await Vendor.find({
         storeName: regex,
         approvalStatus: "approved",
-        isDeleted: false,
+        isDeleted: { $ne: true },
       }).select("userId");
 
       filter.$or = [
@@ -254,14 +264,15 @@ const getAllProducts = async (req, res) => {
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     });
   } catch (err) {
-    return res.status(500).json({ success: false, message: "Server error" });
+    console.error("getAllProducts error:", err);
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
 const getSingleProduct = async (req, res) => {
   try {
     const { slug } = req.params;
-    const product = await Product.findOne({ slug, isDeleted: false })
+    const product = await Product.findOne({ slug, isDeleted: { $ne: true } })
       .populate("category", "name slug")
       .populate("vendor", "firstName")
       .populate("vendorStore", "storeName storeLogo");
@@ -270,12 +281,12 @@ const getSingleProduct = async (req, res) => {
       return res.status(404).json({ success: false, message: "Product not found" });
     }
 
-    product.views += 1;
-    await product.save();
+    await Product.findByIdAndUpdate(product._id, { $inc: { views: 1 } });
 
     return res.status(200).json({ success: true, data: product });
   } catch (err) {
-    return res.status(500).json({ success: false, message: "Server error" });
+    console.error("getSingleProduct error:", err);
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
@@ -286,14 +297,19 @@ const adminGetAllProducts = async (req, res) => {
     const skip = (page - 1) * limit;
     const { status, search, vendor } = req.query;
 
-    const filter = { isDeleted: false };
+    const filter = { isDeleted: { $ne: true } };
+
     if (status) filter.status = status;
     if (vendor) filter.vendor = vendor;
+
     if (search) {
+      const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regex = new RegExp(escaped, "i");
       filter.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { brand: { $regex: search, $options: "i" } },
-        { sku: { $regex: search, $options: "i" } },
+        { name: regex },
+        { brand: regex },
+        { sku: regex },
+        { description: regex },
       ];
     }
 
@@ -313,7 +329,8 @@ const adminGetAllProducts = async (req, res) => {
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     });
   } catch (err) {
-    return res.status(500).json({ success: false, message: "Server error" });
+    console.error("adminGetAllProducts error:", err);
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
@@ -323,15 +340,15 @@ const featureProduct = async (req, res) => {
     const product = await Product.findById(id);
     if (!product) return res.status(404).json({ success: false, message: "Product not found" });
 
-    product.isFeatured = !product.isFeatured;
-    await product.save();
+    await Product.findByIdAndUpdate(id, { isFeatured: !product.isFeatured });
 
     return res.status(200).json({
       success: true,
-      message: product.isFeatured ? "Product featured" : "Product unfeatured",
+      message: product.isFeatured ? "Product unfeatured" : "Product featured",
     });
   } catch (err) {
-    return res.status(500).json({ success: false, message: "Server error" });
+    console.error("featureProduct error:", err);
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
@@ -342,14 +359,16 @@ const delistProduct = async (req, res) => {
     const product = await Product.findById(id);
     if (!product) return res.status(404).json({ success: false, message: "Product not found" });
 
-    product.status = "delisted";
-    product.isActive = false;
-    product.delistReason = reason || "Violated platform policies";
-    await product.save();
+    await Product.findByIdAndUpdate(id, {
+      status: "delisted",
+      isActive: false,
+      delistReason: reason || "Violated platform policies",
+    });
 
     return res.status(200).json({ success: true, message: "Product delisted" });
   } catch (err) {
-    return res.status(500).json({ success: false, message: "Server error" });
+    console.error("delistProduct error:", err);
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
@@ -359,14 +378,16 @@ const relistProduct = async (req, res) => {
     const product = await Product.findById(id);
     if (!product) return res.status(404).json({ success: false, message: "Product not found" });
 
-    product.status = "approved";
-    product.isActive = true;
-    product.delistReason = "";
-    await product.save();
+    await Product.findByIdAndUpdate(id, {
+      status: "approved",
+      isActive: true,
+      delistReason: "",
+    });
 
     return res.status(200).json({ success: true, message: "Product relisted" });
   } catch (err) {
-    return res.status(500).json({ success: false, message: "Server error" });
+    console.error("relistProduct error:", err);
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
@@ -375,14 +396,14 @@ const getVendorStats = async (req, res) => {
     const vendorId = req.user.id;
 
     const [totalProducts, approvedProducts, outOfStockProducts] = await Promise.all([
-      Product.countDocuments({ vendor: vendorId, isDeleted: false }),
-      Product.countDocuments({ vendor: vendorId, isDeleted: false, status: "approved" }),
-      Product.countDocuments({ vendor: vendorId, isDeleted: false, status: "approved", stock: 0 }),
+      Product.countDocuments({ vendor: vendorId, isDeleted: { $ne: true } }),
+      Product.countDocuments({ vendor: vendorId, isDeleted: { $ne: true }, status: "approved" }),
+      Product.countDocuments({ vendor: vendorId, isDeleted: { $ne: true }, status: "approved", stock: 0 }),
     ]);
 
     const activeProducts = await Product.find({
       vendor: vendorId,
-      isDeleted: false,
+      isDeleted: { $ne: true },
       status: "approved",
       stock: { $gt: 0 },
     }).select("stock lowStockThreshold");
@@ -466,7 +487,7 @@ const getVendorStats = async (req, res) => {
 
     const topProducts = await Product.find({
       vendor: vendorId,
-      isDeleted: false,
+      isDeleted: { $ne: true },
       status: "approved",
       totalSold: { $gt: 0 },
     })
@@ -505,7 +526,7 @@ const getVendorStats = async (req, res) => {
     });
   } catch (err) {
     console.error("getVendorStats error:", err);
-    return res.status(500).json({ success: false, message: err.message || "Server error" });
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 

@@ -1,18 +1,13 @@
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import {
   useGetSingleOrderQuery,
   useCancelOrderMutation,
 } from "../features/order/orderApi";
 import { PLACEHOLDER_MEDIUM } from "../utils/placeholder";
+import { formatPrice } from "../utils/priceHelper";
 import jsPDF from "jspdf";
-
-const formatRupee = (amount) =>
-  new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(amount);
 
 const formatDate = (date) =>
   new Date(date).toLocaleDateString("en-IN", {
@@ -91,14 +86,17 @@ const getStatusLabel = (status) => {
   return labels[status] || status;
 };
 
-const downloadInvoice = (order) => {
+const downloadInvoice = (order, country) => {
   const doc = new jsPDF();
   const pageW = doc.internal.pageSize.getWidth();
   let y = 20;
 
-  const rupee = (amt) =>
-    "Rs. " +
-    new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(amt);
+  const fmtPrice = (amt) => {
+    const symbol = country?.currency?.symbol || "₹";
+    const rate = country?.exchangeRate || 1;
+    const converted = amt * rate;
+    return `${symbol}${converted.toFixed(2)}`;
+  };
 
   doc.setFillColor(19, 25, 33);
   doc.rect(0, 0, pageW, 40, "F");
@@ -110,7 +108,7 @@ const downloadInvoice = (order) => {
   doc.setFont("helvetica", "normal");
   doc.text("TAX INVOICE", pageW - 20, 22, { align: "right" });
   doc.setFontSize(9);
-  doc.text("www.ecommerce.com", pageW - 20, 30, { align: "right" });
+  doc.text(`Currency: ${country?.currency?.code || "INR"}`, pageW - 20, 30, { align: "right" });
 
   y = 55;
   doc.setTextColor(17, 17, 17);
@@ -122,29 +120,25 @@ const downloadInvoice = (order) => {
   doc.setFontSize(9);
   doc.setTextColor(100, 100, 100);
   y += 7;
-  doc.text(`Invoice No:`, 20, y);
+  doc.text("Invoice No:", 20, y);
   doc.setTextColor(17, 17, 17);
   doc.text(`${order.orderNumber}`, 60, y);
 
   y += 6;
   doc.setTextColor(100, 100, 100);
-  doc.text(`Order Date:`, 20, y);
+  doc.text("Order Date:", 20, y);
   doc.setTextColor(17, 17, 17);
   doc.text(formatDateShort(order.createdAt), 60, y);
 
   y += 6;
   doc.setTextColor(100, 100, 100);
-  doc.text(`Payment:`, 20, y);
+  doc.text("Payment:", 20, y);
   doc.setTextColor(17, 17, 17);
-  doc.text(
-    order.paymentMethod === "cod" ? "Cash on Delivery" : "Online Payment",
-    60,
-    y
-  );
+  doc.text(order.paymentMethod === "cod" ? "Cash on Delivery" : "Online Payment", 60, y);
 
   y += 6;
   doc.setTextColor(100, 100, 100);
-  doc.text(`Status:`, 20, y);
+  doc.text("Status:", 20, y);
   doc.setTextColor(17, 17, 17);
   doc.text(getStatusLabel(order.orderStatus), 60, y);
 
@@ -171,7 +165,7 @@ const downloadInvoice = (order) => {
   doc.text("Address:", addrX, addrY);
   doc.setTextColor(17, 17, 17);
   const addrLines = doc.splitTextToSize(
-    `${order.shippingAddress.street}, ${order.shippingAddress.city}, ${order.shippingAddress.state} - ${order.shippingAddress.postalCode}, ${order.shippingAddress.country}`,
+    `${order.shippingAddress.street}, ${order.shippingAddress.city}, ${order.shippingAddress.state} - ${order.shippingAddress.postalCode}`,
     55
   );
   doc.text(addrLines, addrX + 20, addrY);
@@ -198,7 +192,6 @@ const downloadInvoice = (order) => {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     doc.setTextColor(17, 17, 17);
-
     const nameLines = doc.splitTextToSize(item.name, 75);
     doc.text(`${index + 1}`, 20, y);
     doc.text(nameLines, 30, y);
@@ -206,45 +199,36 @@ const downloadInvoice = (order) => {
     doc.text(item.storeName || "Vendor", 110, y);
     doc.setTextColor(17, 17, 17);
     doc.text(`${item.quantity}`, 145, y);
-    doc.text(rupee(item.price), 160, y);
+    doc.text(fmtPrice(item.price), 160, y);
     doc.setFont("helvetica", "bold");
-    doc.text(rupee(item.price * item.quantity), pageW - 20, y, {
-      align: "right",
-    });
-
+    doc.text(fmtPrice(item.price * item.quantity), pageW - 20, y, { align: "right" });
     y += nameLines.length * 5 + 4;
     doc.setDrawColor(243, 244, 246);
     doc.line(15, y - 2, pageW - 15, y - 2);
   });
 
   y += 8;
-
   const summaryX = 120;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(100, 100, 100);
   doc.text("Subtotal:", summaryX, y);
   doc.setTextColor(17, 17, 17);
-  doc.text(rupee(order.subtotal), pageW - 20, y, { align: "right" });
+  doc.text(fmtPrice(order.subtotal), pageW - 20, y, { align: "right" });
 
   if (order.discount > 0) {
     y += 7;
     doc.setTextColor(100, 100, 100);
     doc.text("Discount:", summaryX, y);
     doc.setTextColor(22, 163, 74);
-    doc.text(`- ${rupee(order.discount)}`, pageW - 20, y, { align: "right" });
+    doc.text(`- ${fmtPrice(order.discount)}`, pageW - 20, y, { align: "right" });
   }
 
   y += 7;
   doc.setTextColor(100, 100, 100);
   doc.text("Shipping:", summaryX, y);
   doc.setTextColor(22, 163, 74);
-  doc.text(
-    order.shippingCharge === 0 ? "FREE" : rupee(order.shippingCharge),
-    pageW - 20,
-    y,
-    { align: "right" }
-  );
+  doc.text(order.shippingCharge === 0 ? "FREE" : fmtPrice(order.shippingCharge), pageW - 20, y, { align: "right" });
 
   y += 3;
   doc.setDrawColor(17, 17, 17);
@@ -255,7 +239,7 @@ const downloadInvoice = (order) => {
   doc.setTextColor(17, 17, 17);
   doc.text("Grand Total:", summaryX, y);
   doc.setTextColor(177, 39, 4);
-  doc.text(rupee(order.total), pageW - 20, y, { align: "right" });
+  doc.text(fmtPrice(order.total), pageW - 20, y, { align: "right" });
 
   y += 20;
   doc.setFillColor(248, 250, 252);
@@ -263,18 +247,8 @@ const downloadInvoice = (order) => {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(107, 114, 128);
-  doc.text(
-    "Thank you for shopping with E-Commerce! For support: support@ecommerce.com",
-    pageW / 2,
-    y + 2,
-    { align: "center" }
-  );
-  doc.text(
-    "This is a computer generated invoice and does not require a signature.",
-    pageW / 2,
-    y + 8,
-    { align: "center" }
-  );
+  doc.text("Thank you for shopping with E-Commerce!", pageW / 2, y + 2, { align: "center" });
+  doc.text("This is a computer generated invoice.", pageW / 2, y + 8, { align: "center" });
 
   doc.save(`Invoice-${order.orderNumber}.pdf`);
 };
@@ -282,6 +256,7 @@ const downloadInvoice = (order) => {
 const OrderDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { currentCountry } = useSelector((state) => state.country);
   const { data, isLoading, error } = useGetSingleOrderQuery(id);
   const [cancelOrder, { isLoading: cancelling }] = useCancelOrderMutation();
   const [showCancelForm, setShowCancelForm] = useState(false);
@@ -291,11 +266,10 @@ const OrderDetailPage = () => {
 
   if (isLoading) {
     return (
-      <div style={{ minHeight: "70vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F3F4F6" }}>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ width: 36, height: 36, border: "3px solid #D85A30", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.6s linear infinite", margin: "0 auto 16px" }}></div>
-          <p style={{ color: "#6B7280", fontSize: 14 }}>Loading order details...</p>
+      <div className="min-h-[70vh] flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="w-9 h-9 border-[3px] border-[#D85A30] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-500 text-sm">Loading order details...</p>
         </div>
       </div>
     );
@@ -303,15 +277,12 @@ const OrderDetailPage = () => {
 
   if (error || !data?.data) {
     return (
-      <div style={{ minHeight: "70vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F3F4F6" }}>
-        <div style={{ textAlign: "center", background: "white", padding: 48, borderRadius: 20, border: "1px solid #E5E7EB" }}>
-          <p style={{ fontSize: 52, marginBottom: 16 }}>😕</p>
-          <h2 style={{ fontSize: 22, fontWeight: 800, color: "#111", marginBottom: 8 }}>Order not found</h2>
-          <p style={{ color: "#6B7280", fontSize: 14, marginBottom: 24 }}>This order doesn't exist or you don't have access.</p>
-          <Link
-            to="/orders"
-            style={{ background: "#111", color: "white", textDecoration: "none", padding: "12px 28px", borderRadius: 10, fontWeight: 700, fontSize: 14 }}
-          >
+      <div className="min-h-[70vh] flex items-center justify-center bg-gray-50 px-4">
+        <div className="text-center bg-white p-12 rounded-2xl border border-gray-200 max-w-sm w-full">
+          <p className="text-6xl mb-4">😕</p>
+          <h2 className="text-xl font-extrabold text-gray-900 mb-2">Order not found</h2>
+          <p className="text-gray-500 text-sm mb-6">This order doesn't exist or you don't have access.</p>
+          <Link to="/orders" className="bg-gray-900 text-white px-6 py-3 rounded-xl no-underline font-bold text-sm">
             Back to Orders
           </Link>
         </div>
@@ -320,10 +291,11 @@ const OrderDetailPage = () => {
   }
 
   const order = data.data;
+  const orderCountry = order.country?.currency ? order.country : currentCountry;
   const statusColor = getStatusColor(order.orderStatus);
   const steps = getStatusSteps(order.orderStatus);
   const currentStepIndex = getStatusIndex(steps, order.orderStatus);
-  const canCancel = ["pending", "processing"].includes(order.orderStatus);
+  const canCancel = ["confirmed", "processing"].includes(order.orderStatus);
 
   const handleCancel = async () => {
     setCancelError("");
@@ -339,7 +311,7 @@ const OrderDetailPage = () => {
   const handleDownloadInvoice = () => {
     setDownloading(true);
     try {
-      downloadInvoice(order);
+      downloadInvoice(order, orderCountry);
     } catch (err) {
       console.log("Invoice error:", err);
     } finally {
@@ -348,202 +320,130 @@ const OrderDetailPage = () => {
   };
 
   return (
-    <div style={{ background: "#F3F4F6", minHeight: "100vh", padding: "24px 16px" }}>
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-        .od-card {
-          background: white;
-          border: 1px solid #E5E7EB;
-          border-radius: 14px;
-          overflow: hidden;
-          margin-bottom: 16px;
-          animation: fadeIn 0.2s ease both;
-        }
-        .od-card-header {
-          padding: 16px 20px;
-          border-bottom: 1px solid #F3F4F6;
-          background: #F9FAFB;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-        }
-        .od-card-title {
-          font-size: 14px;
-          font-weight: 700;
-          color: #111;
-          margin: 0;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-        .od-card-body { padding: 20px; }
-        .step-connector {
-          flex: 1;
-          height: 3px;
-          border-radius: 99px;
-          transition: background 0.3s;
-        }
-      `}</style>
+    <div className="bg-gray-50 min-h-screen py-6 px-3 sm:px-4">
+      <div className="max-w-[900px] mx-auto">
 
-      <div style={{ maxWidth: 900, margin: "0 auto" }}>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+        <div className="flex items-center gap-3 mb-6">
           <button
             onClick={() => navigate("/orders")}
-            style={{ background: "white", border: "1px solid #E5E7EB", borderRadius: 10, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "#374151", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
+            className="bg-white border border-gray-200 rounded-xl px-4 py-2 text-[13px] font-semibold text-gray-700 cursor-pointer flex items-center gap-2 hover:bg-gray-50 transition font-[inherit]"
           >
-            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" viewBox="0 0 24 24">
-              <path d="M19 12H5M12 5l-7 7 7 7" />
-            </svg>
-            My Orders
+            ← My Orders
           </button>
-          <span style={{ color: "#9CA3AF", fontSize: 13 }}>/</span>
-          <span style={{ color: "#6B7280", fontSize: 13, fontWeight: 600 }}>{order.orderNumber}</span>
+          <span className="text-gray-300 text-sm">/</span>
+          <span className="text-gray-500 text-[13px] font-semibold">{order.orderNumber}</span>
         </div>
 
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
+        <div className="flex items-start justify-between flex-wrap gap-4 mb-6">
           <div>
-            <h1 style={{ fontSize: 24, fontWeight: 800, color: "#111", margin: 0 }}>Order Details</h1>
-            <p style={{ color: "#6B7280", fontSize: 13, margin: "4px 0 0" }}>
-              Placed on {formatDate(order.createdAt)}
-            </p>
+            <div className="flex items-center gap-2 flex-wrap mb-1">
+              <h1 className="text-2xl font-extrabold text-gray-900 m-0">Order Details</h1>
+              {order.country?.code && order.country.code !== "IN" && (
+                <span className="text-[10px] bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-full font-bold">
+                  {order.country.flag || "🌍"} {order.country.currency?.code || ""}
+                </span>
+              )}
+            </div>
+            <p className="text-gray-500 text-[13px] m-0">Placed on {formatDate(order.createdAt)}</p>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <span style={{
-              background: statusColor.bg,
-              color: statusColor.text,
-              border: `1px solid ${statusColor.border}`,
-              padding: "6px 14px",
-              borderRadius: 99,
-              fontSize: 13,
-              fontWeight: 700,
-            }}>
+          <div className="flex items-center gap-3 flex-wrap">
+            <span
+              className="px-4 py-1.5 rounded-full text-[13px] font-bold"
+              style={{
+                background: statusColor.bg,
+                color: statusColor.text,
+                border: `1px solid ${statusColor.border}`,
+              }}
+            >
               {getStatusLabel(order.orderStatus)}
             </span>
-            <span style={{ fontSize: 20, fontWeight: 800, color: "#B12704" }}>
-              {formatRupee(order.total)}
+            <span className="text-xl font-extrabold text-[#B12704]">
+              {formatPrice(order.total, orderCountry)}
             </span>
             <button
               onClick={handleDownloadInvoice}
               disabled={downloading}
-              style={{
-                background: downloading ? "#F3F4F6" : "linear-gradient(135deg, #1e293b, #334155)",
-                color: downloading ? "#9CA3AF" : "white",
-                border: "none",
-                borderRadius: 10,
-                padding: "10px 18px",
-                fontSize: 13,
-                fontWeight: 700,
-                cursor: downloading ? "not-allowed" : "pointer",
-                fontFamily: "inherit",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                transition: "all 0.15s",
-              }}
+              className="bg-gradient-to-br from-gray-800 to-gray-900 text-white border-none rounded-xl px-4 py-2.5 text-[13px] font-bold cursor-pointer flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:brightness-110 transition font-[inherit]"
             >
-              {downloading ? (
-                <>
-                  <span style={{ width: 14, height: 14, border: "2px solid #9CA3AF", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.6s linear infinite" }}></span>
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" viewBox="0 0 24 24">
-                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
-                  </svg>
-                  Download Invoice
-                </>
-              )}
+              {downloading ? "Generating..." : "📥 Download Invoice"}
             </button>
           </div>
         </div>
 
-        <div className="od-card">
-          <div className="od-card-header">
-            <p className="od-card-title">
-              <span>📍</span> Order Status
-            </p>
-            <span style={{ fontSize: 12, color: "#6B7280", fontWeight: 600 }}>
-              #{order.orderNumber}
-            </span>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-4">
+          <div className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+            <p className="text-sm font-extrabold text-gray-900 m-0 flex items-center gap-2">📍 Order Status</p>
+            <span className="text-xs text-gray-500 font-semibold">#{order.orderNumber}</span>
           </div>
-          <div className="od-card-body">
+          <div className="p-5">
             {order.orderStatus === "cancelled" ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                    <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#DCFCE7", border: "3px solid #22C55E", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>
-                      📋
-                    </div>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: "#16A34A", textAlign: "center" }}>Placed</span>
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-4">
+                  <div className="flex flex-col items-center gap-1.5">
+                    <div className="w-11 h-11 rounded-full bg-green-100 border-[3px] border-green-500 flex items-center justify-center text-lg">📋</div>
+                    <span className="text-[10px] font-semibold text-green-600">Placed</span>
                   </div>
-                  <div style={{ flex: 1, height: 3, borderRadius: 99, background: "#FEE2E2" }}></div>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                    <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#FEE2E2", border: "3px solid #EF4444", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>
-                      ❌
-                    </div>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: "#EF4444", textAlign: "center" }}>Cancelled</span>
+                  <div className="flex-1 h-[3px] rounded-full bg-red-200" />
+                  <div className="flex flex-col items-center gap-1.5">
+                    <div className="w-11 h-11 rounded-full bg-red-100 border-[3px] border-red-500 flex items-center justify-center text-lg">❌</div>
+                    <span className="text-[10px] font-semibold text-red-600">Cancelled</span>
                   </div>
                 </div>
                 {order.cancelReason && (
-                  <div style={{ background: "#FEF2F2", border: "1px solid #FCA5A5", borderRadius: 10, padding: "12px 16px", marginTop: 8 }}>
-                    <p style={{ fontSize: 12, fontWeight: 700, color: "#991B1B", margin: "0 0 2px" }}>Cancellation Reason</p>
-                    <p style={{ fontSize: 13, color: "#DC2626", margin: 0 }}>{order.cancelReason}</p>
+                  <div className="bg-red-50 border border-red-200 rounded-xl p-4 mt-2">
+                    <p className="text-xs font-bold text-red-800 m-0 mb-1">Cancellation Reason</p>
+                    <p className="text-[13px] text-red-700 m-0">{order.cancelReason}</p>
                     {order.cancelledAt && (
-                      <p style={{ fontSize: 11, color: "#EF4444", margin: "4px 0 0" }}>
-                        Cancelled on {formatDateShort(order.cancelledAt)}
-                      </p>
+                      <p className="text-[11px] text-red-500 mt-1 m-0">Cancelled on {formatDateShort(order.cancelledAt)}</p>
                     )}
                   </div>
                 )}
               </div>
             ) : (
               <div>
-                <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
+                <div className="flex items-center gap-0">
                   {steps.map((step, index) => {
                     const isDone = index <= currentStepIndex;
                     const isActive = index === currentStepIndex;
                     return (
-                      <div key={step.key} style={{ display: "flex", alignItems: "center", flex: index < steps.length - 1 ? 1 : "unset" }}>
-                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, minWidth: 56 }}>
-                          <div style={{
-                            width: 44, height: 44, borderRadius: "50%",
-                            background: isDone ? (isActive ? statusColor.bg : "#DCFCE7") : "#F3F4F6",
-                            border: `3px solid ${isDone ? (isActive ? statusColor.border : "#22C55E") : "#E5E7EB"}`,
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            fontSize: 18,
-                            boxShadow: isActive ? `0 0 0 4px ${statusColor.bg}` : "none",
-                            transition: "all 0.3s",
-                          }}>
+                      <div key={step.key} className="flex items-center" style={{ flex: index < steps.length - 1 ? 1 : "unset" }}>
+                        <div className="flex flex-col items-center gap-1.5 min-w-[56px]">
+                          <div
+                            className="w-11 h-11 rounded-full flex items-center justify-center text-lg transition-all"
+                            style={{
+                              background: isDone ? (isActive ? statusColor.bg : "#DCFCE7") : "#F3F4F6",
+                              border: `3px solid ${isDone ? (isActive ? statusColor.border : "#22C55E") : "#E5E7EB"}`,
+                              boxShadow: isActive ? `0 0 0 4px ${statusColor.bg}` : "none",
+                            }}
+                          >
                             {step.icon}
                           </div>
-                          <span style={{
-                            fontSize: 10, fontWeight: isActive ? 800 : 600,
-                            color: isDone ? (isActive ? statusColor.text : "#16A34A") : "#9CA3AF",
-                            textAlign: "center", lineHeight: 1.3, maxWidth: 60,
-                          }}>
+                          <span
+                            className="text-[10px] text-center leading-tight max-w-[60px]"
+                            style={{
+                              fontWeight: isActive ? 800 : 600,
+                              color: isDone ? (isActive ? statusColor.text : "#16A34A") : "#9CA3AF",
+                            }}
+                          >
                             {step.label}
                           </span>
                         </div>
                         {index < steps.length - 1 && (
                           <div
-                            className="step-connector"
+                            className="flex-1 h-[3px] rounded-full transition-all"
                             style={{ background: index < currentStepIndex ? "#22C55E" : "#E5E7EB" }}
-                          ></div>
+                          />
                         )}
                       </div>
                     );
                   })}
                 </div>
-
                 {order.orderStatus === "delivered" && order.deliveredAt && (
-                  <div style={{ marginTop: 16, background: "#F0FDF4", border: "1px solid #86EFAC", borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ fontSize: 20 }}>🎉</span>
+                  <div className="mt-4 bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
+                    <span className="text-xl">🎉</span>
                     <div>
-                      <p style={{ fontSize: 13, fontWeight: 700, color: "#166534", margin: 0 }}>Order Delivered!</p>
-                      <p style={{ fontSize: 11, color: "#16A34A", margin: 0 }}>Delivered on {formatDateShort(order.deliveredAt)}</p>
+                      <p className="text-[13px] font-bold text-green-800 m-0">Order Delivered!</p>
+                      <p className="text-[11px] text-green-600 m-0">Delivered on {formatDateShort(order.deliveredAt)}</p>
                     </div>
                   </div>
                 )}
@@ -552,238 +452,181 @@ const OrderDetailPage = () => {
           </div>
         </div>
 
-        <div className="od-card">
-          <div className="od-card-header">
-            <p className="od-card-title"><span>🛍️</span> Order Items ({order.items.length})</p>
-            <span style={{ fontSize: 14, fontWeight: 800, color: "#B12704" }}>{formatRupee(order.subtotal)}</span>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-4">
+          <div className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+            <p className="text-sm font-extrabold text-gray-900 m-0 flex items-center gap-2">🛍️ Order Items ({order.items.length})</p>
+            <span className="text-sm font-extrabold text-[#B12704]">{formatPrice(order.subtotal, orderCountry)}</span>
           </div>
-          <div className="od-card-body" style={{ padding: 0 }}>
+          <div>
             {order.items.map((item, index) => (
-              <div
-                key={index}
-                style={{
-                  display: "flex", gap: 16, padding: "16px 20px",
-                  borderBottom: index < order.items.length - 1 ? "1px solid #F3F4F6" : "none",
-                  alignItems: "center",
-                }}
-              >
+              <div key={index} className="flex gap-4 items-center px-5 py-4 border-b border-gray-50 last:border-0">
                 <img
                   src={item.image || PLACEHOLDER_MEDIUM}
                   alt={item.name}
-                  style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 10, border: "1px solid #E5E7EB", flexShrink: 0 }}
+                  className="w-[72px] h-[72px] object-cover rounded-xl border border-gray-200 shrink-0"
                   onError={(e) => { e.target.src = PLACEHOLDER_MEDIUM; }}
                 />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 14, fontWeight: 600, color: "#111", margin: "0 0 4px", lineHeight: 1.4 }}>
-                    {item.name}
-                  </p>
-                  <p style={{ fontSize: 12, color: "#9CA3AF", margin: "0 0 6px" }}>
-                    Sold by: {item.storeName || "Vendor"}
-                  </p>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 12, color: "#6B7280", background: "#F3F4F6", padding: "2px 8px", borderRadius: 6, fontWeight: 600 }}>
-                      Qty: {item.quantity}
-                    </span>
-                    <span style={{ fontSize: 12, color: "#6B7280" }}>×</span>
-                    <span style={{ fontSize: 13, color: "#374151", fontWeight: 600 }}>
-                      {formatRupee(item.price)}
-                    </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 m-0 mb-1 leading-snug">{item.name}</p>
+                  <p className="text-xs text-gray-400 m-0 mb-1.5">Sold by: {item.storeName || "Vendor"}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded font-semibold">Qty: {item.quantity}</span>
+                    <span className="text-xs text-gray-500">×</span>
+                    <span className="text-[13px] text-gray-700 font-semibold">{formatPrice(item.price, orderCountry)}</span>
                   </div>
                 </div>
-                <div style={{ textAlign: "right", flexShrink: 0 }}>
-                  <p style={{ fontSize: 16, fontWeight: 800, color: "#B12704", margin: 0 }}>
-                    {formatRupee(item.price * item.quantity)}
-                  </p>
-                </div>
+                <p className="text-base font-extrabold text-[#B12704] m-0 shrink-0">
+                  {formatPrice(item.price * item.quantity, orderCountry)}
+                </p>
               </div>
             ))}
 
-            <div style={{ padding: "16px 20px", borderTop: "2px solid #F3F4F6", background: "#F9FAFB" }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 300, marginLeft: "auto" }}>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: 13, color: "#6B7280" }}>Subtotal</span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "#111" }}>{formatRupee(order.subtotal)}</span>
+            <div className="px-5 py-4 border-t-2 border-gray-100 bg-gray-50">
+              <div className="flex flex-col gap-2 max-w-[300px] ml-auto">
+                <div className="flex justify-between">
+                  <span className="text-[13px] text-gray-500">Subtotal</span>
+                  <span className="text-[13px] font-semibold text-gray-900">{formatPrice(order.subtotal, orderCountry)}</span>
                 </div>
                 {order.discount > 0 && (
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span style={{ fontSize: 13, color: "#16A34A" }}>Discount</span>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "#16A34A" }}>− {formatRupee(order.discount)}</span>
+                  <div className="flex justify-between">
+                    <span className="text-[13px] text-green-600">Discount</span>
+                    <span className="text-[13px] font-semibold text-green-600">− {formatPrice(order.discount, orderCountry)}</span>
                   </div>
                 )}
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: 13, color: "#6B7280" }}>Shipping</span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "#16A34A" }}>
-                    {order.shippingCharge === 0 ? "FREE" : formatRupee(order.shippingCharge)}
+                <div className="flex justify-between">
+                  <span className="text-[13px] text-gray-500">Shipping</span>
+                  <span className="text-[13px] font-semibold text-green-600">
+                    {order.shippingCharge === 0 ? "FREE" : formatPrice(order.shippingCharge, orderCountry)}
                   </span>
                 </div>
-                <div style={{ borderTop: "2px solid #E5E7EB", paddingTop: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 15, fontWeight: 800, color: "#111" }}>Total</span>
-                  <span style={{ fontSize: 20, fontWeight: 800, color: "#B12704" }}>{formatRupee(order.total)}</span>
+                <div className="border-t-2 border-gray-200 pt-2 flex justify-between items-center">
+                  <span className="text-[15px] font-extrabold text-gray-900">Total</span>
+                  <div className="text-right">
+                    <span className="text-xl font-extrabold text-[#B12704]">{formatPrice(order.total, orderCountry)}</span>
+                    {orderCountry.code !== "IN" && (
+                      <p className="text-[10px] text-gray-400 m-0 mt-0.5">≈ ₹{Math.round(order.total).toLocaleString("en-IN")}</p>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-          <div className="od-card" style={{ margin: 0 }}>
-            <div className="od-card-header">
-              <p className="od-card-title"><span>📦</span> Shipping Address</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 bg-gray-50">
+              <p className="text-sm font-extrabold text-gray-900 m-0 flex items-center gap-2">📦 Shipping Address</p>
             </div>
-            <div className="od-card-body">
-              <p style={{ fontSize: 14, fontWeight: 700, color: "#111", margin: "0 0 4px" }}>
-                {order.shippingAddress.fullName}
-              </p>
-              <p style={{ fontSize: 13, color: "#6B7280", margin: "0 0 2px" }}>
-                {order.shippingAddress.street}
-              </p>
-              <p style={{ fontSize: 13, color: "#6B7280", margin: "0 0 2px" }}>
-                {order.shippingAddress.city}, {order.shippingAddress.state}
-              </p>
-              <p style={{ fontSize: 13, color: "#6B7280", margin: "0 0 2px" }}>
-                {order.shippingAddress.country} — {order.shippingAddress.postalCode}
-              </p>
-              <p style={{ fontSize: 13, color: "#6B7280", margin: "8px 0 0", display: "flex", alignItems: "center", gap: 6 }}>
-                <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.09 9.8a19.79 19.79 0 01-3.07-8.63A2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.91a16 16 0 006.16 6.16l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                {order.shippingAddress.phone}
-              </p>
+            <div className="p-5">
+              <p className="text-sm font-bold text-gray-900 m-0 mb-1">{order.shippingAddress.fullName}</p>
+              <p className="text-[13px] text-gray-500 m-0">{order.shippingAddress.street}</p>
+              <p className="text-[13px] text-gray-500 m-0">{order.shippingAddress.city}, {order.shippingAddress.state}</p>
+              <p className="text-[13px] text-gray-500 m-0">{order.shippingAddress.country || "India"} — {order.shippingAddress.postalCode}</p>
+              <p className="text-[13px] text-gray-500 mt-2 m-0">📞 {order.shippingAddress.phone}</p>
             </div>
           </div>
 
-          <div className="od-card" style={{ margin: 0 }}>
-            <div className="od-card-header">
-              <p className="od-card-title"><span>💳</span> Payment Info</p>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 bg-gray-50">
+              <p className="text-sm font-extrabold text-gray-900 m-0 flex items-center gap-2">💳 Payment Info</p>
             </div>
-            <div className="od-card-body">
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 13, color: "#6B7280" }}>Method</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "#111" }}>
-                    {order.paymentMethod === "cod" ? "💵 Cash on Delivery" : "💳 Online"}
-                  </span>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 13, color: "#6B7280" }}>Status</span>
-                  <span style={{
-                    fontSize: 12, fontWeight: 700,
-                    padding: "3px 10px", borderRadius: 99,
-                    background: order.paymentStatus === "paid" ? "#DCFCE7" : order.paymentStatus === "refunded" ? "#FCE7F3" : "#FEF3C7",
-                    color: order.paymentStatus === "paid" ? "#166534" : order.paymentStatus === "refunded" ? "#9D174D" : "#92400E",
-                  }}>
-                    {order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)}
-                  </span>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 13, color: "#6B7280" }}>Order Date</span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "#111" }}>
-                    {formatDateShort(order.createdAt)}
-                  </span>
-                </div>
-                {order.deliveredAt && (
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 13, color: "#6B7280" }}>Delivered</span>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "#16A34A" }}>
-                      {formatDateShort(order.deliveredAt)}
-                    </span>
-                  </div>
-                )}
+            <div className="p-5 flex flex-col gap-3">
+              <div className="flex justify-between">
+                <span className="text-[13px] text-gray-500">Method</span>
+                <span className="text-[13px] font-bold text-gray-900">
+                  {order.paymentMethod === "cod" ? "💵 Cash on Delivery" : "💳 Online"}
+                </span>
               </div>
+              <div className="flex justify-between">
+                <span className="text-[13px] text-gray-500">Status</span>
+                <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
+                  order.paymentStatus === "paid" ? "bg-green-100 text-green-800" :
+                  order.paymentStatus === "refunded" ? "bg-pink-100 text-pink-800" :
+                  "bg-yellow-100 text-yellow-800"
+                }`}>
+                  {order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[13px] text-gray-500">Order Date</span>
+                <span className="text-[13px] font-semibold text-gray-900">{formatDateShort(order.createdAt)}</span>
+              </div>
+              {order.country?.code && (
+                <div className="flex justify-between">
+                  <span className="text-[13px] text-gray-500">Country</span>
+                  <span className="text-[13px] font-semibold text-gray-900">
+                    {order.country.flag || "🌍"} {order.country.name || order.country.code}
+                  </span>
+                </div>
+              )}
+              {order.deliveredAt && (
+                <div className="flex justify-between">
+                  <span className="text-[13px] text-gray-500">Delivered</span>
+                  <span className="text-[13px] font-semibold text-green-600">{formatDateShort(order.deliveredAt)}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
         {order.notes && (
-          <div className="od-card">
-            <div className="od-card-header">
-              <p className="od-card-title"><span>📝</span> Order Notes</p>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-4">
+            <div className="px-5 py-4 border-b border-gray-100 bg-gray-50">
+              <p className="text-sm font-extrabold text-gray-900 m-0 flex items-center gap-2">📝 Order Notes</p>
             </div>
-            <div className="od-card-body">
-              <p style={{ fontSize: 13, color: "#6B7280", margin: 0, lineHeight: 1.6 }}>{order.notes}</p>
+            <div className="p-5">
+              <p className="text-[13px] text-gray-600 m-0 leading-relaxed">{order.notes}</p>
             </div>
           </div>
         )}
 
         {canCancel && (
-          <div className="od-card">
-            <div className="od-card-header">
-              <p className="od-card-title"><span>⚠️</span> Cancel Order</p>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-4">
+            <div className="px-5 py-4 border-b border-gray-100 bg-gray-50">
+              <p className="text-sm font-extrabold text-gray-900 m-0 flex items-center gap-2">⚠️ Cancel Order</p>
             </div>
-            <div className="od-card-body">
+            <div className="p-5">
               {!showCancelForm ? (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+                <div className="flex items-center justify-between flex-wrap gap-3">
                   <div>
-                    <p style={{ fontSize: 13, color: "#6B7280", margin: 0 }}>
+                    <p className="text-[13px] text-gray-500 m-0">
                       You can cancel this order since it is still in <strong>{getStatusLabel(order.orderStatus)}</strong> stage.
                     </p>
-                    <p style={{ fontSize: 12, color: "#9CA3AF", margin: "4px 0 0" }}>
-                      Once shipped, orders cannot be cancelled.
-                    </p>
+                    <p className="text-xs text-gray-400 mt-1 m-0">Once shipped, orders cannot be cancelled.</p>
                   </div>
                   <button
                     onClick={() => setShowCancelForm(true)}
-                    style={{
-                      background: "#FEF2F2", color: "#DC2626",
-                      border: "1px solid #FCA5A5", borderRadius: 10,
-                      padding: "10px 20px", fontSize: 13,
-                      fontWeight: 700, cursor: "pointer",
-                      fontFamily: "inherit",
-                    }}
+                    className="bg-red-50 text-red-600 border border-red-200 rounded-xl px-5 py-2.5 text-[13px] font-bold cursor-pointer hover:bg-red-100 transition font-[inherit]"
                   >
                     Cancel Order
                   </button>
                 </div>
               ) : (
-                <div style={{ animation: "fadeIn 0.2s ease both" }}>
-                  <p style={{ fontSize: 13, fontWeight: 700, color: "#111", margin: "0 0 10px" }}>
-                    Are you sure you want to cancel this order?
-                  </p>
+                <div>
+                  <p className="text-[13px] font-bold text-gray-900 mb-3 m-0">Are you sure you want to cancel?</p>
                   <textarea
                     placeholder="Reason for cancellation (optional)"
                     value={cancelReason}
                     onChange={(e) => setCancelReason(e.target.value)}
                     rows={3}
-                    style={{
-                      width: "100%", border: "1px solid #E5E7EB", borderRadius: 10,
-                      padding: "10px 14px", fontSize: 13, color: "#111",
-                      outline: "none", resize: "vertical", fontFamily: "inherit",
-                      boxSizing: "border-box", marginBottom: 12,
-                    }}
+                    className="w-full border border-gray-200 rounded-xl px-3.5 py-3 text-sm text-gray-900 outline-none resize-vertical font-[inherit] box-border mb-3"
                   />
                   {cancelError && (
-                    <p style={{ fontSize: 12, color: "#EF4444", margin: "0 0 10px", fontWeight: 600 }}>
-                      ⚠️ {cancelError}
-                    </p>
+                    <p className="text-xs text-red-500 font-semibold mb-3 m-0">⚠️ {cancelError}</p>
                   )}
-                  <div style={{ display: "flex", gap: 10 }}>
+                  <div className="flex gap-2.5">
                     <button
                       onClick={handleCancel}
                       disabled={cancelling}
-                      style={{
-                        background: "#DC2626", color: "white",
-                        border: "none", borderRadius: 10,
-                        padding: "10px 24px", fontSize: 13,
-                        fontWeight: 700, cursor: cancelling ? "not-allowed" : "pointer",
-                        opacity: cancelling ? 0.6 : 1,
-                        fontFamily: "inherit",
-                        display: "flex", alignItems: "center", gap: 8,
-                      }}
+                      className="bg-red-600 text-white border-none rounded-xl px-5 py-2.5 text-[13px] font-bold cursor-pointer disabled:opacity-60 flex items-center gap-2 font-[inherit]"
                     >
-                      {cancelling && (
-                        <span style={{ width: 14, height: 14, border: "2px solid white", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.6s linear infinite" }}></span>
-                      )}
+                      {cancelling && <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />}
                       {cancelling ? "Cancelling..." : "Yes, Cancel Order"}
                     </button>
                     <button
                       onClick={() => { setShowCancelForm(false); setCancelReason(""); setCancelError(""); }}
-                      style={{
-                        background: "#F3F4F6", color: "#374151",
-                        border: "1px solid #E5E7EB", borderRadius: 10,
-                        padding: "10px 24px", fontSize: 13,
-                        fontWeight: 700, cursor: "pointer",
-                        fontFamily: "inherit",
-                      }}
+                      className="bg-gray-100 text-gray-700 border border-gray-200 rounded-xl px-5 py-2.5 text-[13px] font-bold cursor-pointer hover:bg-gray-50 transition font-[inherit]"
                     >
                       Keep Order
                     </button>
@@ -794,46 +637,23 @@ const OrderDetailPage = () => {
           </div>
         )}
 
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+        <div className="flex gap-3 flex-wrap">
           <Link
             to="/orders"
-            style={{
-              background: "white", color: "#374151",
-              border: "1px solid #E5E7EB", borderRadius: 10,
-              padding: "12px 24px", fontSize: 13,
-              fontWeight: 700, textDecoration: "none",
-              display: "flex", alignItems: "center", gap: 8,
-            }}
+            className="bg-white text-gray-700 border border-gray-200 rounded-xl px-5 py-3 text-[13px] font-bold no-underline flex items-center gap-2 hover:bg-gray-50 transition"
           >
             ← Back to Orders
           </Link>
           <button
             onClick={handleDownloadInvoice}
             disabled={downloading}
-            style={{
-              background: downloading ? "#F3F4F6" : "linear-gradient(135deg, #1e293b, #334155)",
-              color: downloading ? "#9CA3AF" : "white",
-              border: "none", borderRadius: 10,
-              padding: "12px 24px", fontSize: 13,
-              fontWeight: 700, cursor: downloading ? "not-allowed" : "pointer",
-              fontFamily: "inherit",
-              display: "flex", alignItems: "center", gap: 8,
-            }}
+            className="bg-gradient-to-br from-gray-800 to-gray-900 text-white border-none rounded-xl px-5 py-3 text-[13px] font-bold cursor-pointer flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:brightness-110 transition font-[inherit]"
           >
-            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" viewBox="0 0 24 24">
-              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
-            </svg>
-            {downloading ? "Generating..." : "Download Invoice"}
+            📥 {downloading ? "Generating..." : "Download Invoice"}
           </button>
           <Link
             to="/products"
-            style={{
-              background: "linear-gradient(180deg, #FFD814, #F7CA00)",
-              color: "#111", border: "1px solid #FCD200",
-              borderRadius: 10, padding: "12px 24px",
-              fontSize: 13, fontWeight: 700,
-              textDecoration: "none",
-            }}
+            className="bg-gradient-to-b from-yellow-300 to-yellow-400 text-gray-900 border border-yellow-400 rounded-xl px-5 py-3 text-[13px] font-bold no-underline hover:brightness-95 transition"
           >
             Continue Shopping
           </Link>
