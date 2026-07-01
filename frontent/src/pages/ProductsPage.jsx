@@ -9,7 +9,6 @@ import WishlistButton from "../components/WishlistButton";
 import Price from "../components/Price";
 import ShippingBadge from "../components/ShippingBadge";
 import { toast } from "../components/Toast";
-import { convertPrice, formatPrice } from "../utils/priceHelper";
 
 const categoryIcons = {
   furniture: "🛋️",
@@ -54,7 +53,7 @@ const SkeletonCard = () => (
 const ProductsPage = () => {
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
-  const { currentCountry } = useSelector((state) => state.country);
+  const { currentCountry, isUserCountry } = useSelector((state) => state.country);
   const { addItem } = useCart();
   const [addedProducts, setAddedProducts] = useState({});
   const [loadingProducts, setLoadingProducts] = useState({});
@@ -123,7 +122,7 @@ const ProductsPage = () => {
       result = result.filter((p) => p.isFeatured);
     } else if (filters.filterType === "latest") {
       result = result.sort(
-        (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
       );
     } else if (filters.filterType === "topRated") {
       result = result
@@ -152,18 +151,18 @@ const ProductsPage = () => {
       result = result.filter(
         (p) =>
           p.name.toLowerCase().includes(query) ||
-          p.description?.toLowerCase().includes(query),
+          p.description?.toLowerCase().includes(query)
       );
     }
 
     if (filters.minPrice) {
       const minInINR =
-        parseFloat(filters.minPrice) / currentCountry.exchangeRate;
+        parseFloat(filters.minPrice) / (currentCountry.exchangeRate || 1);
       result = result.filter((p) => p.price >= minInINR);
     }
     if (filters.maxPrice) {
       const maxInINR =
-        parseFloat(filters.maxPrice) / currentCountry.exchangeRate;
+        parseFloat(filters.maxPrice) / (currentCountry.exchangeRate || 1);
       result = result.filter((p) => p.price <= maxInINR);
     }
 
@@ -258,11 +257,11 @@ const ProductsPage = () => {
       toast.success("Added to cart!");
       setTimeout(
         () => setAddedProducts((prev) => ({ ...prev, [product._id]: false })),
-        2000,
+        2000
       );
     } catch (err) {
       toast.error(
-        err?.data?.message || err?.message || "Failed to add to cart",
+        err?.data?.message || err?.message || "Failed to add to cart"
       );
     } finally {
       setLoadingProducts((p) => ({ ...p, [product._id]: null }));
@@ -280,7 +279,7 @@ const ProductsPage = () => {
       else navigate("/checkout");
     } catch (err) {
       toast.error(
-        err?.data?.message || err?.message || "Failed to add to cart",
+        err?.data?.message || err?.message || "Failed to add to cart"
       );
       setLoadingProducts((p) => ({ ...p, [product._id]: null }));
     }
@@ -296,7 +295,7 @@ const ProductsPage = () => {
   const itemsPerPage = 20;
   const paginatedProducts = filteredProducts.slice(
     (filters.page - 1) * itemsPerPage,
-    filters.page * itemsPerPage,
+    filters.page * itemsPerPage
   );
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
 
@@ -314,11 +313,16 @@ const ProductsPage = () => {
               {isLoading
                 ? "Loading..."
                 : filteredProducts.length > 0
-                  ? `${filteredProducts.length} products found`
-                  : "No products found"}
+                ? `${filteredProducts.length} products found`
+                : "No products found"}
               <span className="inline-flex items-center gap-1.5 bg-orange-50 text-[#D85A30] border border-orange-200 px-2 py-0.5 rounded-full text-[11px] font-bold">
                 {currentCountry.flag} Showing in {currentCountry.currency.code}
               </span>
+              {isUserCountry && (
+                <span className="inline-flex items-center bg-green-100 text-green-700 border border-green-200 px-2 py-0.5 rounded-full text-[10px] font-extrabold">
+                  YOUR PROFILE
+                </span>
+              )}
             </p>
           </div>
         </div>
@@ -591,7 +595,7 @@ const ProductsPage = () => {
                       ? Math.round(
                           ((product.comparePrice - product.price) /
                             product.comparePrice) *
-                            100,
+                            100
                         )
                       : 0;
 
@@ -679,7 +683,11 @@ const ProductsPage = () => {
                               {[1, 2, 3, 4, 5].map((s) => (
                                 <span
                                   key={s}
-                                  className={`text-xs ${s <= Math.round(product.averageRating) ? "text-yellow-400" : "text-gray-200"}`}
+                                  className={`text-xs ${
+                                    s <= Math.round(product.averageRating)
+                                      ? "text-yellow-400"
+                                      : "text-gray-200"
+                                  }`}
                                 >
                                   ★
                                 </span>
@@ -821,7 +829,7 @@ const ProductsPage = () => {
                             {page}
                           </button>
                         );
-                      },
+                      }
                     )}
                   </div>
 

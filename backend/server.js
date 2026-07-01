@@ -20,6 +20,7 @@ const uploadRouter = require("./routes/upload");
 const searchRouter = require("./routes/search");
 const reviewRouter = require("./routes/review");
 const countryRoutes = require("./routes/countryRoutes");
+const couponRoutes = require("./routes/couponRoutes");
 
 const PORT = process.env.PORT || 5005;
 
@@ -66,6 +67,7 @@ app.use("/api/upload", uploadRouter);
 app.use("/api/search", searchRouter);
 app.use("/api/reviews", reviewRouter);
 app.use("/api/countries", countryRoutes);
+app.use("/api/coupons", couponRoutes);
 
 app.use((req, res) => {
   res.status(404).json({

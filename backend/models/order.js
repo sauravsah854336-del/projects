@@ -42,7 +42,17 @@ const orderSchema = new mongoose.Schema(
     },
     paymentMethod: {
       type: String,
-      enum: ["cod", "card", "upi", "netbanking", "wallet", "paypal", "applepay", "googlepay", "online"],
+      enum: [
+        "cod",
+        "card",
+        "upi",
+        "netbanking",
+        "wallet",
+        "paypal",
+        "applepay",
+        "googlepay",
+        "online",
+      ],
       default: "cod",
     },
     paymentStatus: {
@@ -92,6 +102,19 @@ const orderSchema = new mongoose.Schema(
     confirmedAt: { type: Date, default: null },
     subtotal: { type: Number, required: true },
     discount: { type: Number, default: 0 },
+    couponCode: {
+      type: String,
+      default: "",
+    },
+    couponDiscount: {
+      type: Number,
+      default: 0,
+    },
+    couponType: {
+      type: String,
+      enum: ["percentage", "fixed", "free_shipping", ""],
+      default: "",
+    },
     shippingCharge: { type: Number, default: 0 },
     total: { type: Number, required: true },
     notes: { type: String, default: "" },
@@ -106,5 +129,6 @@ orderSchema.index({ user: 1 });
 orderSchema.index({ orderNumber: 1 });
 orderSchema.index({ orderStatus: 1 });
 orderSchema.index({ "items.vendor": 1 });
+orderSchema.index({ couponCode: 1 });
 
 module.exports = mongoose.models.Order || mongoose.model("Order", orderSchema);

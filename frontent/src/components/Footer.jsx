@@ -101,16 +101,15 @@ const Footer = () => {
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 pt-14 sm:pt-16">
 
         {isGuest && (
-          <CtaBanner
-            gradient="bg-gradient-to-r from-[#D85A30] via-[#FF8C5A] to-[#D85A30]"
-            badge="🎉 Join Our Community"
-            title="Get ₹100 OFF on your first order!"
-            subtitle="Sign up today and start shopping with exclusive discounts"
-            primaryLink="/signup" primaryLabel="Sign Up Free" primaryColor="text-[#D85A30]"
-            secondaryLink="/login" secondaryLabel="Login"
-          />
-        )}
-
+  <CtaBanner
+    gradient="bg-gradient-to-r from-[#D85A30] via-[#FF8C5A] to-[#D85A30]"
+    badge="🛍️ Start Shopping Today"
+    title="Join thousands of happy customers!"
+    subtitle="Create your free account to track orders, save wishlist, and get exclusive deals"
+    primaryLink="/signup" primaryLabel="Create Account" primaryColor="text-[#D85A30]"
+    secondaryLink="/login" secondaryLabel="Sign In"
+  />
+)}
         {isCustomer && (
           <CtaBanner
             gradient="bg-gradient-to-r from-green-800 via-green-500 to-green-800"
@@ -413,14 +412,14 @@ const Footer = () => {
             </p>
 
             {(isCustomer || isGuest) && (
-              <div className="mt-5 p-3.5 bg-[#D85A30]/[0.08] border border-[#D85A30]/20 rounded-xl flex items-center gap-3">
-                <span className="text-xl">🎁</span>
-                <div>
-                  <p className="text-xs font-extrabold text-[#FF8C5A] m-0">First-time subscriber bonus</p>
-                  <p className="text-[11px] text-gray-400 m-0 mt-0.5">Get ₹100 off coupon in your inbox</p>
-                </div>
-              </div>
-            )}
+  <div className="mt-5 p-3.5 bg-[#D85A30]/[0.08] border border-[#D85A30]/20 rounded-xl flex items-center gap-3">
+    <span className="text-xl">🎁</span>
+    <div>
+      <p className="text-xs font-extrabold text-[#FF8C5A] m-0">Subscriber perks</p>
+      <p className="text-[11px] text-gray-400 m-0 mt-0.5">Get early access to deals & new arrivals</p>
+    </div>
+  </div>
+)}
           </div>
         </div>
 

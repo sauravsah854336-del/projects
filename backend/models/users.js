@@ -29,11 +29,22 @@ const userSchema = new mongoose.Schema(
       required: true,
     },
 
+    dialCode: {
+      type: String,
+      default: "+91",
+    },
+
+    fullPhone: {
+      type: String,
+      sparse: true,
+    },
+
     password: {
       type: String,
       required: true,
       select: false,
     },
+
     provider: {
       type: String,
       enum: ["local", "google", "apple"],
@@ -107,29 +118,34 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+
     passwordResetOTP: {
       type: String,
       default: null,
     },
+
     passwordResetOTPExpiry: {
       type: Date,
       default: null,
     },
+
     preferredCountry: {
       type: String,
       default: "IN",
       uppercase: true,
     },
+
     preferredCurrency: {
       type: String,
       default: "INR",
       uppercase: true,
     },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
 userSchema.index({ email: 1 }, { unique: true });
-userSchema.index({ phone: 1 }, { unique: true });
+userSchema.index({ fullPhone: 1 }, { unique: true, sparse: true });
+userSchema.index({ phone: 1, dialCode: 1 });
 
 module.exports = mongoose.models.User || mongoose.model("User", userSchema);

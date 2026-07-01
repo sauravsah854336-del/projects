@@ -5,8 +5,15 @@ import { logout } from "../features/auth/authSlice";
 import { authApi, useLogoutMutation } from "../features/auth/authApi";
 import { useSearchSuggestionsQuery } from "../features/search/searchApi";
 import { useGetCategoryTreeQuery } from "../features/category/categoryApi";
-import { useGetAllCountriesQuery, useDetectUserCountryQuery } from "../features/country/countryApi";
-import { setCountry, setAllCountries } from "../features/country/countrySlice";
+import {
+  useGetAllCountriesQuery,
+  useDetectUserCountryQuery,
+} from "../features/country/countryApi";
+import {
+  setCountry,
+  setAllCountries,
+  resetCountry,
+} from "../features/country/countrySlice";
 import { useDebounce } from "../hooks/useDebounce";
 import { useCart } from "../hooks/useCart";
 import { useWishlist } from "../hooks/useWishlist";
@@ -16,7 +23,9 @@ import { toast } from "./Toast";
 
 const Navbar = () => {
   const { user, refreshToken } = useSelector((state) => state.auth);
-  const { currentCountry } = useSelector((state) => state.country);
+  const { currentCountry, isUserCountry } = useSelector(
+    (state) => state.country
+  );
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
@@ -51,7 +60,7 @@ const Navbar = () => {
 
   const { data: countriesData } = useGetAllCountriesQuery();
   const { data: detectedData } = useDetectUserCountryQuery(undefined, {
-    skip: !!localStorage.getItem("userCountry"),
+    skip: !!localStorage.getItem("userCountry") || !!user,
   });
 
   useEffect(() => {
@@ -61,21 +70,30 @@ const Navbar = () => {
   }, [countriesData, dispatch]);
 
   useEffect(() => {
-    if (detectedData?.data && !localStorage.getItem("userCountry")) {
+    if (
+      detectedData?.data &&
+      !localStorage.getItem("userCountry") &&
+      !isUserCountry &&
+      !user
+    ) {
       dispatch(setCountry(detectedData.data));
-      toast.info(`📍 Showing prices for ${detectedData.data.flag} ${detectedData.data.name}`);
+      toast.info(
+        `📍 Showing prices for ${detectedData.data.flag} ${detectedData.data.name}`
+      );
     }
-  }, [detectedData, dispatch]);
+  }, [detectedData, dispatch, isUserCountry, user]);
 
-  const shouldSkipSearch = debouncedQuery.length < 1 || (!isCustomer && !isGuest);
+  const shouldSkipSearch =
+    debouncedQuery.length < 1 || (!isCustomer && !isGuest);
 
-  const { data: sugData, isFetching, isLoading } = useSearchSuggestionsQuery(
-    debouncedQuery,
-    {
-      skip: shouldSkipSearch,
-      refetchOnMountOrArgChange: true,
-    }
-  );
+  const {
+    data: sugData,
+    isFetching,
+    isLoading,
+  } = useSearchSuggestionsQuery(debouncedQuery, {
+    skip: shouldSkipSearch,
+    refetchOnMountOrArgChange: true,
+  });
 
   const { data: categoryData } = useGetCategoryTreeQuery(undefined, {
     skip: !isCustomer && !isGuest,
@@ -189,7 +207,10 @@ const Navbar = () => {
     } catch (e) {}
     dispatch(authApi.util.resetApiState());
     dispatch(logout());
-    navigate("/login");
+    dispatch(resetCountry());
+    setTimeout(() => {
+      navigate("/login", { replace: true });
+    }, 100);
   };
 
   const handleSelectCountry = (country) => {
@@ -199,11 +220,13 @@ const Navbar = () => {
     toast.success(`${country.flag} Switched to ${country.name}`);
   };
 
-  const filteredCountries = countriesData?.data?.filter(c =>
-    c.name.toLowerCase().includes(countrySearch.toLowerCase()) ||
-    c.code.toLowerCase().includes(countrySearch.toLowerCase()) ||
-    c.currency.code.toLowerCase().includes(countrySearch.toLowerCase())
-  ) || [];
+  const filteredCountries =
+    countriesData?.data?.filter(
+      (c) =>
+        c.name.toLowerCase().includes(countrySearch.toLowerCase()) ||
+        c.code.toLowerCase().includes(countrySearch.toLowerCase()) ||
+        c.currency.code.toLowerCase().includes(countrySearch.toLowerCase())
+    ) || [];
 
   const highlightText = (text, query) => {
     if (!query || !text) return text;
@@ -281,7 +304,15 @@ const Navbar = () => {
           onClick={() => setMobileOpen(true)}
           className="lg:hidden p-2 border border-transparent rounded hover:border-white text-white bg-transparent cursor-pointer shrink-0"
         >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+          >
             <path d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
@@ -311,15 +342,34 @@ const Navbar = () => {
         {showShoppingFeatures && (
           <button
             onClick={() => setCountryModalOpen(true)}
-            className="hidden lg:flex items-center gap-2 px-2.5 py-2 border border-transparent rounded hover:border-white transition-colors cursor-pointer bg-transparent shrink-0 text-left font-[inherit]"
-            title={`Shipping to ${currentCountry.name} (${currentCountry.currency.code})`}
+            className="hidden lg:flex items-center gap-2 px-2.5 py-2 border border-transparent rounded hover:border-white transition-colors cursor-pointer bg-transparent shrink-0 text-left font-[inherit] relative"
+            title={
+              isUserCountry
+                ? `Your profile country: ${currentCountry.name} (${currentCountry.currency.code})`
+                : `Shipping to ${currentCountry.name} (${currentCountry.currency.code})`
+            }
           >
             <span className="text-xl">{currentCountry.flag}</span>
             <div className="flex flex-col leading-tight">
-              <span className="text-[10px] text-gray-400">Ship to</span>
+              <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                Ship to
+                {isUserCountry && (
+                  <span className="bg-green-500 text-white text-[8px] px-1 rounded font-extrabold">
+                    MY
+                  </span>
+                )}
+              </span>
               <span className="text-[12px] font-extrabold text-white flex items-center gap-1">
                 {currentCountry.code}
-                <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor">
+                <span className="text-[10px] font-bold text-yellow-300">
+                  {currentCountry.currency.symbol}
+                </span>
+                <svg
+                  width="8"
+                  height="8"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
                   <path d="M7 10l5 5 5-5z" />
                 </svg>
               </span>
@@ -375,7 +425,15 @@ const Navbar = () => {
                   }}
                   className="px-2 text-gray-400 hover:text-gray-600 bg-transparent border-none cursor-pointer"
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                  >
                     <path d="M18 6L6 18M6 6l12 12" />
                   </svg>
                 </button>
@@ -385,7 +443,15 @@ const Navbar = () => {
                 onClick={() => doSearch()}
                 className="bg-gradient-to-b from-yellow-300 to-yellow-400 border-none px-4 sm:px-5 cursor-pointer text-gray-900 flex items-center justify-center rounded-r-lg hover:brightness-95 transition"
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                >
                   <circle cx="11" cy="11" r="7" />
                   <path d="M21 21l-4.35-4.35" />
                 </svg>
@@ -409,7 +475,8 @@ const Navbar = () => {
                         No results found
                       </p>
                       <p className="text-xs text-gray-500 m-0">
-                        Nothing matches &ldquo;<strong>{searchQuery}</strong>&rdquo;
+                        Nothing matches &ldquo;<strong>{searchQuery}</strong>
+                        &rdquo;
                       </p>
                       <button
                         onClick={() => doSearch()}
@@ -435,7 +502,12 @@ const Navbar = () => {
                           {suggestions.categories.map((c, idx) => (
                             <button
                               key={c._id}
-                              onClick={() => handleSuggestionClick({ type: "category", data: c })}
+                              onClick={() =>
+                                handleSuggestionClick({
+                                  type: "category",
+                                  data: c,
+                                })
+                              }
                               onMouseEnter={() => setHighlightIndex(idx)}
                               onMouseLeave={() => setHighlightIndex(-1)}
                               className={`sd-item flex items-center gap-3 w-full px-4 py-2.5 border-none bg-transparent cursor-pointer text-left hover:bg-orange-50 transition-colors ${
@@ -443,7 +515,15 @@ const Navbar = () => {
                               }`}
                             >
                               <div className="w-8 h-8 bg-orange-50 rounded-md flex items-center justify-center shrink-0">
-                                <svg width="16" height="16" fill="none" stroke="#D85A30" strokeWidth="2" strokeLinecap="round" viewBox="0 0 24 24">
+                                <svg
+                                  width="16"
+                                  height="16"
+                                  fill="none"
+                                  stroke="#D85A30"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  viewBox="0 0 24 24"
+                                >
                                   <path d="M4 6h16M4 12h16M4 18h7" />
                                 </svg>
                               </div>
@@ -451,9 +531,19 @@ const Navbar = () => {
                                 <p className="text-[13px] font-semibold text-gray-900 m-0">
                                   {highlightText(c.name, debouncedQuery)}
                                 </p>
-                                <p className="text-[11px] text-gray-400 m-0">in Categories</p>
+                                <p className="text-[11px] text-gray-400 m-0">
+                                  in Categories
+                                </p>
                               </div>
-                              <svg width="14" height="14" fill="none" stroke="#999" strokeWidth="2.5" strokeLinecap="round" viewBox="0 0 24 24">
+                              <svg
+                                width="14"
+                                height="14"
+                                fill="none"
+                                stroke="#999"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                                viewBox="0 0 24 24"
+                              >
                                 <path d="M9 5l7 7-7 7" />
                               </svg>
                             </button>
@@ -476,7 +566,12 @@ const Navbar = () => {
                             return (
                               <button
                                 key={v._id}
-                                onClick={() => handleSuggestionClick({ type: "vendor", data: v })}
+                                onClick={() =>
+                                  handleSuggestionClick({
+                                    type: "vendor",
+                                    data: v,
+                                  })
+                                }
                                 onMouseEnter={() => setHighlightIndex(gIdx)}
                                 onMouseLeave={() => setHighlightIndex(-1)}
                                 className={`sd-item flex items-center gap-3 w-full px-4 py-2.5 border-none bg-transparent cursor-pointer text-left hover:bg-orange-50 transition-colors ${
@@ -488,11 +583,24 @@ const Navbar = () => {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-[13px] font-semibold text-gray-900 m-0">
-                                    {highlightText(v.storeName, debouncedQuery)}
+                                    {highlightText(
+                                      v.storeName,
+                                      debouncedQuery
+                                    )}
                                   </p>
-                                  <p className="text-[11px] text-gray-400 m-0">Official Store</p>
+                                  <p className="text-[11px] text-gray-400 m-0">
+                                    Official Store
+                                  </p>
                                 </div>
-                                <svg width="14" height="14" fill="none" stroke="#999" strokeWidth="2.5" strokeLinecap="round" viewBox="0 0 24 24">
+                                <svg
+                                  width="14"
+                                  height="14"
+                                  fill="none"
+                                  stroke="#999"
+                                  strokeWidth="2.5"
+                                  strokeLinecap="round"
+                                  viewBox="0 0 24 24"
+                                >
                                   <path d="M9 5l7 7-7 7" />
                                 </svg>
                               </button>
@@ -516,7 +624,12 @@ const Navbar = () => {
                             return (
                               <button
                                 key={p._id}
-                                onClick={() => handleSuggestionClick({ type: "product", data: p })}
+                                onClick={() =>
+                                  handleSuggestionClick({
+                                    type: "product",
+                                    data: p,
+                                  })
+                                }
                                 onMouseEnter={() => setHighlightIndex(gIdx)}
                                 onMouseLeave={() => setHighlightIndex(-1)}
                                 className={`sd-item flex items-center gap-3 w-full px-4 py-2.5 border-none bg-transparent cursor-pointer text-left hover:bg-orange-50 transition-colors ${
@@ -542,7 +655,10 @@ const Navbar = () => {
                                     </span>
                                     {p.comparePrice > p.price && (
                                       <span className="text-[11px] text-gray-400 line-through">
-                                        {formatPrice(p.comparePrice, currentCountry)}
+                                        {formatPrice(
+                                          p.comparePrice,
+                                          currentCountry
+                                        )}
                                       </span>
                                     )}
                                     {p.brand && (
@@ -594,7 +710,12 @@ const Navbar = () => {
             bottom={
               <>
                 Account & Lists
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
                   <path d="M7 10l5 5 5-5z" />
                 </svg>
               </>
@@ -636,12 +757,19 @@ const Navbar = () => {
                   </p>
                   {isCustomer && (
                     <>
-                      <DDLink onClick={() => go("/dashboard")}>Dashboard</DDLink>
-                      <DDLink onClick={() => go("/profile")}>Profile & Addresses</DDLink>
-                      <DDLink onClick={() => go("/orders")}>Your Orders</DDLink>
+                      <DDLink onClick={() => go("/dashboard")}>
+                        Dashboard
+                      </DDLink>
+                      <DDLink onClick={() => go("/profile")}>
+                        Profile & Addresses
+                      </DDLink>
+                      <DDLink onClick={() => go("/orders")}>
+                        Your Orders
+                      </DDLink>
                       <DDLink onClick={() => go("/cart")}>Your Cart</DDLink>
                       <DDLink onClick={() => go("/wishlist")}>
-                        Your Wishlist{wishlistCount > 0 && ` (${wishlistCount})`}
+                        Your Wishlist
+                        {wishlistCount > 0 && ` (${wishlistCount})`}
                       </DDLink>
                       <DDLink onClick={doLogout}>
                         <span className="text-blue-700">Sign Out</span>
@@ -650,15 +778,25 @@ const Navbar = () => {
                   )}
                   {isVendor && (
                     <>
-                      <DDLink onClick={() => go("/vendor/dashboard")}>Dashboard</DDLink>
-                      <DDLink onClick={() => go("/vendor/profile")}>My Profile</DDLink>
-                      <DDLink onClick={() => go("/vendor/dashboard?tab=products")}>
+                      <DDLink onClick={() => go("/vendor/dashboard")}>
+                        Dashboard
+                      </DDLink>
+                      <DDLink onClick={() => go("/vendor/profile")}>
+                        My Profile
+                      </DDLink>
+                      <DDLink
+                        onClick={() => go("/vendor/dashboard?tab=products")}
+                      >
                         My Products
                       </DDLink>
-                      <DDLink onClick={() => go("/vendor/dashboard?tab=orders")}>
+                      <DDLink
+                        onClick={() => go("/vendor/dashboard?tab=orders")}
+                      >
                         Orders
                       </DDLink>
-                      <DDLink onClick={() => go("/vendor/dashboard?tab=reviews")}>
+                      <DDLink
+                        onClick={() => go("/vendor/dashboard?tab=reviews")}
+                      >
                         Reviews
                       </DDLink>
                       <DDLink onClick={doLogout}>
@@ -668,21 +806,50 @@ const Navbar = () => {
                   )}
                   {isAdmin && (
                     <>
-                      <DDLink onClick={() => go("/admin/dashboard")}>Dashboard</DDLink>
-                      <DDLink onClick={() => go("/admin/profile")}>My Profile</DDLink>
-                      <DDLink onClick={() => go("/admin/dashboard?tab=vendors")}>
+                      <DDLink onClick={() => go("/admin/dashboard")}>
+                        Dashboard
+                      </DDLink>
+                      <DDLink onClick={() => go("/admin/profile")}>
+                        My Profile
+                      </DDLink>
+                      <DDLink
+                        onClick={() => go("/admin/dashboard?tab=analytics")}
+                      >
+                        📈 Analytics
+                      </DDLink>
+                      <DDLink
+                        onClick={() => go("/admin/dashboard?tab=vendors")}
+                      >
                         Vendors
                       </DDLink>
-                      <DDLink onClick={() => go("/admin/dashboard?tab=categories")}>
+                      <DDLink
+                        onClick={() => go("/admin/dashboard?tab=customers")}
+                      >
+                        Customers
+                      </DDLink>
+                      <DDLink
+                        onClick={() => go("/admin/dashboard?tab=categories")}
+                      >
                         Categories
                       </DDLink>
-                      <DDLink onClick={() => go("/admin/dashboard?tab=products")}>
+                      <DDLink
+                        onClick={() => go("/admin/dashboard?tab=products")}
+                      >
                         Products
                       </DDLink>
-                      <DDLink onClick={() => go("/admin/dashboard?tab=orders")}>
+                      <DDLink
+                        onClick={() => go("/admin/dashboard?tab=orders")}
+                      >
                         Orders
                       </DDLink>
-                      <DDLink onClick={() => go("/admin/dashboard?tab=reviews")}>
+                      <DDLink
+                        onClick={() => go("/admin/dashboard?tab=coupons")}
+                      >
+                        🎟️ Coupons
+                      </DDLink>
+                      <DDLink
+                        onClick={() => go("/admin/dashboard?tab=reviews")}
+                      >
                         Reviews
                       </DDLink>
                       <DDLink onClick={doLogout}>
@@ -692,12 +859,15 @@ const Navbar = () => {
                   )}
                   {isGuest && (
                     <>
-                      <DDLink onClick={() => go("/orders")}>Your Orders</DDLink>
+                      <DDLink onClick={() => go("/orders")}>
+                        Your Orders
+                      </DDLink>
                       <DDLink onClick={() => go("/cart")}>
                         Your Cart{cartCount > 0 && ` (${cartCount})`}
                       </DDLink>
                       <DDLink onClick={() => go("/wishlist")}>
-                        Your Wishlist{wishlistCount > 0 && ` (${wishlistCount})`}
+                        Your Wishlist
+                        {wishlistCount > 0 && ` (${wishlistCount})`}
                       </DDLink>
                     </>
                   )}
@@ -716,11 +886,18 @@ const Navbar = () => {
                   {isCustomer && (
                     <>
                       <DDLink onClick={() => setCountryModalOpen(true)}>
-                        🌍 Change Country ({currentCountry.flag} {currentCountry.code})
+                        🌍 Change Country ({currentCountry.flag}{" "}
+                        {currentCountry.code})
                       </DDLink>
-                      <DDLink onClick={() => go("/help")}>Customer Service</DDLink>
-                      <DDLink onClick={() => go("/contact")}>Contact Us</DDLink>
-                      <DDLink onClick={() => go("/policy/returns")}>Returns Policy</DDLink>
+                      <DDLink onClick={() => go("/help")}>
+                        Customer Service
+                      </DDLink>
+                      <DDLink onClick={() => go("/contact")}>
+                        Contact Us
+                      </DDLink>
+                      <DDLink onClick={() => go("/policy/returns")}>
+                        Returns Policy
+                      </DDLink>
                       <DDLink onClick={() => go("/policy/shipping-info")}>
                         Shipping Info
                       </DDLink>
@@ -743,9 +920,16 @@ const Navbar = () => {
                   {isAdmin && (
                     <>
                       <DDLink onClick={() => go("/")}>View Storefront</DDLink>
-                      <DDLink onClick={() => go("/products")}>All Products</DDLink>
-                      <DDLink onClick={() => go("/admin/dashboard?tab=countries")}>
+                      <DDLink onClick={() => go("/products")}>
+                        All Products
+                      </DDLink>
+                      <DDLink
+                        onClick={() => go("/admin/dashboard?tab=countries")}
+                      >
                         🌍 Countries
+                      </DDLink>
+                      <DDLink onClick={() => go("/admin/dashboard?tab=admins")}>
+                        👑 Admins
                       </DDLink>
                       <DDLink onClick={() => go("/help")}>Help Center</DDLink>
                     </>
@@ -753,12 +937,15 @@ const Navbar = () => {
                   {isGuest && (
                     <>
                       <DDLink onClick={() => setCountryModalOpen(true)}>
-                        🌍 Change Country ({currentCountry.flag} {currentCountry.code})
+                        🌍 Change Country ({currentCountry.flag}{" "}
+                        {currentCountry.code})
                       </DDLink>
                       <DDLink onClick={() => go("/vendor/signup")}>
                         Become a Seller
                       </DDLink>
-                      <DDLink onClick={() => go("/vendor/login")}>Seller Login</DDLink>
+                      <DDLink onClick={() => go("/vendor/login")}>
+                        Seller Login
+                      </DDLink>
                       <DDLink onClick={() => go("/policy/seller-guidelines")}>
                         Seller Guidelines
                       </DDLink>
@@ -771,7 +958,11 @@ const Navbar = () => {
         </div>
 
         {isCustomer && (
-          <NavLink top="Returns" bottom="& Orders" onClick={() => go("/orders")} />
+          <NavLink
+            top="Returns"
+            bottom="& Orders"
+            onClick={() => go("/orders")}
+          />
         )}
 
         {showShoppingFeatures && (
@@ -786,7 +977,16 @@ const Navbar = () => {
                   {wishlistCount > 99 ? "99+" : wishlistCount}
                 </span>
               )}
-              <svg width="26" height="26" viewBox="0 0 24 24" fill={wishlistCount > 0 ? "#EF4444" : "none"} stroke={wishlistCount > 0 ? "#EF4444" : "currentColor"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="26"
+                height="26"
+                viewBox="0 0 24 24"
+                fill={wishlistCount > 0 ? "#EF4444" : "none"}
+                stroke={wishlistCount > 0 ? "#EF4444" : "currentColor"}
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
               </svg>
             </div>
@@ -810,11 +1010,22 @@ const Navbar = () => {
                   {cartCount > 99 ? "99+" : cartCount}
                 </span>
               )}
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="28"
+                height="28"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
               </svg>
             </div>
-            <span className="hidden lg:block text-[13px] font-bold mt-2.5">Cart</span>
+            <span className="hidden lg:block text-[13px] font-bold mt-2.5">
+              Cart
+            </span>
           </button>
         )}
 
@@ -838,7 +1049,6 @@ const Navbar = () => {
             }}
           />
           <div className="country-modal fixed top-1/2 left-1/2 w-[92vw] max-w-[480px] max-h-[85vh] bg-white rounded-2xl z-[99999] shadow-2xl overflow-hidden flex flex-col">
-
             <div className="bg-gradient-to-r from-[#131921] to-[#232F3E] px-5 sm:px-6 py-4 sm:py-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -856,7 +1066,15 @@ const Navbar = () => {
                   }}
                   className="bg-white/10 border border-white/15 text-white rounded-lg w-8 h-8 flex items-center justify-center cursor-pointer hover:bg-white/20 transition shrink-0"
                 >
-                  <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" strokeLinecap="round">
+                  <svg
+                    width="14"
+                    height="14"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    viewBox="0 0 24 24"
+                    strokeLinecap="round"
+                  >
                     <path d="M18 6L6 18M6 6l12 12" />
                   </svg>
                 </button>
@@ -865,8 +1083,18 @@ const Navbar = () => {
 
             <div className="px-5 py-3 border-b border-gray-100 bg-gray-50">
               <div className="relative">
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                <svg
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
                 </svg>
                 <input
                   type="text"
@@ -880,20 +1108,25 @@ const Navbar = () => {
             </div>
 
             <div className="flex-1 overflow-y-auto">
-
               <div className="px-5 py-3 bg-orange-50 border-b border-orange-100">
                 <div className="flex items-center gap-3">
                   <span className="text-3xl">{currentCountry.flag}</span>
                   <div className="flex-1">
-                    <p className="text-[10px] text-orange-600 font-bold uppercase tracking-wide m-0">
+                    <p className="text-[10px] text-orange-600 font-bold uppercase tracking-wide m-0 flex items-center gap-1">
                       Current Country
+                      {isUserCountry && (
+                        <span className="bg-green-500 text-white text-[8px] px-1 rounded font-extrabold">
+                          FROM PROFILE
+                        </span>
+                      )}
                     </p>
                     <p className="text-sm font-extrabold text-gray-900 m-0">
                       {currentCountry.name}
                     </p>
                     <p className="text-[11px] text-gray-600 m-0 mt-0.5">
-                      {currentCountry.currency.symbol} {currentCountry.currency.code} ·
-                      {" "}{currentCountry.tax?.label} {currentCountry.tax?.rate}%
+                      {currentCountry.currency.symbol}{" "}
+                      {currentCountry.currency.code} ·{" "}
+                      {currentCountry.tax?.label} {currentCountry.tax?.rate}%
                     </p>
                   </div>
                   <span className="text-[10px] bg-[#D85A30] text-white px-2 py-0.5 rounded-full font-extrabold">
@@ -905,7 +1138,9 @@ const Navbar = () => {
               {filteredCountries.length === 0 ? (
                 <div className="text-center py-12 px-4">
                   <p className="text-4xl mb-2">🌍</p>
-                  <p className="text-sm text-gray-500 m-0">No countries found</p>
+                  <p className="text-sm text-gray-500 m-0">
+                    No countries found
+                  </p>
                 </div>
               ) : (
                 <div>
@@ -923,30 +1158,59 @@ const Navbar = () => {
                           isActive ? "bg-orange-50/50" : "bg-transparent"
                         }`}
                       >
-                        <span className="text-3xl shrink-0">{country.flag}</span>
+                        <span className="text-3xl shrink-0">
+                          {country.flag}
+                        </span>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <p className={`text-sm font-bold m-0 truncate ${isActive ? "text-[#D85A30]" : "text-gray-900"}`}>
+                            <p
+                              className={`text-sm font-bold m-0 truncate ${
+                                isActive ? "text-[#D85A30]" : "text-gray-900"
+                              }`}
+                            >
                               {country.name}
                             </p>
                             {country.isDefault && !isActive && (
-                              <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-bold">DEFAULT</span>
+                              <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-bold">
+                                DEFAULT
+                              </span>
                             )}
                           </div>
                           <p className="text-[11px] text-gray-500 m-0 mt-0.5">
-                            {country.currency.symbol} {country.currency.code} ·
-                            {" "}{country.tax?.label || "No tax"} {country.tax?.rate || 0}%
+                            {country.currency.symbol} {country.currency.code} ·{" "}
+                            {country.tax?.label || "No tax"}{" "}
+                            {country.tax?.rate || 0}%
                             {country.shipping?.freeShippingThreshold > 0 && (
-                              <span> · Free ship over {country.currency.symbol}{country.shipping.freeShippingThreshold}</span>
+                              <span>
+                                {" "}
+                                · Free ship over {country.currency.symbol}
+                                {country.shipping.freeShippingThreshold}
+                              </span>
                             )}
                           </p>
                         </div>
                         {isActive ? (
-                          <svg width="18" height="18" fill="none" stroke="#D85A30" strokeWidth="3" viewBox="0 0 24 24" className="shrink-0">
+                          <svg
+                            width="18"
+                            height="18"
+                            fill="none"
+                            stroke="#D85A30"
+                            strokeWidth="3"
+                            viewBox="0 0 24 24"
+                            className="shrink-0"
+                          >
                             <path d="M5 13l4 4L19 7" strokeLinecap="round" />
                           </svg>
                         ) : (
-                          <svg width="14" height="14" fill="none" stroke="#999" strokeWidth="2.5" viewBox="0 0 24 24" className="shrink-0">
+                          <svg
+                            width="14"
+                            height="14"
+                            fill="none"
+                            stroke="#999"
+                            strokeWidth="2.5"
+                            viewBox="0 0 24 24"
+                            className="shrink-0"
+                          >
                             <path d="M9 5l7 7-7 7" strokeLinecap="round" />
                           </svg>
                         )}
@@ -986,7 +1250,15 @@ const Navbar = () => {
                 onClick={() => setMobileOpen(false)}
                 className="bg-transparent border-none text-white cursor-pointer ml-auto"
               >
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                >
                   <path d="M18 6L6 18M6 6l12 12" />
                 </svg>
               </button>
@@ -1003,8 +1275,21 @@ const Navbar = () => {
                 >
                   <span className="flex items-center gap-2">
                     {currentCountry.flag} Ship to {currentCountry.name}
+                    {isUserCountry && (
+                      <span className="bg-green-500 text-white text-[9px] px-1.5 rounded font-extrabold">
+                        MY
+                      </span>
+                    )}
                   </span>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  >
                     <path d="M9 5l7 7-7 7" />
                   </svg>
                 </SlideItem>
@@ -1023,7 +1308,15 @@ const Navbar = () => {
                   >
                     <span>{cat.name}</span>
                     {cat.children?.length > 0 && (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                      >
                         <path d="M9 5l7 7-7 7" />
                       </svg>
                     )}
@@ -1037,9 +1330,13 @@ const Navbar = () => {
                 <p className="text-[17px] font-extrabold text-gray-900 px-5 pb-2 m-0">
                   My Account
                 </p>
-                <SlideItem onClick={() => go("/dashboard")}>Dashboard</SlideItem>
+                <SlideItem onClick={() => go("/dashboard")}>
+                  Dashboard
+                </SlideItem>
                 <SlideItem onClick={() => go("/profile")}>Profile</SlideItem>
-                <SlideItem onClick={() => go("/orders")}>Your Orders</SlideItem>
+                <SlideItem onClick={() => go("/orders")}>
+                  Your Orders
+                </SlideItem>
                 <SlideItem onClick={() => go("/cart")}>
                   <span>Cart</span>
                   {cartCount > 0 && (
@@ -1056,7 +1353,10 @@ const Navbar = () => {
                     </span>
                   )}
                 </SlideItem>
-                <SlideItem onClick={doLogout} className="text-blue-700 font-semibold">
+                <SlideItem
+                  onClick={doLogout}
+                  className="text-blue-700 font-semibold"
+                >
                   Sign Out
                 </SlideItem>
               </div>
@@ -1067,9 +1367,15 @@ const Navbar = () => {
                 <p className="text-[17px] font-extrabold text-gray-900 px-5 pb-2 m-0">
                   Vendor Panel
                 </p>
-                <SlideItem onClick={() => go("/vendor/dashboard")}>Dashboard</SlideItem>
-                <SlideItem onClick={() => go("/vendor/profile")}>My Profile</SlideItem>
-                <SlideItem onClick={() => go("/vendor/dashboard?tab=products")}>
+                <SlideItem onClick={() => go("/vendor/dashboard")}>
+                  Dashboard
+                </SlideItem>
+                <SlideItem onClick={() => go("/vendor/profile")}>
+                  My Profile
+                </SlideItem>
+                <SlideItem
+                  onClick={() => go("/vendor/dashboard?tab=products")}
+                >
                   My Products
                 </SlideItem>
                 <SlideItem onClick={() => go("/vendor/dashboard?tab=orders")}>
@@ -1078,7 +1384,10 @@ const Navbar = () => {
                 <SlideItem onClick={() => go("/vendor/dashboard?tab=reviews")}>
                   Reviews
                 </SlideItem>
-                <SlideItem onClick={doLogout} className="text-blue-700 font-semibold">
+                <SlideItem
+                  onClick={doLogout}
+                  className="text-blue-700 font-semibold"
+                >
                   Sign Out
                 </SlideItem>
               </div>
@@ -1089,18 +1398,36 @@ const Navbar = () => {
                 <p className="text-[17px] font-extrabold text-gray-900 px-5 pb-2 m-0">
                   Admin Panel
                 </p>
-                <SlideItem onClick={() => go("/admin/dashboard")}>Dashboard</SlideItem>
-                <SlideItem onClick={() => go("/admin/profile")}>My Profile</SlideItem>
+                <SlideItem onClick={() => go("/admin/dashboard")}>
+                  Dashboard
+                </SlideItem>
+                <SlideItem onClick={() => go("/admin/profile")}>
+                  My Profile
+                </SlideItem>
+                <SlideItem
+                  onClick={() => go("/admin/dashboard?tab=analytics")}
+                >
+                  📈 Analytics
+                </SlideItem>
                 <SlideItem onClick={() => go("/admin/dashboard?tab=vendors")}>
                   Vendors
                 </SlideItem>
-                <SlideItem onClick={() => go("/admin/dashboard?tab=customers")}>
+                <SlideItem
+                  onClick={() => go("/admin/dashboard?tab=customers")}
+                >
                   Customers
                 </SlideItem>
-                <SlideItem onClick={() => go("/admin/dashboard?tab=countries")}>
+                <SlideItem onClick={() => go("/admin/dashboard?tab=admins")}>
+                  👑 Admins
+                </SlideItem>
+                <SlideItem
+                  onClick={() => go("/admin/dashboard?tab=countries")}
+                >
                   🌍 Countries
                 </SlideItem>
-                <SlideItem onClick={() => go("/admin/dashboard?tab=categories")}>
+                <SlideItem
+                  onClick={() => go("/admin/dashboard?tab=categories")}
+                >
                   Categories
                 </SlideItem>
                 <SlideItem onClick={() => go("/admin/dashboard?tab=products")}>
@@ -1109,10 +1436,16 @@ const Navbar = () => {
                 <SlideItem onClick={() => go("/admin/dashboard?tab=orders")}>
                   Orders
                 </SlideItem>
+                <SlideItem onClick={() => go("/admin/dashboard?tab=coupons")}>
+                  🎟️ Coupons
+                </SlideItem>
                 <SlideItem onClick={() => go("/admin/dashboard?tab=reviews")}>
                   Reviews
                 </SlideItem>
-                <SlideItem onClick={doLogout} className="text-blue-700 font-semibold">
+                <SlideItem
+                  onClick={doLogout}
+                  className="text-blue-700 font-semibold"
+                >
                   Sign Out
                 </SlideItem>
               </div>
@@ -1129,7 +1462,9 @@ const Navbar = () => {
                 >
                   Sign In
                 </SlideItem>
-                <SlideItem onClick={() => go("/signup")}>Create Account</SlideItem>
+                <SlideItem onClick={() => go("/signup")}>
+                  Create Account
+                </SlideItem>
                 {cartCount > 0 && (
                   <SlideItem onClick={() => go("/cart")}>
                     <span>Cart</span>
@@ -1157,7 +1492,9 @@ const Navbar = () => {
                 <SlideItem onClick={() => go("/vendor/signup")}>
                   Become a Seller
                 </SlideItem>
-                <SlideItem onClick={() => go("/vendor/login")}>Seller Login</SlideItem>
+                <SlideItem onClick={() => go("/vendor/login")}>
+                  Seller Login
+                </SlideItem>
               </div>
             )}
           </div>

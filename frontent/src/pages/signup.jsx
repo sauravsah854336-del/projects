@@ -3,7 +3,7 @@ import { authApi, useSignupMutation } from "../features/auth/authApi";
 import { useMergeGuestCartMutation } from "../features/cart/cartApi";
 import { useMergeWishlistMutation } from "../features/wishlist/wishlistApi";
 import { setCredentials } from "../features/auth/authSlice";
-import { setCountry } from "../features/country/countrySlice";
+import { setUserCountry } from "../features/country/countrySlice";
 import { useDispatch } from "react-redux";
 import { useNavigate, Link } from "react-router-dom";
 import { getGuestCartForMerge, clearGuestCart } from "../utils/guestCart";
@@ -12,6 +12,7 @@ import {
   clearGuestWishlist,
 } from "../utils/guestWishlist";
 import { toast } from "../components/Toast";
+import PhoneInput, { COUNTRIES } from "../components/PhoneInput";
 
 const ErrorAlert = ({ message }) => (
   <div className="bg-red-50 border border-red-100 rounded-xl p-3 flex items-center gap-2">
@@ -28,7 +29,7 @@ const ErrorAlert = ({ message }) => (
         d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
       />
     </svg>
-    <p className="text-red-600 text-sm m-0">{message}</p>
+    <p className="text-red-600 text-sm">{message}</p>
   </div>
 );
 
@@ -133,6 +134,7 @@ const Signup = () => {
   const [mergeGuestCart] = useMergeGuestCartMutation();
   const [mergeWishlist] = useMergeWishlistMutation();
   const [showPassword, setShowPassword] = useState(false);
+  const [phoneError, setPhoneError] = useState("");
   const [step, setStep] = useState(1);
   const [mergingData, setMergingData] = useState(false);
   const [formError, setFormError] = useState("");
@@ -142,12 +144,37 @@ const Signup = () => {
     lastName: "",
     email: "",
     phone: "",
+    countryCode: "IN",
     password: "",
     confirmPassword: "",
   });
 
+  const selectedCountry =
+    COUNTRIES.find((c) => c.code === form.countryCode) || COUNTRIES[0];
+
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm({ ...form, [name]: value });
+    setFormError("");
+  };
+
+  const handlePhoneChange = (phone) => {
+    setForm((prev) => ({ ...prev, phone }));
+    if (phone.length === selectedCountry.length) {
+      if (!selectedCountry.pattern.test(phone)) {
+        setPhoneError(`Enter valid ${selectedCountry.name} mobile number`);
+      } else {
+        setPhoneError("");
+      }
+    } else {
+      setPhoneError("");
+    }
+    setFormError("");
+  };
+
+  const handleCountryChange = (countryCode) => {
+    setForm((prev) => ({ ...prev, countryCode, phone: "" }));
+    setPhoneError("");
     setFormError("");
   };
 
@@ -184,18 +211,29 @@ const Signup = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError("");
+
     const phone = form.phone.trim();
     const password = form.password.trim();
     const confirmPassword = form.confirmPassword.trim();
+    const country = selectedCountry;
 
     if (!phone || !password || !confirmPassword) {
       setFormError("All fields are required");
       return;
     }
-    if (!/^[6-9]\d{9}$/.test(phone)) {
-      setFormError("Please enter a valid 10-digit phone number");
+
+    if (phone.length !== country.length) {
+      setFormError(
+        `Phone number must be ${country.length} digits for ${country.name}`
+      );
       return;
     }
+
+    if (!country.pattern.test(phone)) {
+      setFormError(`Enter valid ${country.name} mobile number`);
+      return;
+    }
+
     if (password.length < 6) {
       setFormError("Password must be at least 6 characters");
       return;
@@ -216,6 +254,7 @@ const Signup = () => {
     try {
       const guestCartItems = getGuestCartForMerge();
       const guestWishlistIds = getGuestWishlistForMerge();
+      const fullPhone = `${country.dial}${phone}`;
 
       dispatch(authApi.util.resetApiState());
       const res = await signup({
@@ -223,15 +262,19 @@ const Signup = () => {
         lastName: form.lastName.trim(),
         email: form.email.trim(),
         phone,
+        countryCode: form.countryCode,
+        dialCode: country.dial,
+        fullPhone,
         password,
       }).unwrap();
 
       dispatch(setCredentials(res));
 
-      if (res.detectedCountry && !localStorage.getItem("userCountry")) {
-        dispatch(setCountry(res.detectedCountry));
-        toast.info(
-          `📍 Auto-detected: ${res.detectedCountry.flag} ${res.detectedCountry.name}`,
+      if (res.userCountry) {
+        dispatch(setUserCountry(res.userCountry));
+        toast.success(
+          `🌍 ${res.userCountry.flag} Prices in ${res.userCountry.currency.symbol} ${res.userCountry.currency.code}`,
+          { duration: 4000 }
         );
       }
 
@@ -266,7 +309,7 @@ const Signup = () => {
           toast.success("Account created! Your data has been synced.");
         } else {
           toast.success(
-            `Welcome, ${res.user.firstName}! Account created successfully.`,
+            `Welcome, ${res.user.firstName}! Account created successfully.`
           );
         }
       }
@@ -373,10 +416,14 @@ const Signup = () => {
             </p>
             <div className="flex gap-2 mt-3">
               <div
-                className={`flex-1 h-1.5 rounded-full transition-all duration-300 ${step >= 1 ? "bg-[#D85A30]" : "bg-gray-200"}`}
+                className={`flex-1 h-1.5 rounded-full transition-all duration-300 ${
+                  step >= 1 ? "bg-[#D85A30]" : "bg-gray-200"
+                }`}
               />
               <div
-                className={`flex-1 h-1.5 rounded-full transition-all duration-300 ${step >= 2 ? "bg-[#D85A30]" : "bg-gray-200"}`}
+                className={`flex-1 h-1.5 rounded-full transition-all duration-300 ${
+                  step >= 2 ? "bg-[#D85A30]" : "bg-gray-200"
+                }`}
               />
             </div>
           </div>
@@ -440,23 +487,34 @@ const Signup = () => {
                 <label className="text-sm font-medium text-gray-700 mb-1.5 block">
                   Phone Number
                 </label>
-                <div className="relative">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-none">
-                    <span className="text-gray-500 text-sm font-medium">
-                      +91
-                    </span>
-                    <div className="w-px h-5 bg-gray-300 ml-1" />
-                  </div>
-                  <input
-                    name="phone"
-                    placeholder="9876543210"
-                    value={form.phone}
-                    onChange={handleChange}
-                    maxLength={10}
-                    autoComplete="tel"
-                    className="w-full border border-gray-200 pl-[4.5rem] pr-4 py-3 sm:py-3.5 rounded-xl outline-none focus:border-[#D85A30] focus:ring-4 focus:ring-[#D85A30]/10 transition-all text-[15px] bg-gray-50 focus:bg-white"
-                  />
-                </div>
+
+                <PhoneInput
+                  value={form.phone}
+                  countryCode={form.countryCode}
+                  onChange={handlePhoneChange}
+                  onCountryChange={handleCountryChange}
+                  error={phoneError}
+                />
+
+                {phoneError && (
+                  <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1">
+                    <span>⚠</span> {phoneError}
+                  </p>
+                )}
+
+                {form.phone.length === selectedCountry.length &&
+                  !phoneError && (
+                    <p className="text-green-500 text-xs mt-1.5">
+                      ✓ Valid {selectedCountry.name} mobile number
+                    </p>
+                  )}
+
+                {form.phone.length === 0 && !phoneError && (
+                  <p className="text-gray-400 text-xs mt-1.5">
+                    Click the flag {selectedCountry.flag} to change country •{" "}
+                    {selectedCountry.length} digits required
+                  </p>
+                )}
               </div>
 
               <div>
@@ -503,7 +561,9 @@ const Signup = () => {
                       {passwordChecks.map((r) => (
                         <span
                           key={r.label}
-                          className={`text-[11px] ${r.check ? "text-green-500" : "text-gray-400"}`}
+                          className={`text-[11px] ${
+                            r.check ? "text-green-500" : "text-gray-400"
+                          }`}
                         >
                           {r.check ? "✓" : "○"} {r.label}
                         </span>
@@ -520,7 +580,12 @@ const Signup = () => {
                 <div className="relative">
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
                     <svg
-                      className={`w-5 h-5 ${form.confirmPassword && form.password === form.confirmPassword ? "text-green-500" : "text-gray-400"}`}
+                      className={`w-5 h-5 ${
+                        form.confirmPassword &&
+                        form.password === form.confirmPassword
+                          ? "text-green-500"
+                          : "text-gray-400"
+                      }`}
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"

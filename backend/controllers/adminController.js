@@ -77,13 +77,10 @@ const getAllAdmins = async (req, res) => {
 
 const getAdminProfile = async (req, res) => {
   try {
-    console.log("📋 Get admin profile:", req.user.id);
-    
     const user = await User.findById(req.user.id)
       .select("-password -refreshTokens -passwordResetOTP -passwordResetOTPExpiry");
 
     if (!user) {
-      console.log("❌ Admin not found:", req.user.id);
       return res.status(404).json({ success: false, message: "Admin not found" });
     }
 
@@ -91,10 +88,9 @@ const getAdminProfile = async (req, res) => {
       return res.status(403).json({ success: false, message: "Not an admin" });
     }
 
-    console.log("✅ Admin profile loaded:", user.email);
     return res.status(200).json({ success: true, data: user });
   } catch (err) {
-    console.error("❌ getAdminProfile error:", err);
+    console.error("getAdminProfile error:", err);
     return res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -102,9 +98,6 @@ const getAdminProfile = async (req, res) => {
 const updateAdminProfile = async (req, res) => {
   try {
     const { firstName, lastName, phone, dateOfBirth, avatar } = req.body;
-    
-    console.log("📝 Update admin profile - Admin ID:", req.user.id);
-    console.log("📝 Request body:", req.body);
 
     if (firstName !== undefined && firstName.trim().length < 2) {
       return res.status(400).json({ success: false, message: "First name must be at least 2 characters" });
@@ -131,11 +124,9 @@ const updateAdminProfile = async (req, res) => {
     if (dateOfBirth !== undefined) updateData.dateOfBirth = dateOfBirth || null;
     if (avatar !== undefined) updateData.avatar = avatar;
 
-    console.log("📝 Update data:", updateData);
-
     const user = await User.findByIdAndUpdate(
-      req.user.id, 
-      updateData, 
+      req.user.id,
+      updateData,
       { new: true, runValidators: true }
     ).select("-password -refreshTokens -passwordResetOTP -passwordResetOTPExpiry");
 
@@ -143,15 +134,13 @@ const updateAdminProfile = async (req, res) => {
       return res.status(404).json({ success: false, message: "Admin not found" });
     }
 
-    console.log("✅ Admin updated successfully:", user.email);
-
     return res.status(200).json({
       success: true,
       message: "Profile updated successfully",
       data: user,
     });
   } catch (err) {
-    console.error("❌ updateAdminProfile error:", err);
+    console.error("updateAdminProfile error:", err);
     return res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -159,8 +148,6 @@ const updateAdminProfile = async (req, res) => {
 const changeAdminPassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
-    
-    console.log("🔐 Change admin password:", req.user.id);
 
     if (!currentPassword || !newPassword) {
       return res.status(400).json({ success: false, message: "Both passwords are required" });
@@ -189,11 +176,9 @@ const changeAdminPassword = async (req, res) => {
     user.refreshTokens = [];
     await user.save();
 
-    console.log("✅ Password changed for:", user.email);
-
     return res.status(200).json({ success: true, message: "Password changed successfully" });
   } catch (err) {
-    console.error("❌ changeAdminPassword error:", err);
+    console.error("changeAdminPassword error:", err);
     return res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -347,10 +332,14 @@ const getAllCustomers = async (req, res) => {
         const orderCount = await Order.countDocuments({ user: customer._id });
         const orders = await Order.find({ user: customer._id });
         const totalSpent = orders.reduce((sum, o) => sum + (o.total || 0), 0);
+        const totalSaved = orders.reduce((sum, o) => sum + (o.discount || 0), 0);
+        const couponOrders = orders.filter((o) => o.couponCode).length;
         return {
           ...customer.toObject(),
           orderCount,
           totalSpent,
+          totalSaved,
+          couponOrders,
         };
       })
     );
@@ -374,8 +363,12 @@ const getSingleCustomer = async (req, res) => {
     if (!customer) return res.status(404).json({ success: false, message: "Customer not found" });
 
     const orders = await Order.find({ user: userId }).sort({ createdAt: -1 }).limit(10);
-    const totalOrders = await Order.countDocuments({ user: userId });
-    const totalSpent = orders.reduce((sum, o) => sum + (o.total || 0), 0);
+    const allOrders = await Order.find({ user: userId });
+    const totalOrders = allOrders.length;
+    const totalSpent = allOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+    const totalSaved = allOrders.reduce((sum, o) => sum + (o.discount || 0), 0);
+    const couponOrdersCount = allOrders.filter((o) => o.couponCode).length;
+    const couponsUsed = [...new Set(allOrders.filter((o) => o.couponCode).map((o) => o.couponCode))];
 
     return res.status(200).json({
       success: true,
@@ -384,6 +377,9 @@ const getSingleCustomer = async (req, res) => {
         recentOrders: orders,
         totalOrders,
         totalSpent,
+        totalSaved,
+        couponOrdersCount,
+        couponsUsed,
       },
     });
   } catch (err) {
@@ -394,32 +390,27 @@ const getSingleCustomer = async (req, res) => {
 const blockCustomer = async (req, res) => {
   try {
     const { userId } = req.params;
-    console.log("🚫 Blocking customer:", userId);
-    
     const user = await User.findOne({ _id: userId, role: "customer" });
-    
+
     if (!user) {
-      console.log("❌ Customer not found:", userId);
       return res.status(404).json({ success: false, message: "Customer not found" });
     }
-    
+
     if (user.isDeleted) {
       return res.status(400).json({ success: false, message: "Cannot block deleted customer" });
     }
-    
+
     user.status = "blocked";
     user.refreshTokens = [];
     await user.save();
-    
-    console.log("✅ Customer blocked:", user.email);
-    
-    return res.status(200).json({ 
-      success: true, 
+
+    return res.status(200).json({
+      success: true,
       message: "Customer blocked successfully",
-      data: { _id: user._id, status: user.status }
+      data: { _id: user._id, status: user.status },
     });
   } catch (err) {
-    console.error("❌ blockCustomer error:", err);
+    console.error("blockCustomer error:", err);
     return res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -427,31 +418,26 @@ const blockCustomer = async (req, res) => {
 const unblockCustomer = async (req, res) => {
   try {
     const { userId } = req.params;
-    console.log("✅ Unblocking customer:", userId);
-    
     const user = await User.findOne({ _id: userId, role: "customer" });
-    
+
     if (!user) {
-      console.log("❌ Customer not found:", userId);
       return res.status(404).json({ success: false, message: "Customer not found" });
     }
-    
+
     if (user.isDeleted) {
       return res.status(400).json({ success: false, message: "Cannot unblock deleted customer" });
     }
-    
+
     user.status = "active";
     await user.save();
-    
-    console.log("✅ Customer unblocked:", user.email);
-    
-    return res.status(200).json({ 
-      success: true, 
+
+    return res.status(200).json({
+      success: true,
       message: "Customer unblocked successfully",
-      data: { _id: user._id, status: user.status }
+      data: { _id: user._id, status: user.status },
     });
   } catch (err) {
-    console.error("❌ unblockCustomer error:", err);
+    console.error("unblockCustomer error:", err);
     return res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -473,6 +459,7 @@ const deleteCustomer = async (req, res) => {
 const getAdminStats = async (req, res) => {
   try {
     const Product = require("../models/product");
+    const Coupon = require("../models/coupon");
 
     const [
       totalCustomers,
@@ -491,6 +478,8 @@ const getAdminStats = async (req, res) => {
       approvedProducts,
       pendingProducts,
       allOrders,
+      totalCoupons,
+      activeCoupons,
     ] = await Promise.all([
       User.countDocuments({ role: "customer", isDeleted: false }),
       User.countDocuments({ role: "customer", status: "active", isDeleted: false }),
@@ -507,12 +496,20 @@ const getAdminStats = async (req, res) => {
       Product.countDocuments({ isDeleted: false }),
       Product.countDocuments({ status: "approved", isDeleted: false }),
       Product.countDocuments({ status: "pending", isDeleted: false }),
-      Order.find({}).select("total createdAt orderStatus"),
+      Order.find({}).select("total discount couponCode createdAt orderStatus"),
+      Coupon.countDocuments({}).catch(() => 0),
+      Coupon.countDocuments({ isActive: true, expiryDate: { $gt: new Date() } }).catch(() => 0),
     ]);
 
     const totalRevenue = allOrders
-      .filter(o => o.orderStatus === "delivered")
+      .filter((o) => o.orderStatus === "delivered")
       .reduce((sum, o) => sum + (o.total || 0), 0);
+
+    const totalDiscountGiven = allOrders
+      .filter((o) => o.orderStatus === "delivered" && o.discount > 0)
+      .reduce((sum, o) => sum + (o.discount || 0), 0);
+
+    const ordersWithCoupons = allOrders.filter((o) => o.couponCode).length;
 
     const now = new Date();
     const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -521,18 +518,22 @@ const getAdminStats = async (req, res) => {
     const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
     const revenueThisMonth = allOrders
-      .filter(o => o.orderStatus === "delivered" && new Date(o.createdAt) >= thisMonthStart)
+      .filter((o) => o.orderStatus === "delivered" && new Date(o.createdAt) >= thisMonthStart)
       .reduce((sum, o) => sum + (o.total || 0), 0);
 
     const revenueLastMonth = allOrders
-      .filter(o => {
+      .filter((o) => {
         const d = new Date(o.createdAt);
         return o.orderStatus === "delivered" && d >= lastMonthStart && d <= lastMonthEnd;
       })
       .reduce((sum, o) => sum + (o.total || 0), 0);
 
-    const ordersLast7Days = allOrders.filter(o => new Date(o.createdAt) >= last7Days).length;
-    const ordersThisMonth = allOrders.filter(o => new Date(o.createdAt) >= thisMonthStart).length;
+    const ordersLast7Days = allOrders.filter((o) => new Date(o.createdAt) >= last7Days).length;
+    const ordersThisMonth = allOrders.filter((o) => new Date(o.createdAt) >= thisMonthStart).length;
+    const ordersLastMonth = allOrders.filter((o) => {
+      const d = new Date(o.createdAt);
+      return d >= lastMonthStart && d <= lastMonthEnd;
+    }).length;
 
     const dailyRevenue = {};
     for (let i = 6; i >= 0; i--) {
@@ -542,21 +543,59 @@ const getAdminStats = async (req, res) => {
       dailyRevenue[key] = 0;
     }
     allOrders
-      .filter(o => o.orderStatus === "delivered" && new Date(o.createdAt) >= last7Days)
-      .forEach(order => {
+      .filter((o) => o.orderStatus === "delivered" && new Date(o.createdAt) >= last7Days)
+      .forEach((order) => {
         const key = new Date(order.createdAt).toISOString().split("T")[0];
         if (dailyRevenue[key] !== undefined) dailyRevenue[key] += order.total || 0;
       });
+
+    const growthPercent =
+      revenueLastMonth > 0
+        ? Math.round(((revenueThisMonth - revenueLastMonth) / revenueLastMonth) * 100)
+        : revenueThisMonth > 0
+        ? 100
+        : 0;
 
     return res.status(200).json({
       success: true,
       data: {
         customers: { total: totalCustomers, active: activeCustomers, blocked: blockedCustomers },
-        vendors: { total: totalVendors, approved: approvedVendors, pending: pendingVendors, suspended: suspendedVendors },
+        vendors: {
+          total: totalVendors,
+          approved: approvedVendors,
+          pending: pendingVendors,
+          suspended: suspendedVendors,
+        },
         admins: { total: totalAdmins },
-        orders: { total: totalOrders, pending: pendingOrders, delivered: deliveredOrders, cancelled: cancelledOrders, last7Days: ordersLast7Days, thisMonth: ordersThisMonth },
-        products: { total: totalProducts, approved: approvedProducts, pending: pendingProducts },
-        revenue: { total: totalRevenue, thisMonth: revenueThisMonth, lastMonth: revenueLastMonth, daily: dailyRevenue },
+        orders: {
+          total: totalOrders,
+          pending: pendingOrders,
+          delivered: deliveredOrders,
+          cancelled: cancelledOrders,
+          last7Days: ordersLast7Days,
+          thisMonth: ordersThisMonth,
+          lastMonth: ordersLastMonth,
+          withCoupons: ordersWithCoupons,
+        },
+        products: {
+          total: totalProducts,
+          approved: approvedProducts,
+          pending: pendingProducts,
+        },
+        revenue: {
+          total: totalRevenue,
+          thisMonth: revenueThisMonth,
+          lastMonth: revenueLastMonth,
+          growthPercent,
+          daily: dailyRevenue,
+          totalDiscountGiven,
+        },
+        coupons: {
+          total: totalCoupons,
+          active: activeCoupons,
+          ordersUsingCoupons: ordersWithCoupons,
+          totalSavingsGiven: totalDiscountGiven,
+        },
       },
     });
   } catch (err) {

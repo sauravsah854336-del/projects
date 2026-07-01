@@ -1,9 +1,12 @@
 const User = require("../models/users");
+const Order = require("../models/order");
 const bcrypt = require("bcryptjs");
 
 const getProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select("-password -refreshTokens");
+    const user = await User.findById(req.user.id).select(
+      "-password -refreshTokens"
+    );
 
     if (!user) {
       return res.status(404).json({
@@ -12,9 +15,28 @@ const getProfile = async (req, res) => {
       });
     }
 
+    const orders = await Order.find({ user: req.user.id });
+    const totalOrders = orders.length;
+    const totalSpent = orders.reduce((sum, o) => sum + (o.total || 0), 0);
+    const totalSaved = orders.reduce((sum, o) => sum + (o.discount || 0), 0);
+    const couponOrders = orders.filter((o) => o.couponCode).length;
+    const uniqueCoupons = [
+      ...new Set(orders.filter((o) => o.couponCode).map((o) => o.couponCode)),
+    ];
+
     return res.status(200).json({
       success: true,
-      data: user,
+      data: {
+        ...user.toObject(),
+        stats: {
+          totalOrders,
+          totalSpent,
+          totalSaved,
+          couponOrders,
+          uniqueCouponsUsed: uniqueCoupons.length,
+          couponsUsed: uniqueCoupons,
+        },
+      },
     });
   } catch (err) {
     return res.status(500).json({
@@ -58,7 +80,9 @@ const updateProfile = async (req, res) => {
 
     await user.save();
 
-    const updated = await User.findById(req.user.id).select("-password -refreshTokens");
+    const updated = await User.findById(req.user.id).select(
+      "-password -refreshTokens"
+    );
 
     return res.status(200).json({
       success: true,
@@ -148,7 +172,16 @@ const changePassword = async (req, res) => {
 
 const addAddress = async (req, res) => {
   try {
-    const { fullName, phone, street, city, state, country, postalCode, isDefault } = req.body;
+    const {
+      fullName,
+      phone,
+      street,
+      city,
+      state,
+      country,
+      postalCode,
+      isDefault,
+    } = req.body;
 
     if (!fullName || !phone || !street || !city || !state || !postalCode) {
       return res.status(400).json({
@@ -203,7 +236,16 @@ const addAddress = async (req, res) => {
 const updateAddress = async (req, res) => {
   try {
     const { addressId } = req.params;
-    const { fullName, phone, street, city, state, country, postalCode, isDefault } = req.body;
+    const {
+      fullName,
+      phone,
+      street,
+      city,
+      state,
+      country,
+      postalCode,
+      isDefault,
+    } = req.body;
 
     const user = await User.findById(req.user.id);
 
@@ -342,15 +384,15 @@ const setDefaultAddress = async (req, res) => {
 
 const getWishlist = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id)
-      .populate({
-        path: "wishlist",
-        select: "name slug price comparePrice images stock averageRating totalReviews vendorStore category brand isFeatured",
-        populate: [
-          { path: "vendorStore", select: "storeName" },
-          { path: "category", select: "name" },
-        ],
-      });
+    const user = await User.findById(req.user.id).populate({
+      path: "wishlist",
+      select:
+        "name slug price comparePrice images stock averageRating totalReviews vendorStore category brand isFeatured",
+      populate: [
+        { path: "vendorStore", select: "storeName" },
+        { path: "category", select: "name" },
+      ],
+    });
 
     if (!user) {
       return res.status(404).json({
@@ -432,9 +474,7 @@ const removeFromWishlist = async (req, res) => {
       });
     }
 
-    user.wishlist = user.wishlist.filter(
-      (id) => id.toString() !== productId
-    );
+    user.wishlist = user.wishlist.filter((id) => id.toString() !== productId);
 
     await user.save();
 

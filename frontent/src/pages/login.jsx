@@ -1,28 +1,44 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { authApi, useLoginMutation } from "../features/auth/authApi";
 import { useMergeGuestCartMutation } from "../features/cart/cartApi";
 import { useMergeWishlistMutation } from "../features/wishlist/wishlistApi";
-import { setCredentials } from "../features/auth/authSlice";
-import { setCountry } from "../features/country/countrySlice";
-import { useDispatch, useSelector } from "react-redux";
+import { setCredentials, logout } from "../features/auth/authSlice";
+import { setUserCountry, resetCountry } from "../features/country/countrySlice";
+import { useDispatch } from "react-redux";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { getGuestCartForMerge, clearGuestCart } from "../utils/guestCart";
-import { getGuestWishlistForMerge, clearGuestWishlist } from "../utils/guestWishlist";
+import {
+  getGuestWishlistForMerge,
+  clearGuestWishlist,
+} from "../utils/guestWishlist";
 import { toast } from "../components/Toast";
 
-const ErrorAlert = ({ message }) => (
-  <div className="bg-red-50 border border-red-100 rounded-xl p-3 flex items-center gap-2">
-    <svg className="w-4 h-4 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+const ErrorAlert = ({ message, action }) => (
+  <div className="bg-red-50 border border-red-100 rounded-xl p-3 flex items-start gap-2">
+    <svg
+      className="w-4 h-4 text-red-500 shrink-0 mt-0.5"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+      />
     </svg>
-    <p className="text-red-600 text-sm">{message}</p>
+    <div className="flex-1">
+      <p className="text-red-600 text-sm m-0">{message}</p>
+      {action}
+    </div>
   </div>
 );
 
 const RedirectBanner = ({ icon, text, color }) => (
   <div className={`mb-5 ${color} rounded-xl p-3 flex items-center gap-2`}>
     <span className="text-lg">{icon}</span>
-    <p className="text-xs font-medium m-0">{text}</p>
+    <p className="text-xs font-medium">{text}</p>
   </div>
 );
 
@@ -30,97 +46,87 @@ const Login = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, token, isAuthChecked } = useSelector((state) => state.auth);
-  const [login, { isLoading, error }] = useLoginMutation();
+  const [login, { isLoading, error, reset: resetLoginMutation }] =
+    useLoginMutation();
   const [mergeGuestCart] = useMergeGuestCartMutation();
   const [mergeWishlist] = useMergeWishlistMutation();
   const [showPassword, setShowPassword] = useState(false);
   const [mergingData, setMergingData] = useState(false);
   const [formError, setFormError] = useState("");
-  const [justLoggedIn, setJustLoggedIn] = useState(false);
+  const [wrongPortalError, setWrongPortalError] = useState(null);
 
   const redirectPath = searchParams.get("redirect");
   const [form, setForm] = useState({ email: "", password: "" });
 
-  useEffect(() => {
-    if (justLoggedIn) return;
-    if (isAuthChecked && user && token) {
-      if (user.role === "admin") {
-        navigate("/admin/dashboard", { replace: true });
-      } else if (user.role === "vendor") {
-        navigate("/vendor/dashboard", { replace: true });
-      } else {
-        navigate(redirectPath || "/", { replace: true });
-      }
-    }
-  }, [isAuthChecked, user, token, justLoggedIn]);
-
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
     setFormError("");
+    setWrongPortalError(null);
+    if (error) resetLoginMutation();
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setFormError("");
+    setWrongPortalError(null);
+
     const email = form.email.trim();
     const password = form.password.trim();
 
-    if (!email || !password) { setFormError("Email and password are required"); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setFormError("Please enter a valid email address"); return; }
+    if (!email || !password) {
+      setFormError("Email and password are required");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setFormError("Please enter a valid email address");
+      return;
+    }
 
     try {
-      setJustLoggedIn(true);
-
       const guestCartItems = getGuestCartForMerge();
       const guestWishlistIds = getGuestWishlistForMerge();
 
-      dispatch(authApi.util.resetApiState());
       const res = await login({ email, password }).unwrap();
+
       dispatch(setCredentials(res));
 
-      if (res.preferredCountry && !localStorage.getItem("userCountry")) {
-        dispatch(setCountry(res.preferredCountry));
+      if (res.userCountry) {
+        dispatch(setUserCountry(res.userCountry));
       }
 
-      if (res.user?.role === "customer") {
-        const hasGuestData = guestCartItems.length > 0 || guestWishlistIds.length > 0;
-        if (hasGuestData) {
-          setMergingData(true);
-          await new Promise((resolve) => setTimeout(resolve, 300));
+      const hasGuestData =
+        guestCartItems.length > 0 || guestWishlistIds.length > 0;
 
-          if (guestCartItems.length > 0) {
-            try {
-              await mergeGuestCart({ items: guestCartItems }).unwrap();
-              clearGuestCart();
-            } catch (mergeErr) {
-              console.log("Cart merge failed:", mergeErr);
-              toast.warning("Some cart items could not be synced");
-            }
+      if (hasGuestData) {
+        setMergingData(true);
+        await new Promise((resolve) => setTimeout(resolve, 200));
+
+        if (guestCartItems.length > 0) {
+          try {
+            await mergeGuestCart({ items: guestCartItems }).unwrap();
+            clearGuestCart();
+          } catch (mergeErr) {
+            console.log("Cart merge failed:", mergeErr);
           }
-
-          if (guestWishlistIds.length > 0) {
-            try {
-              await mergeWishlist({ productIds: guestWishlistIds }).unwrap();
-              clearGuestWishlist();
-            } catch (mergeErr) {
-              console.log("Wishlist merge failed:", mergeErr);
-              toast.warning("Some wishlist items could not be synced");
-            }
-          }
-
-          setMergingData(false);
-          toast.success("Welcome back! Your data has been synced.");
-        } else {
-          toast.success(`Welcome back, ${res.user.firstName}!`);
         }
-      } else if (res.user?.role === "admin") {
-        toast.success(`Welcome Admin ${res.user.firstName}!`);
-      } else if (res.user?.role === "vendor") {
-        toast.success(`Welcome ${res.user.firstName}!`);
+
+        if (guestWishlistIds.length > 0) {
+          try {
+            await mergeWishlist({ productIds: guestWishlistIds }).unwrap();
+            clearGuestWishlist();
+          } catch (mergeErr) {
+            console.log("Wishlist merge failed:", mergeErr);
+          }
+        }
+
+        setMergingData(false);
+        toast.success("Welcome back! Your data has been synced.");
+      } else {
+        toast.success(`Welcome back, ${res.user.firstName}!`);
       }
 
-      const role = res.user?.role;
       setTimeout(() => {
+        const role = res.user?.role;
         if (role === "admin") {
           navigate("/admin/dashboard", { replace: true });
         } else if (role === "vendor") {
@@ -128,10 +134,17 @@ const Login = () => {
         } else {
           navigate(redirectPath || "/", { replace: true });
         }
-      }, 100);
-
+      }, 150);
     } catch (err) {
-      setJustLoggedIn(false);
+      const errorData = err?.data;
+      const status = err?.status;
+
+      if (status === 403 && errorData?.redirectTo) {
+        setWrongPortalError({
+          message: errorData.message,
+          redirectTo: errorData.redirectTo,
+        });
+      }
       console.log(err);
     }
   };
@@ -147,10 +160,22 @@ const Login = () => {
       label: "Google",
       icon: (
         <svg className="w-5 h-5" viewBox="0 0 24 24">
-          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
-          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+          <path
+            fill="#4285F4"
+            d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
+          />
+          <path
+            fill="#34A853"
+            d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+          />
+          <path
+            fill="#FBBC05"
+            d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+          />
+          <path
+            fill="#EA4335"
+            d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+          />
         </svg>
       ),
     },
@@ -167,7 +192,6 @@ const Login = () => {
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 py-10 sm:py-12 bg-gray-50">
       <div className="w-full max-w-[1000px] grid lg:grid-cols-2 bg-white rounded-3xl shadow-2xl shadow-black/5 overflow-hidden border border-gray-100">
-
         <div className="hidden lg:flex flex-col justify-center items-center bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#0f172a] p-10 xl:p-12 relative overflow-hidden">
           <div className="absolute top-10 left-10 w-48 h-48 bg-[#D85A30]/20 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute bottom-10 right-10 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -175,15 +199,23 @@ const Login = () => {
             <div className="w-16 h-16 bg-gradient-to-br from-[#D85A30] to-[#e8734d] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-[#D85A30]/30">
               <span className="text-white font-extrabold text-2xl">E</span>
             </div>
-            <h2 className="text-2xl xl:text-3xl font-bold text-white mb-3">Welcome Back!</h2>
+            <h2 className="text-2xl xl:text-3xl font-bold text-white mb-3">
+              Welcome Back!
+            </h2>
             <p className="text-gray-400 leading-relaxed max-w-xs mx-auto text-sm xl:text-base">
-              Login to access your account, track orders, and explore amazing products from verified sellers.
+              Login to access your account, track orders, and explore amazing
+              products from verified sellers.
             </p>
             <div className="mt-8 xl:mt-10 grid grid-cols-3 gap-3 xl:gap-4">
               {stats.map((stat) => (
-                <div key={stat.label} className="bg-white/[0.06] border border-white/[0.08] rounded-xl p-3 text-center">
-                  <p className="text-white font-bold text-base xl:text-lg m-0">{stat.value}</p>
-                  <p className="text-gray-500 text-xs m-0">{stat.label}</p>
+                <div
+                  key={stat.label}
+                  className="bg-white/[0.06] border border-white/[0.08] rounded-xl p-3 text-center"
+                >
+                  <p className="text-white font-bold text-base xl:text-lg">
+                    {stat.value}
+                  </p>
+                  <p className="text-gray-500 text-xs">{stat.label}</p>
                 </div>
               ))}
             </div>
@@ -192,66 +224,181 @@ const Login = () => {
 
         <div className="p-6 sm:p-8 xl:p-12">
           <div className="mb-6 sm:mb-8">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Login</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+              Login to Your Account
+            </h1>
             <p className="text-gray-500 mt-2 text-sm">
-              {redirectPath ? "Sign in to continue your shopping" : "Enter your credentials to access your account"}
+              {redirectPath
+                ? "Sign in to continue your shopping"
+                : "Enter your credentials to access your account"}
             </p>
           </div>
 
           {redirectPath === "/checkout" && (
-            <RedirectBanner icon="🛒" text="Sign in to complete your checkout. Your cart items are saved." color="bg-blue-50 border border-blue-200 text-blue-700" />
+            <RedirectBanner
+              icon="🛒"
+              text="Sign in to complete your checkout."
+              color="bg-blue-50 border border-blue-200 text-blue-700"
+            />
           )}
           {redirectPath === "/wishlist" && (
-            <RedirectBanner icon="❤️" text="Sign in to save your wishlist permanently." color="bg-pink-50 border border-pink-200 text-pink-700" />
+            <RedirectBanner
+              icon="❤️"
+              text="Sign in to save your wishlist permanently."
+              color="bg-pink-50 border border-pink-200 text-pink-700"
+            />
           )}
           {redirectPath === "/cart" && (
-            <RedirectBanner icon="🛍️" text="Sign in to view and manage your cart." color="bg-orange-50 border border-orange-200 text-orange-700" />
+            <RedirectBanner
+              icon="🛍️"
+              text="Sign in to view and manage your cart."
+              color="bg-orange-50 border border-orange-200 text-orange-700"
+            />
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-1.5 block">Email Address</label>
+              <label className="text-sm font-medium text-gray-700 mb-1.5 block">
+                Email Address
+              </label>
               <div className="relative">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                  <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  <svg
+                    className="w-5 h-5 text-gray-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.8}
+                      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                    />
                   </svg>
                 </div>
-                <input name="email" type="email" placeholder="you@example.com" value={form.email} autoComplete="username" onChange={handleChange} className="w-full border border-gray-200 pl-12 pr-4 py-3 sm:py-3.5 rounded-xl outline-none focus:border-[#D85A30] focus:ring-4 focus:ring-[#D85A30]/10 transition-all text-[15px] bg-gray-50 focus:bg-white" />
+                <input
+                  name="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={form.email}
+                  autoComplete="username"
+                  onChange={handleChange}
+                  className="w-full border border-gray-200 pl-12 pr-4 py-3 sm:py-3.5 rounded-xl outline-none focus:border-[#D85A30] focus:ring-4 focus:ring-[#D85A30]/10 transition-all text-[15px] bg-gray-50 focus:bg-white"
+                />
               </div>
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-sm font-medium text-gray-700">Password</label>
-                <Link to="/forgot-password" className="text-[13px] text-[#D85A30] no-underline hover:underline font-medium">Forgot Password?</Link>
+                <label className="text-sm font-medium text-gray-700">
+                  Password
+                </label>
+                <Link
+                  to="/forgot-password"
+                  className="text-[13px] text-[#D85A30] no-underline hover:underline font-medium"
+                >
+                  Forgot Password?
+                </Link>
               </div>
               <div className="relative">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                  <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  <svg
+                    className="w-5 h-5 text-gray-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.8}
+                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                    />
                   </svg>
                 </div>
-                <input name="password" type={showPassword ? "text" : "password"} placeholder="Enter your password" value={form.password} autoComplete="current-password" onChange={handleChange} className="w-full border border-gray-200 pl-12 pr-12 py-3 sm:py-3.5 rounded-xl outline-none focus:border-[#D85A30] focus:ring-4 focus:ring-[#D85A30]/10 transition-all text-[15px] bg-gray-50 focus:bg-white" />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 bg-transparent border-none cursor-pointer p-0 text-gray-400 hover:text-gray-600 transition-colors">
+                <input
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your password"
+                  value={form.password}
+                  autoComplete="current-password"
+                  onChange={handleChange}
+                  className="w-full border border-gray-200 pl-12 pr-12 py-3 sm:py-3.5 rounded-xl outline-none focus:border-[#D85A30] focus:ring-4 focus:ring-[#D85A30]/10 transition-all text-[15px] bg-gray-50 focus:bg-white"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-transparent border-none cursor-pointer p-0 text-gray-400 hover:text-gray-600 transition-colors"
+                >
                   {showPassword ? (
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.8}
+                        d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                      />
                     </svg>
                   ) : (
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.8}
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.8}
+                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                      />
                     </svg>
                   )}
                 </button>
               </div>
             </div>
 
-            {formError && <ErrorAlert message={formError} />}
-            {!formError && error && <ErrorAlert message={error?.data?.message} />}
+            {wrongPortalError && (
+              <ErrorAlert
+                message={wrongPortalError.message}
+                action={
+                  <button
+                    type="button"
+                    onClick={() => navigate(wrongPortalError.redirectTo)}
+                    className="mt-2 text-xs font-bold text-red-700 bg-red-100 hover:bg-red-200 px-3 py-1.5 rounded-lg border-none cursor-pointer transition font-[inherit]"
+                  >
+                    Go to{" "}
+                    {wrongPortalError.redirectTo.includes("vendor")
+                      ? "Vendor"
+                      : "Admin"}{" "}
+                    Portal →
+                  </button>
+                }
+              />
+            )}
 
-            <button type="submit" disabled={isLoading || mergingData} className="w-full bg-gradient-to-r from-[#D85A30] to-[#e8734d] text-white py-3.5 sm:py-4 rounded-xl font-semibold shadow-lg shadow-[#D85A30]/20 hover:shadow-[#D85A30]/40 hover:scale-[1.01] transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100 text-[15px] border-none cursor-pointer font-[inherit]">
+            {formError && <ErrorAlert message={formError} />}
+            {!formError && !wrongPortalError && error && (
+              <ErrorAlert message={error?.data?.message || "Login failed"} />
+            )}
+
+            <button
+              type="submit"
+              disabled={isLoading || mergingData}
+              className="w-full bg-gradient-to-r from-[#D85A30] to-[#e8734d] text-white py-3.5 sm:py-4 rounded-xl font-semibold shadow-lg shadow-[#D85A30]/20 hover:shadow-[#D85A30]/40 hover:scale-[1.01] transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100 text-[15px] border-none cursor-pointer font-[inherit]"
+            >
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">
                   <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -262,29 +409,55 @@ const Login = () => {
                   <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   Syncing your data...
                 </span>
-              ) : "Login"}
+              ) : (
+                "Login"
+              )}
             </button>
           </form>
 
           <div className="mt-5 sm:mt-6 flex items-center gap-3">
             <div className="flex-1 h-px bg-gray-200" />
-            <span className="text-gray-400 text-xs font-medium">OR CONTINUE WITH</span>
+            <span className="text-gray-400 text-xs font-medium">
+              OR CONTINUE WITH
+            </span>
             <div className="flex-1 h-px bg-gray-200" />
           </div>
 
           <div className="mt-4 sm:mt-6 grid grid-cols-2 gap-3">
             {socialBtns.map((btn) => (
-              <button key={btn.label} className="flex items-center justify-center gap-2 border border-gray-200 py-2.5 sm:py-3 rounded-xl hover:bg-gray-50 transition-all text-sm font-medium text-gray-700 cursor-pointer bg-white font-[inherit]">
+              <button
+                key={btn.label}
+                type="button"
+                disabled
+                title={`${btn.label} login coming soon`}
+                className="flex items-center justify-center gap-2 border border-gray-200 py-2.5 sm:py-3 rounded-xl text-sm font-medium text-gray-400 bg-white font-[inherit] opacity-50 cursor-not-allowed"
+              >
                 {btn.icon}
                 {btn.label}
               </button>
             ))}
           </div>
 
-          <p className="text-center mt-6 sm:mt-8 text-gray-500 text-sm">
-            Don't have an account?{" "}
-            <Link to="/signup" className="text-[#D85A30] font-semibold no-underline hover:underline">Create Account</Link>
-          </p>
+          <div className="mt-5 pt-5 border-t border-gray-100 space-y-2">
+            <p className="text-center text-gray-500 text-sm m-0">
+              Don't have an account?{" "}
+              <Link
+                to="/signup"
+                className="text-[#D85A30] font-semibold no-underline hover:underline"
+              >
+                Create Account
+              </Link>
+            </p>
+            <p className="text-center text-gray-400 text-xs m-0">
+              Want dedicated vendor experience?{" "}
+              <Link
+                to="/vendor/login"
+                className="text-blue-600 font-semibold no-underline hover:underline"
+              >
+                Vendor Portal →
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
     </div>

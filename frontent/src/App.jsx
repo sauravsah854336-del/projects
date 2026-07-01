@@ -6,6 +6,7 @@ import VendorSignup from "./pages/VendorSignup";
 import VendorLogin from "./pages/VendorLogin";
 import Dashboard from "./pages/Dashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminCouponsPage from "./pages/admin/AdminCouponsPage";
 import VendorDashboard from "./pages/VendorDashboard";
 import VendorProfilePage from "./pages/VendorProfilePage";
 import AdminProfilePage from "./pages/AdminProfilePage";
@@ -25,6 +26,7 @@ import HelpPage from "./pages/HelpPage";
 import PolicyPage from "./pages/PolicyPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import ProtectedRoute from "./components/ProtectedRoute";
+import PublicRoute from "./components/PublicRoute";
 import AuthVerifier from "./components/AuthVerifier";
 import Layout from "./components/Layout";
 import ScrollToTop from "./components/ScrollToTop";
@@ -38,12 +40,6 @@ function App() {
         <Layout>
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/vendor/signup" element={<VendorSignup />} />
-            <Route path="/vendor/login" element={<VendorLogin />} />
-            <Route path="/unauthorized" element={<Unauthorized />} />
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/products/:slug" element={<ProductDetailPage />} />
             <Route path="/cart" element={<CartPage />} />
@@ -52,6 +48,52 @@ function App() {
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/help" element={<HelpPage />} />
             <Route path="/policy/:slug" element={<PolicyPage />} />
+            <Route path="/unauthorized" element={<Unauthorized />} />
+
+            <Route
+              path="/login"
+              element={
+                <PublicRoute>
+                  <Login />
+                </PublicRoute>
+              }
+            />
+
+            <Route
+              path="/signup"
+              element={
+                <PublicRoute>
+                  <Signup />
+                </PublicRoute>
+              }
+            />
+
+            <Route
+              path="/forgot-password"
+              element={
+                <PublicRoute>
+                  <ForgotPassword />
+                </PublicRoute>
+              }
+            />
+
+            <Route
+              path="/vendor/login"
+              element={
+                <PublicRoute>
+                  <VendorLogin />
+                </PublicRoute>
+              }
+            />
+
+            <Route
+              path="/vendor/signup"
+              element={
+                <PublicRoute>
+                  <VendorSignup />
+                </PublicRoute>
+              }
+            />
 
             <Route path="/dashboard" element={<Navigate to="/" replace />} />
 
@@ -96,6 +138,15 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={["admin"]}>
                   <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/admin/coupons"
+              element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <AdminCouponsPage />
                 </ProtectedRoute>
               }
             />

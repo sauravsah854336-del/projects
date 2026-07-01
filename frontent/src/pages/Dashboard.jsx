@@ -17,11 +17,15 @@ const Dashboard = () => {
   const profile = profileData?.data;
   const cartCount = cartData?.data?.totalItems || 0;
   const addressCount = profile?.addresses?.length || 0;
+  const totalSaved = profile?.stats?.totalSaved || 0;
+  const couponOrders = profile?.stats?.couponOrders || 0;
 
   const handleLogout = async () => {
-    try { await logoutAPI({ refreshToken }).unwrap(); }
-    catch (err) { console.log(err); }
-    finally {
+    try {
+      await logoutAPI({ refreshToken }).unwrap();
+    } catch (err) {
+      console.log(err);
+    } finally {
       dispatch(authApi.util.resetApiState());
       dispatch(logout());
       navigate("/login");
@@ -54,6 +58,7 @@ const Dashboard = () => {
     { value: cartCount, label: "Cart Items", icon: "🛒" },
     { value: addressCount, label: "Saved Addresses", icon: "📍" },
     { value: profile?.wishlist?.length || 0, label: "Wishlist", icon: "❤️" },
+    { value: profile?.stats?.totalOrders || 0, label: "Total Orders", icon: "📦" },
   ];
 
   const accountInfo = [
@@ -70,7 +75,6 @@ const Dashboard = () => {
 
   return (
     <div className="bg-gray-100 min-h-screen">
-
       <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-[#1a1a2e] px-4 sm:px-6 pt-8 sm:pt-10 pb-14 relative overflow-hidden">
         <div className="absolute -top-14 -right-14 w-64 h-64 bg-[#D85A30]/12 rounded-full blur-[60px] pointer-events-none" />
         <div className="absolute -bottom-10 left-[30%] w-48 h-48 bg-indigo-500/8 rounded-full blur-[50px] pointer-events-none" />
@@ -82,12 +86,16 @@ const Dashboard = () => {
                 {profile?.avatar ? (
                   <img src={profile.avatar} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <span className="text-xl sm:text-2xl font-black text-white">{user?.firstName?.[0]?.toUpperCase()}</span>
+                  <span className="text-xl sm:text-2xl font-black text-white">
+                    {user?.firstName?.[0]?.toUpperCase()}
+                  </span>
                 )}
               </div>
               <div>
                 <p className="text-sm text-slate-400 font-medium m-0">{greeting()} 👋</p>
-                <h1 className="text-xl sm:text-2xl font-black text-white mt-0.5 mb-0">{user?.firstName} {user?.lastName}</h1>
+                <h1 className="text-xl sm:text-2xl font-black text-white mt-0.5 mb-0">
+                  {user?.firstName} {user?.lastName}
+                </h1>
                 <p className="text-xs text-slate-500 mt-1 m-0 hidden sm:block">{profile?.email}</p>
               </div>
             </div>
@@ -115,6 +123,30 @@ const Dashboard = () => {
       </div>
 
       <div className="max-w-[1000px] mx-auto -mt-7 px-3 sm:px-4 pb-10 relative">
+        {totalSaved > 0 && (
+          <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-5 sm:p-6 mb-4 shadow-xl shadow-green-500/20">
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center text-3xl shrink-0 backdrop-blur-sm">
+                🎟️
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-white/80 text-xs font-bold uppercase tracking-wide m-0">Lifetime Savings</p>
+                <p className="text-2xl sm:text-3xl font-black text-white m-0 mt-0.5">
+                  ₹{totalSaved.toLocaleString("en-IN")}
+                </p>
+                <p className="text-white/90 text-xs m-0 mt-0.5">
+                  💰 Saved across {couponOrders} {couponOrders === 1 ? "order" : "orders"} with coupons!
+                </p>
+              </div>
+              <Link
+                to="/orders"
+                className="bg-white text-green-700 no-underline px-5 py-2.5 rounded-xl text-[13px] font-extrabold hover:brightness-105 transition shrink-0"
+              >
+                View Savings →
+              </Link>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-7">
           {cards.map((item, i) => (
@@ -134,7 +166,6 @@ const Dashboard = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
           <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex items-center gap-2.5">
               <span className="text-lg">⚡</span>
@@ -184,6 +215,34 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {profile?.stats?.couponsUsed && profile.stats.couponsUsed.length > 0 && (
+          <div className="mt-4 bg-white rounded-2xl border border-gray-200 overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-green-50 to-white flex items-center gap-2.5">
+              <span className="text-lg">🎟️</span>
+              <h3 className="text-sm font-extrabold text-gray-900 m-0">Your Coupon History</h3>
+              <span className="ml-auto text-[10px] bg-green-100 text-green-700 px-2 py-1 rounded-full font-bold">
+                {profile.stats.uniqueCouponsUsed} used
+              </span>
+            </div>
+            <div className="p-5">
+              <div className="flex flex-wrap gap-2">
+                {profile.stats.couponsUsed.map((code) => (
+                  <div
+                    key={code}
+                    className="bg-gradient-to-r from-orange-50 to-yellow-50 border-2 border-orange-200 rounded-xl px-4 py-2.5 flex items-center gap-2"
+                  >
+                    <span className="text-lg">🎟️</span>
+                    <span className="text-sm font-extrabold text-orange-800">{code}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 mt-3 m-0">
+                💰 You've saved <strong className="text-green-600">₹{totalSaved.toLocaleString("en-IN")}</strong> using coupons across {couponOrders} orders
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="mt-4">
           <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-6 sm:p-7 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
             <div className="flex items-center gap-3.5">
@@ -196,10 +255,16 @@ const Dashboard = () => {
               </div>
             </div>
             <div className="flex gap-2.5 flex-wrap">
-              <Link to="/vendor/signup" className="bg-gradient-to-r from-[#D85A30] to-[#FF8C5A] text-white no-underline px-5 py-2.5 rounded-xl text-[13px] font-extrabold shadow-lg shadow-orange-500/25">
+              <Link
+                to="/vendor/signup"
+                className="bg-gradient-to-r from-[#D85A30] to-[#FF8C5A] text-white no-underline px-5 py-2.5 rounded-xl text-[13px] font-extrabold shadow-lg shadow-orange-500/25"
+              >
                 Become a Seller →
               </Link>
-              <Link to="/policy/seller-guidelines" className="bg-transparent text-slate-400 no-underline px-4.5 py-2.5 rounded-xl text-[13px] font-semibold border border-white/12 hover:text-white transition-colors">
+              <Link
+                to="/policy/seller-guidelines"
+                className="bg-transparent text-slate-400 no-underline px-4.5 py-2.5 rounded-xl text-[13px] font-semibold border border-white/12 hover:text-white transition-colors"
+              >
                 Learn More
               </Link>
             </div>

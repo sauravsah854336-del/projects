@@ -10,7 +10,6 @@ import ShippingBadge from "../components/ShippingBadge";
 import { toast } from "../components/Toast";
 import {
   formatPrice,
-  calculateFinalPrice,
   calculateTax,
   convertPrice,
   getShippingInfo,
@@ -20,7 +19,7 @@ const ProductDetailPage = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
-  const { currentCountry } = useSelector((state) => state.country);
+  const { currentCountry, isUserCountry } = useSelector((state) => state.country);
   const { data, isLoading, error } = useGetSingleProductQuery(slug);
   const { addItem, isLoading: addingToCart } = useCart();
   const [selectedImage, setSelectedImage] = useState(0);
@@ -68,7 +67,7 @@ const ProductDetailPage = () => {
   const discount =
     product.comparePrice > product.price
       ? Math.round(
-          ((product.comparePrice - product.price) / product.comparePrice) * 100,
+          ((product.comparePrice - product.price) / product.comparePrice) * 100
         )
       : 0;
 
@@ -97,7 +96,7 @@ const ProductDetailPage = () => {
       setTimeout(() => setAddedSuccess(false), 2500);
     } catch (err) {
       toast.error(
-        err?.data?.message || err?.message || "Failed to add to cart",
+        err?.data?.message || err?.message || "Failed to add to cart"
       );
     } finally {
       setActionType(null);
@@ -113,7 +112,7 @@ const ProductDetailPage = () => {
       else navigate("/checkout");
     } catch (err) {
       toast.error(
-        err?.data?.message || err?.message || "Failed to add to cart",
+        err?.data?.message || err?.message || "Failed to add to cart"
       );
       setActionType(null);
     }
@@ -233,7 +232,9 @@ const ProductDetailPage = () => {
                 {
                   icon: "🚚",
                   label: "Fast Delivery",
-                  sub: `${shippingInfo?.estimatedDays?.standard || 5}-${shippingInfo?.estimatedDays?.express + 5 || 7} days`,
+                  sub: `${shippingInfo?.estimatedDays?.standard || 5}-${
+                    (shippingInfo?.estimatedDays?.express || 2) + 5
+                  } days`,
                 },
                 { icon: "🔄", label: "Easy Returns", sub: "10-day policy" },
                 { icon: "🛡️", label: "Secure Payment", sub: "100% protected" },
@@ -265,6 +266,11 @@ const ProductDetailPage = () => {
               <span className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-3 py-1 rounded-full">
                 {currentCountry.flag} Showing in {currentCountry.currency.code}
               </span>
+              {isUserCountry && (
+                <span className="inline-flex items-center text-[10px] font-extrabold text-green-700 bg-green-100 border border-green-200 px-2 py-0.5 rounded-full">
+                  YOUR PROFILE
+                </span>
+              )}
             </div>
 
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-gray-900 mb-4 leading-tight">
@@ -280,7 +286,11 @@ const ProductDetailPage = () => {
                   {[1, 2, 3, 4, 5].map((star) => (
                     <span
                       key={star}
-                      className={`text-sm ${star <= Math.round(product.averageRating) ? "text-white" : "text-yellow-200"}`}
+                      className={`text-sm ${
+                        star <= Math.round(product.averageRating)
+                          ? "text-white"
+                          : "text-yellow-200"
+                      }`}
                     >
                       ★
                     </span>
@@ -323,7 +333,7 @@ const ProductDetailPage = () => {
                   +{" "}
                   {formatPrice(
                     product.price * (currentCountry.tax.rate / 100),
-                    currentCountry,
+                    currentCountry
                   )}{" "}
                   {currentCountry.tax.label}
                 </p>
@@ -350,10 +360,16 @@ const ProductDetailPage = () => {
 
             <div className="flex items-center gap-2 mb-4 flex-wrap">
               <span
-                className={`inline-flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-full ${product.stock > 0 ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-600 border border-red-200"}`}
+                className={`inline-flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-full ${
+                  product.stock > 0
+                    ? "bg-green-50 text-green-700 border border-green-200"
+                    : "bg-red-50 text-red-600 border border-red-200"
+                }`}
               >
                 <span
-                  className={`w-2 h-2 rounded-full ${product.stock > 0 ? "bg-green-500" : "bg-red-500"}`}
+                  className={`w-2 h-2 rounded-full ${
+                    product.stock > 0 ? "bg-green-500" : "bg-red-500"
+                  }`}
                 />
                 {product.stock > 0
                   ? `In Stock (${product.stock} available)`
@@ -516,7 +532,7 @@ const ProductDetailPage = () => {
                       : formatPrice(
                           currentCountry.shipping.standardCost /
                             currentCountry.exchangeRate,
-                          currentCountry,
+                          currentCountry
                         )}
                   </strong>{" "}
                   · {shippingInfo?.estimatedDays?.standard || 5} days
@@ -527,7 +543,7 @@ const ProductDetailPage = () => {
                     {formatPrice(
                       currentCountry.shipping.expressCost /
                         currentCountry.exchangeRate,
-                      currentCountry,
+                      currentCountry
                     )}
                   </strong>{" "}
                   · {shippingInfo?.estimatedDays?.express || 2} days
@@ -541,6 +557,17 @@ const ProductDetailPage = () => {
                       : "(extra)"}
                   </p>
                 )}
+                <p className="m-0">
+                  💳 Payment:{" "}
+                  <strong>
+                    {currentCountry.paymentMethods
+                      ?.slice(0, 3)
+                      .map((m) => m.toUpperCase())
+                      .join(", ")}
+                    {currentCountry.paymentMethods?.length > 3 &&
+                      ` +${currentCountry.paymentMethods.length - 3} more`}
+                  </strong>
+                </p>
               </div>
             </div>
 
@@ -598,7 +625,7 @@ const ProductDetailPage = () => {
                           navigate(
                             user.role === "admin"
                               ? "/admin/dashboard"
-                              : "/vendor/dashboard",
+                              : "/vendor/dashboard"
                           )
                         }
                         className="bg-amber-600 text-white border-none rounded-lg px-4 py-2 text-xs font-bold cursor-pointer hover:bg-amber-700 transition font-[inherit]"
@@ -659,7 +686,9 @@ const ProductDetailPage = () => {
                 {product.specifications.map((spec, index) => (
                   <div
                     key={index}
-                    className={`flex justify-between items-center py-2.5 px-3 rounded-xl text-sm ${index % 2 === 0 ? "bg-gray-50" : "bg-white"}`}
+                    className={`flex justify-between items-center py-2.5 px-3 rounded-xl text-sm ${
+                      index % 2 === 0 ? "bg-gray-50" : "bg-white"
+                    }`}
                   >
                     <span className="text-gray-500 font-medium shrink-0 mr-4">
                       {spec.key}

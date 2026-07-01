@@ -1,11 +1,49 @@
 const Cart = require("../models/cart");
 const Product = require("../models/product");
+const Coupon = require("../models/coupon");
+
+const recalculateCart = async (cart) => {
+  cart.totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0);
+  cart.subtotal = cart.items.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
+
+  if (cart.coupon?.code && cart.coupon?.discount > 0) {
+    try {
+      const coupon = await Coupon.findOne({ code: cart.coupon.code });
+      if (coupon) {
+        const validity = coupon.isValid();
+        if (validity.valid && cart.subtotal >= coupon.minOrderAmount) {
+          const newDiscount = coupon.calculateDiscount(cart.subtotal);
+          cart.coupon.discount = newDiscount;
+        } else {
+          cart.coupon = {
+            code: "",
+            discount: 0,
+            discountType: "fixed",
+            freeShipping: false,
+            description: "",
+            appliedAt: null,
+          };
+        }
+      }
+    } catch (e) {
+      console.log("Coupon recalculation error:", e.message);
+    }
+  }
+
+  cart.total = cart.subtotal - (cart.coupon?.discount || 0);
+  if (cart.total < 0) cart.total = 0;
+
+  return cart;
+};
 
 const getCart = async (req, res) => {
   try {
     let cart = await Cart.findOne({ user: req.user.id }).populate(
       "items.product",
-      "name price comparePrice images stock vendor brand slug"
+      "name price comparePrice images stock vendor brand slug category"
     );
 
     if (!cart) {
@@ -45,18 +83,7 @@ const getCart = async (req, res) => {
     }
 
     cart.items = itemsWithValidStock;
-    cart.totalItems = itemsWithValidStock.reduce(
-      (sum, item) => sum + item.quantity,
-      0
-    );
-    cart.subtotal = itemsWithValidStock.reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0
-    );
-    cart.total = cart.subtotal - cart.coupon.discount;
-
-    if (cart.total < 0) cart.total = 0;
-
+    await recalculateCart(cart);
     await cart.save();
 
     return res.status(200).json({
@@ -64,6 +91,7 @@ const getCart = async (req, res) => {
       data: cart,
     });
   } catch (err) {
+    console.error("getCart error:", err);
     return res.status(500).json({
       success: false,
       message: "Server error",
@@ -128,7 +156,8 @@ const addToCart = async (req, res) => {
       cart.items[existingItemIndex].name = product.name;
       cart.items[existingItemIndex].image = product.images?.[0]?.url || "";
       cart.items[existingItemIndex].vendor = product.vendor;
-      cart.items[existingItemIndex].storeName = product.vendorStore?.storeName || "";
+      cart.items[existingItemIndex].storeName =
+        product.vendorStore?.storeName || "";
       cart.items[existingItemIndex].maxQuantity = product.stock;
     } else {
       cart.items.push({
@@ -144,20 +173,12 @@ const addToCart = async (req, res) => {
       });
     }
 
-    cart.totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0);
-    cart.subtotal = cart.items.reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0
-    );
-    cart.total = cart.subtotal - cart.coupon.discount;
-
-    if (cart.total < 0) cart.total = 0;
-
+    await recalculateCart(cart);
     await cart.save();
 
     cart = await Cart.findById(cart._id).populate(
       "items.product",
-      "name price comparePrice images stock vendor brand slug"
+      "name price comparePrice images stock vendor brand slug category"
     );
 
     return res.status(200).json({
@@ -166,6 +187,7 @@ const addToCart = async (req, res) => {
       data: cart,
     });
   } catch (err) {
+    console.error("addToCart error:", err);
     return res.status(500).json({
       success: false,
       message: err.message,
@@ -225,20 +247,12 @@ const updateCartItem = async (req, res) => {
     cart.items[itemIndex].comparePrice = product.comparePrice || 0;
     cart.items[itemIndex].maxQuantity = product.stock;
 
-    cart.totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0);
-    cart.subtotal = cart.items.reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0
-    );
-    cart.total = cart.subtotal - cart.coupon.discount;
-
-    if (cart.total < 0) cart.total = 0;
-
+    await recalculateCart(cart);
     await cart.save();
 
     const populatedCart = await Cart.findById(cart._id).populate(
       "items.product",
-      "name price comparePrice images stock vendor brand slug"
+      "name price comparePrice images stock vendor brand slug category"
     );
 
     return res.status(200).json({
@@ -247,6 +261,7 @@ const updateCartItem = async (req, res) => {
       data: populatedCart,
     });
   } catch (err) {
+    console.error("updateCartItem error:", err);
     return res.status(500).json({
       success: false,
       message: err.message,
@@ -271,20 +286,12 @@ const removeCartItem = async (req, res) => {
       (item) => item.product.toString() !== productId
     );
 
-    cart.totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0);
-    cart.subtotal = cart.items.reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0
-    );
-    cart.total = cart.subtotal - cart.coupon.discount;
-
-    if (cart.total < 0) cart.total = 0;
-
+    await recalculateCart(cart);
     await cart.save();
 
     const populatedCart = await Cart.findById(cart._id).populate(
       "items.product",
-      "name price comparePrice images stock vendor brand slug"
+      "name price comparePrice images stock vendor brand slug category"
     );
 
     return res.status(200).json({
@@ -293,6 +300,7 @@ const removeCartItem = async (req, res) => {
       data: populatedCart,
     });
   } catch (err) {
+    console.error("removeCartItem error:", err);
     return res.status(500).json({
       success: false,
       message: err.message,
@@ -315,7 +323,14 @@ const clearCart = async (req, res) => {
     cart.totalItems = 0;
     cart.subtotal = 0;
     cart.total = 0;
-    cart.coupon = { code: "", discount: 0, discountType: "fixed" };
+    cart.coupon = {
+      code: "",
+      discount: 0,
+      discountType: "fixed",
+      freeShipping: false,
+      description: "",
+      appliedAt: null,
+    };
 
     await cart.save();
 
@@ -325,6 +340,7 @@ const clearCart = async (req, res) => {
       data: cart,
     });
   } catch (err) {
+    console.error("clearCart error:", err);
     return res.status(500).json({
       success: false,
       message: "Server error",
@@ -339,7 +355,7 @@ const mergeGuestCart = async (req, res) => {
     if (!Array.isArray(items) || items.length === 0) {
       const existing = await Cart.findOne({ user: req.user.id }).populate(
         "items.product",
-        "name price comparePrice images stock vendor brand slug"
+        "name price comparePrice images stock vendor brand slug category"
       );
       return res.status(200).json({
         success: true,
@@ -372,7 +388,8 @@ const mergeGuestCart = async (req, res) => {
       );
 
       if (existingItemIndex > -1) {
-        const newQty = cart.items[existingItemIndex].quantity + (guestItem.quantity || 1);
+        const newQty =
+          cart.items[existingItemIndex].quantity + (guestItem.quantity || 1);
         cart.items[existingItemIndex].quantity = Math.min(newQty, product.stock);
         cart.items[existingItemIndex].price = product.price;
         cart.items[existingItemIndex].comparePrice = product.comparePrice || 0;
@@ -392,16 +409,12 @@ const mergeGuestCart = async (req, res) => {
       }
     }
 
-    cart.totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0);
-    cart.subtotal = cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    cart.total = cart.subtotal - cart.coupon.discount;
-    if (cart.total < 0) cart.total = 0;
-
+    await recalculateCart(cart);
     await cart.save();
 
     const populated = await Cart.findById(cart._id).populate(
       "items.product",
-      "name price comparePrice images stock vendor brand slug"
+      "name price comparePrice images stock vendor brand slug category"
     );
 
     return res.status(200).json({
@@ -410,6 +423,142 @@ const mergeGuestCart = async (req, res) => {
       data: populated,
     });
   } catch (err) {
+    console.error("mergeGuestCart error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
+const applyCouponToCart = async (req, res) => {
+  try {
+    const { code, discount, discountType, freeShipping, description } =
+      req.body;
+
+    if (!code) {
+      return res.status(400).json({
+        success: false,
+        message: "Coupon code is required",
+      });
+    }
+
+    const cart = await Cart.findOne({ user: req.user.id });
+
+    if (!cart) {
+      return res.status(404).json({
+        success: false,
+        message: "Cart not found",
+      });
+    }
+
+    if (!cart.items || cart.items.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Cart is empty",
+      });
+    }
+
+    const coupon = await Coupon.findOne({ code: code.toUpperCase().trim() });
+
+    if (!coupon) {
+      return res.status(404).json({
+        success: false,
+        message: "Invalid coupon code",
+      });
+    }
+
+    const validity = coupon.isValid();
+    if (!validity.valid) {
+      return res.status(400).json({
+        success: false,
+        message: validity.reason,
+      });
+    }
+
+    const userCheck = coupon.canBeUsedBy(req.user.id);
+    if (!userCheck.canUse) {
+      return res.status(400).json({
+        success: false,
+        message: userCheck.reason,
+      });
+    }
+
+    if (cart.subtotal < coupon.minOrderAmount) {
+      return res.status(400).json({
+        success: false,
+        message: `Minimum order amount ₹${coupon.minOrderAmount} required`,
+      });
+    }
+
+    const calculatedDiscount = coupon.calculateDiscount(cart.subtotal);
+
+    cart.coupon = {
+      code: coupon.code,
+      discount: calculatedDiscount,
+      discountType: coupon.discountType,
+      freeShipping: coupon.discountType === "free_shipping",
+      description: coupon.description,
+      appliedAt: new Date(),
+    };
+
+    await recalculateCart(cart);
+    await cart.save();
+
+    const populatedCart = await Cart.findById(cart._id).populate(
+      "items.product",
+      "name price comparePrice images stock vendor brand slug category"
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Coupon applied successfully",
+      data: populatedCart,
+    });
+  } catch (err) {
+    console.error("applyCouponToCart error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
+const removeCouponFromCart = async (req, res) => {
+  try {
+    const cart = await Cart.findOne({ user: req.user.id });
+
+    if (!cart) {
+      return res.status(404).json({
+        success: false,
+        message: "Cart not found",
+      });
+    }
+
+    cart.coupon = {
+      code: "",
+      discount: 0,
+      discountType: "fixed",
+      freeShipping: false,
+      description: "",
+      appliedAt: null,
+    };
+
+    await recalculateCart(cart);
+    await cart.save();
+
+    const populatedCart = await Cart.findById(cart._id).populate(
+      "items.product",
+      "name price comparePrice images stock vendor brand slug category"
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Coupon removed successfully",
+      data: populatedCart,
+    });
+  } catch (err) {
+    console.error("removeCouponFromCart error:", err);
     return res.status(500).json({
       success: false,
       message: err.message,
@@ -424,4 +573,6 @@ module.exports = {
   removeCartItem,
   clearCart,
   mergeGuestCart,
+  applyCouponToCart,
+  removeCouponFromCart,
 };

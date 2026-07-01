@@ -12,6 +12,13 @@ const countrySchema = new mongoose.Schema(
     name: { type: String, required: true },
     nativeName: { type: String, default: "" },
     flag: { type: String, default: "" },
+    
+    // ✅ NEW FIELD
+    dialCode: {
+      type: String,
+      default: "+91",
+    },
+    
     currency: {
       code: { type: String, required: true, uppercase: true },
       symbol: { type: String, required: true },

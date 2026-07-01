@@ -2,6 +2,7 @@ const Order = require("../models/order");
 const Cart = require("../models/cart");
 const Product = require("../models/product");
 const User = require("../models/users");
+const { applyCouponUsage } = require("./couponController");
 
 const generateOrderNumber = () => {
   const timestamp = Date.now().toString();
@@ -58,6 +59,7 @@ const placeOrder = async (req, res) => {
     }
 
     const discountINR = cart.coupon?.discount || 0;
+    const couponCode = cart.coupon?.code || "";
     const subtotalAfterDiscountINR = subtotalINR - discountINR;
 
     const countryInfo = country || {
@@ -96,6 +98,7 @@ const placeOrder = async (req, res) => {
       orderStatus: "confirmed",
       subtotal: subtotalINR,
       discount: discountINR,
+      couponCode: couponCode,
       shippingCharge: shippingCostINR,
       total: totalINR,
       notes,
@@ -131,6 +134,14 @@ const placeOrder = async (req, res) => {
       await Product.findByIdAndUpdate(item.product, {
         $inc: { stock: -item.quantity, totalSold: item.quantity },
       });
+    }
+
+    if (couponCode) {
+      try {
+        await applyCouponUsage(couponCode, req.user.id);
+      } catch (couponErr) {
+        console.log("Coupon usage tracking failed:", couponErr.message);
+      }
     }
 
     await Cart.findOneAndUpdate(

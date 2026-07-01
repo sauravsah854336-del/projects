@@ -56,9 +56,12 @@ const cartSchema = new mongoose.Schema(
       discount: { type: Number, default: 0 },
       discountType: {
         type: String,
-        enum: ["percentage", "fixed"],
+        enum: ["percentage", "fixed", "free_shipping"],
         default: "fixed",
       },
+      freeShipping: { type: Boolean, default: false },
+      description: { type: String, default: "" },
+      appliedAt: { type: Date, default: null },
     },
     totalItems: {
       type: Number,

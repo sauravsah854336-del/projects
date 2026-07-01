@@ -44,6 +44,21 @@ const cartApi = authApi.injectEndpoints({
       }),
       invalidatesTags: ["Cart"],
     }),
+    applyCartCoupon: builder.mutation({
+      query: (data) => ({
+        url: "/cart/apply-coupon",
+        method: "POST",
+        body: data,
+      }),
+      invalidatesTags: ["Cart"],
+    }),
+    removeCartCoupon: builder.mutation({
+      query: () => ({
+        url: "/cart/remove-coupon",
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Cart"],
+    }),
   }),
 });
 
@@ -54,4 +69,6 @@ export const {
   useUpdateCartItemMutation,
   useRemoveCartItemMutation,
   useClearCartMutation,
+  useApplyCartCouponMutation,
+  useRemoveCartCouponMutation,
 } = cartApi;
