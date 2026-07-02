@@ -72,7 +72,6 @@ const ReviewForm = ({ productId, orderId, existingReview, onClose }) => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Star Rating */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Overall Rating <span className="text-red-500">*</span>
@@ -85,8 +84,7 @@ const ReviewForm = ({ productId, orderId, existingReview, onClose }) => {
           />
         </div>
 
-        {/* Title */}
-        <div>
+]        <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Review Title
           </label>
@@ -103,7 +101,6 @@ const ReviewForm = ({ productId, orderId, existingReview, onClose }) => {
           </p>
         </div>
 
-        {/* Body */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Your Review <span className="text-red-500">*</span>
@@ -121,14 +118,12 @@ const ReviewForm = ({ productId, orderId, existingReview, onClose }) => {
           </p>
         </div>
 
-        {/* Error */}
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">
             {error}
           </div>
         )}
 
-        {/* Actions */}
         <div className="flex gap-3 pt-2">
           <button
             type="button"

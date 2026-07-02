@@ -72,7 +72,6 @@ const ReviewCard = ({ review, productId, onEdit }) => {
             )}
           </div>
 
-          {/* Name + Date */}
           <div>
             <p className="font-semibold text-gray-900 text-sm">
               {review.user?.firstName} {review.user?.lastName}
@@ -81,7 +80,6 @@ const ReviewCard = ({ review, productId, onEdit }) => {
           </div>
         </div>
 
-        {/* Actions */}
         {(isOwner || isAdmin) && (
           <div className="flex gap-2">
             {isOwner && (
@@ -120,7 +118,6 @@ const ReviewCard = ({ review, productId, onEdit }) => {
         )}
       </div>
 
-      {/* Rating + Verified Badge */}
       <div className="flex items-center gap-3 mb-3">
         <StarRating rating={review.rating} size="sm" />
         {review.isVerifiedPurchase && (
@@ -130,19 +127,16 @@ const ReviewCard = ({ review, productId, onEdit }) => {
         )}
       </div>
 
-      {/* Title */}
       {review.title && (
         <h4 className="font-semibold text-gray-900 mb-2">{review.title}</h4>
       )}
 
-      {/* Body */}
       {review.body && (
         <p className="text-gray-600 text-sm leading-relaxed mb-4">
           {review.body}
         </p>
       )}
 
-      {/* Review Images */}
       {review.images?.length > 0 && (
         <div className="flex gap-2 mb-4 flex-wrap">
           {review.images.map((img, i) => (
@@ -156,7 +150,6 @@ const ReviewCard = ({ review, productId, onEdit }) => {
         </div>
       )}
 
-      {/* Helpful */}
       <div className="flex items-center gap-2 pt-4 border-t border-gray-50">
         <span className="text-xs text-gray-400">Helpful?</span>
         <button

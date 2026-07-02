@@ -50,14 +50,12 @@ const ReviewList = ({ product }) => {
 
   return (
     <div className="space-y-6">
-      {/* Rating Summary */}
       <RatingSummary
         product={product}
         ratingBreakdown={ratingBreakdown}
         total={product.totalReviews || 0}
       />
 
-      {/* Write Review Button */}
       {isCustomer && (
         <div>
           {canReview && !showForm && (
@@ -79,7 +77,6 @@ const ReviewList = ({ product }) => {
         </div>
       )}
 
-      {/* Review Form */}
       {showForm && (
         <ReviewForm
           productId={product._id}
@@ -89,10 +86,8 @@ const ReviewList = ({ product }) => {
         />
       )}
 
-      {/* Filters + Sort */}
       {reviews.length > 0 || filterRating ? (
         <div className="flex flex-wrap gap-3 items-center">
-          {/* Sort */}
           <select
             value={sort}
             onChange={(e) => {
@@ -107,7 +102,6 @@ const ReviewList = ({ product }) => {
             <option value="lowest">Lowest Rated</option>
           </select>
 
-          {/* Filter by star */}
           <div className="flex gap-2 flex-wrap">
             {[5, 4, 3, 2, 1].map((star) => (
               <button
@@ -142,7 +136,6 @@ const ReviewList = ({ product }) => {
         </div>
       ) : null}
 
-      {/* Reviews List */}
       {reviewsLoading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
@@ -173,7 +166,6 @@ const ReviewList = ({ product }) => {
         </div>
       )}
 
-      {/* Pagination */}
       {pagination.pages > 1 && (
         <div className="flex justify-center gap-2 pt-4">
           <button

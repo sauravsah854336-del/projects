@@ -8,7 +8,6 @@ const RatingSummary = ({ product, ratingBreakdown, total }) => {
       <h2 className="text-xl font-bold mb-6">Customer Reviews</h2>
 
       <div className="flex gap-8 items-start">
-        {/* Left — Average */}
         <div className="text-center min-w-[120px]">
           <div className="text-6xl font-bold text-gray-900">
             {avg.toFixed(1)}
@@ -19,7 +18,6 @@ const RatingSummary = ({ product, ratingBreakdown, total }) => {
           </p>
         </div>
 
-        {/* Right — Breakdown bars */}
         <div className="flex-1 space-y-2">
           {[5, 4, 3, 2, 1].map((star) => {
             const count = ratingBreakdown?.[star] || 0;

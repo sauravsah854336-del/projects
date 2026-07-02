@@ -18,11 +18,7 @@ import {
   useUpdateVendorCommissionMutation,
   useCreateAdminMutation,
 } from "../features/auth/authApi";
-import {
-  useGetCategoryTreeQuery,
-  useCreateCategoryMutation,
-  useDeleteCategoryMutation,
-} from "../features/category/categoryApi";
+import { useUploadSingleImageMutation } from "../features/upload/uploadApi";
 import {
   useAdminGetAllProductsQuery,
   useFeatureProductMutation,
@@ -44,7 +40,176 @@ import {
   useAdminDeleteCouponMutation,
   useAdminToggleCouponMutation,
 } from "../features/coupon/couponApi";
+import {
+  useGetCategoryTreeQuery,
+  useCreateCategoryMutation,
+  useUpdateCategoryMutation,
+  useDeleteCategoryMutation,
+} from "../features/category/categoryApi";
 import { toast } from "../components/Toast";
+
+const categoryIcons = {
+  furniture: "🛋️",
+  kitchen: "🍳",
+  electronics: "📱",
+  walls: "🧱",
+  decorative: "🖼️",
+  upholstery: "🧵",
+  finishes: "🎨",
+  floors: "🪵",
+  furnishing: "🪟",
+
+  sofas: "🛋️",
+  chairs: "🪑",
+  tables: "🪑",
+  beds: "🛏️",
+  wardrobes: "🚪",
+  shelves: "📚",
+  desks: "🖥️",
+  cabinets: "🗄️",
+
+  cookware: "🍳",
+  appliances: "🔌",
+  utensils: "🍴",
+  storage: "📦",
+  dining: "🍽️",
+  smartphones: "📱",
+  laptops: "💻",
+  tablets: "📱",
+  cameras: "📷",
+  headphones: "🎧",
+  speakers: "🔊",
+  gaming: "🎮",
+  wearables: "⌚",
+  tv: "📺",
+  printers: "🖨️",
+
+  "wall art": "🖼️",
+  wallpaper: "🎨",
+  clocks: "🕐",
+  mirrors: "🪞",
+  shelving: "📚",
+  decor: "🏠",
+
+  fashion: "👗",
+  clothing: "👔",
+  cloth: "👕",
+  "men's clothing": "👔",
+  "women's clothing": "👗",
+  "kids clothing": "👶",
+  shoes: "👟",
+  footwear: "👞",
+
+  accessories: "⌚",
+  bags: "👜",
+  jewelry: "💍",
+  watches: "⌚",
+  sunglasses: "🕶️",
+  belts: "👔",
+  hats: "🧢",
+
+  "home decor": "🏠",
+  "home & living": "🏡",
+  "living room": "🛋️",
+  bedroom: "🛏️",
+  bathroom: "🚿",
+  outdoor: "🏡",
+  garden: "🌿",
+  lighting: "💡",
+  curtains: "🪟",
+  rugs: "🧶",
+  cushions: "🛋️",
+
+  beauty: "💄",
+  skincare: "🧴",
+  haircare: "💇",
+  makeup: "💄",
+  fragrance: "🌸",
+  "personal care": "🧼",
+
+  health: "💊",
+  fitness: "💪",
+  supplements: "💊",
+  yoga: "🧘",
+  sports: "⚽",
+
+
+  cricket: "🏏",
+  football: "⚽",
+  basketball: "🏀",
+  tennis: "🎾",
+  swimming: "🏊",
+  cycling: "🚴",
+  camping: "⛺",
+  hiking: "🥾",
+
+  books: "📚",
+  stationery: "✏️",
+  notebooks: "📓",
+  pens: "🖊️",
+  art: "🎨",
+
+  toys: "🧸",
+  games: "🎲",
+  puzzles: "🧩",
+  "baby products": "👶",
+  "kids furniture": "🪑",
+
+  grocery: "🛒",
+  food: "🍔",
+  snacks: "🍪",
+  beverages: "🥤",
+  organic: "🥬",
+  dairy: "🥛",
+  bakery: "🍞",
+
+  automotive: "🚗",
+  "car accessories": "🚗",
+  "bike accessories": "🏍️",
+
+
+  office: "💼",
+  "office furniture": "🖥️",
+  "office supplies": "📎",
+
+
+  pets: "🐾",
+  "dog supplies": "🐕",
+  "cat supplies": "🐈",
+
+
+  music: "🎵",
+  instruments: "🎸",
+  movies: "🎬",
+
+
+  travel: "✈️",
+  luggage: "🧳",
+  "travel accessories": "🎒",
+
+  tools: "🔧",
+  hardware: "🔩",
+  plumbing: "🚿",
+  electrical: "⚡",
+  paint: "🎨",
+
+  cleaning: "🧹",
+  laundry: "👕",
+  "cleaning supplies": "🧽",
+
+
+  christmas: "🎄",
+  diwali: "🪔",
+  holi: "🎨",
+  valentine: "❤️",
+  "new year": "🎆",
+
+  gifts: "🎁",
+  crafts: "✂️",
+  flowers: "💐",
+  candles: "🕯️",
+  antiques: "🏺",
+};
 
 const formatRupee = (amt) =>
   new Intl.NumberFormat("en-IN", {
@@ -613,13 +778,21 @@ const AdminDashboard = () => {
     useGetCategoryTreeQuery();
   const [createCategory, { isLoading: creatingCategory }] =
     useCreateCategoryMutation();
+  const [updateCategoryMutation] = useUpdateCategoryMutation();
   const [deleteCategory] = useDeleteCategoryMutation();
+  const [uploadImage] = useUploadSingleImageMutation();
   const [categoryForm, setCategoryForm] = useState({
     name: "",
     description: "",
     parent: "",
+    image: "",
   });
   const [categoryError, setCategoryError] = useState("");
+  const [showCategoryForm, setShowCategoryForm] = useState(false);
+  const [editingCategoryId, setEditingCategoryId] = useState(null);
+  const [deletingCategoryId, setDeletingCategoryId] = useState(null);
+  const [categoryImageUploading, setCategoryImageUploading] = useState(false);
+  const [updatingCategoryLoading, setUpdatingCategoryLoading] = useState(false);
 
   const [productStatusFilter, setProductStatusFilter] = useState("");
   const [productSearch, setProductSearch] = useState("");
@@ -756,6 +929,50 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleCategoryImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (
+      !["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(
+        file.type,
+      )
+    ) {
+      setCategoryError("Only JPG, PNG, WebP allowed");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setCategoryError("Image must be under 5MB");
+      return;
+    }
+    setCategoryImageUploading(true);
+    setCategoryError("");
+    try {
+      const res = await uploadImage({ file }).unwrap();
+      if (res.success) {
+        setCategoryForm((prev) => ({ ...prev, image: res.data.url }));
+        toast.success("Image uploaded!");
+      } else {
+        setCategoryError(res.message || "Upload failed");
+      }
+    } catch (err) {
+      setCategoryError(err?.data?.message || "Upload failed");
+    } finally {
+      setCategoryImageUploading(false);
+    }
+  };
+
+  const openEditCategory = (category, parentId) => {
+    setEditingCategoryId(category._id);
+    setCategoryForm({
+      name: category.name || "",
+      description: category.description || "",
+      parent: parentId || category.parent?._id || "",
+      image: category.image || "",
+    });
+    setShowCategoryForm(true);
+    setCategoryError("");
+  };
+
   const handleCreateCategory = async (e) => {
     e.preventDefault();
     setCategoryError("");
@@ -764,24 +981,42 @@ const AdminDashboard = () => {
       return;
     }
     try {
-      await createCategory({
-        name: categoryForm.name.trim(),
-        description: categoryForm.description.trim(),
-        parent: categoryForm.parent || null,
-      }).unwrap();
-      setCategoryForm({ name: "", description: "", parent: "" });
-      toast.success("Category created!");
+      if (editingCategoryId) {
+        setUpdatingCategoryLoading(true);
+        await updateCategoryMutation({
+          id: editingCategoryId,
+          name: categoryForm.name.trim(),
+          description: categoryForm.description.trim(),
+          parent: categoryForm.parent || null,
+          image: categoryForm.image || "",
+        }).unwrap();
+        toast.success("Category updated!");
+      } else {
+        await createCategory({
+          name: categoryForm.name.trim(),
+          description: categoryForm.description.trim(),
+          parent: categoryForm.parent || null,
+          image: categoryForm.image || "",
+        }).unwrap();
+        toast.success("Category created!");
+      }
+      setCategoryForm({ name: "", description: "", parent: "", image: "" });
+      setShowCategoryForm(false);
+      setEditingCategoryId(null);
     } catch (err) {
-      setCategoryError(err?.data?.message || "Failed");
+      setCategoryError(err?.data?.message || "Failed to save category");
+    } finally {
+      setUpdatingCategoryLoading(false);
     }
   };
 
   const handleDeleteCategory = async (id) => {
     try {
       await deleteCategory(id).unwrap();
+      setDeletingCategoryId(null);
       toast.success("Category deleted");
     } catch (err) {
-      toast.error(err?.data?.message || "Failed");
+      toast.error(err?.data?.message || "Failed to delete");
     }
   };
 
@@ -3258,134 +3493,360 @@ const AdminDashboard = () => {
         )}
 
         {activeTab === "categories" && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6 fade-up">
-            <h2 className="text-xl font-extrabold text-gray-900 mb-5 m-0">
-              Category Management
-            </h2>
-            <form
-              onSubmit={handleCreateCategory}
-              className="mb-6 flex flex-col gap-3 max-w-lg"
-            >
+          <div className="fade-up">
+            <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                  Category Name *
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Electronics, Fashion"
-                  value={categoryForm.name}
-                  onChange={(e) =>
-                    setCategoryForm({ ...categoryForm, name: e.target.value })
-                  }
-                  className={inputCls}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                  Description (optional)
-                </label>
-                <input
-                  type="text"
-                  placeholder="Brief description"
-                  value={categoryForm.description}
-                  onChange={(e) =>
-                    setCategoryForm({
-                      ...categoryForm,
-                      description: e.target.value,
-                    })
-                  }
-                  className={inputCls}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                  Parent Category
-                </label>
-                <select
-                  value={categoryForm.parent}
-                  onChange={(e) =>
-                    setCategoryForm({ ...categoryForm, parent: e.target.value })
-                  }
-                  className={inputCls}
-                >
-                  <option value="">No Parent (Main Category)</option>
-                  {categoryData?.data?.map((cat) => (
-                    <option key={cat._id} value={cat._id}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {categoryError && (
-                <p className="text-red-500 text-xs font-semibold m-0">
-                  {categoryError}
+                <h2 className="text-xl font-extrabold text-gray-900 m-0">
+                  Category Management
+                </h2>
+                <p className="text-xs text-gray-500 mt-1 m-0">
+                  {categoryData?.data?.length || 0} categories
                 </p>
-              )}
+              </div>
               <button
-                type="submit"
-                disabled={creatingCategory}
-                className="bg-gradient-to-r from-[#4338ca] to-[#6366f1] text-white border-none rounded-xl py-3 text-sm font-bold cursor-pointer disabled:opacity-50 transition font-[inherit] hover:brightness-110 shadow-lg shadow-indigo-200"
+                onClick={() => {
+                  setCategoryForm({
+                    name: "",
+                    description: "",
+                    parent: "",
+                    image: "",
+                  });
+                  setEditingCategoryId(null);
+                  setShowCategoryForm(!showCategoryForm);
+                  setCategoryError("");
+                }}
+                className="bg-gradient-to-r from-[#4338ca] to-[#6366f1] text-white border-none rounded-xl px-5 py-2.5 text-sm font-bold cursor-pointer font-[inherit] hover:brightness-110 transition shadow-lg shadow-indigo-200"
               >
-                {creatingCategory ? "Creating..." : "Create Category"}
+                {showCategoryForm && !editingCategoryId
+                  ? "✕ Cancel"
+                  : "+ Add Category"}
               </button>
-            </form>
-            <div className="border-t border-gray-100 pt-5">
-              <h3 className="text-sm font-extrabold text-gray-700 mb-3">
-                All Categories ({categoryData?.data?.length || 0})
-              </h3>
-              {categoriesLoading && <Spinner text="Loading..." />}
-              <div className="flex flex-col gap-2.5">
-                {categoryData?.data?.map((cat) => (
-                  <div
-                    key={cat._id}
-                    className="border border-gray-100 rounded-xl px-4 py-3.5 hover:border-[#4338ca]/20 transition"
-                  >
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h3 className="text-sm font-bold text-gray-900 m-0">
+            </div>
+
+            {showCategoryForm && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-7 mb-5">
+                <h3 className="text-sm font-extrabold text-gray-900 mb-4 m-0">
+                  {editingCategoryId
+                    ? "✏️ Edit Category"
+                    : "📂 Create New Category"}
+                </h3>
+                <form
+                  onSubmit={handleCreateCategory}
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                >
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                      Category Name *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Electronics, Fashion, Furniture"
+                      value={categoryForm.name}
+                      onChange={(e) =>
+                        setCategoryForm({
+                          ...categoryForm,
+                          name: e.target.value,
+                        })
+                      }
+                      className={inputCls}
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                      Description
+                    </label>
+                    <textarea
+                      placeholder="Brief description about this category"
+                      value={categoryForm.description}
+                      onChange={(e) =>
+                        setCategoryForm({
+                          ...categoryForm,
+                          description: e.target.value,
+                        })
+                      }
+                      rows={2}
+                      className={`${inputCls} resize-vertical`}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                      Parent Category
+                    </label>
+                    <select
+                      value={categoryForm.parent}
+                      onChange={(e) =>
+                        setCategoryForm({
+                          ...categoryForm,
+                          parent: e.target.value,
+                        })
+                      }
+                      className={inputCls}
+                    >
+                      <option value="">No Parent (Main Category)</option>
+                      {categoryData?.data?.map((cat) => (
+                        <option
+                          key={cat._id}
+                          value={cat._id}
+                          disabled={editingCategoryId === cat._id}
+                        >
+                          {cat.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                      Category Image
+                    </label>
+                    <div className="flex items-center gap-3">
+                      {categoryForm.image ? (
+                        <div className="relative w-14 h-14 rounded-xl border border-gray-200 overflow-hidden shrink-0">
+                          <img
+                            src={categoryForm.image}
+                            alt="Category"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.target.style.display = "none";
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setCategoryForm({ ...categoryForm, image: "" })
+                            }
+                            className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full border-none cursor-pointer text-[10px] flex items-center justify-center"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="w-14 h-14 bg-gray-100 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center text-xl shrink-0">
+                          📷
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <label className="inline-flex items-center gap-2 bg-indigo-50 text-[#4338ca] border border-indigo-200 rounded-lg px-3.5 py-2 text-xs font-bold cursor-pointer hover:bg-indigo-100 transition">
+                          {categoryImageUploading ? (
+                            <span className="flex items-center gap-1.5">
+                              <span className="w-3 h-3 border-2 border-[#4338ca] border-t-transparent rounded-full animate-spin" />
+                              Uploading...
+                            </span>
+                          ) : (
+                            <>📤 Upload Image</>
+                          )}
+                          <input
+                            type="file"
+                            accept=".jpg,.jpeg,.png,.webp"
+                            onChange={handleCategoryImageUpload}
+                            className="hidden"
+                            disabled={categoryImageUploading}
+                          />
+                        </label>
+                        <p className="text-[10px] text-gray-400 mt-1">
+                          JPG, PNG, WebP · Max 5MB
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {categoryError && (
+                    <div className="sm:col-span-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+                      <p className="text-xs text-red-600 font-semibold m-0">
+                        ⚠️ {categoryError}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="sm:col-span-2 flex gap-3">
+                    <button
+                      type="submit"
+                      disabled={creatingCategory || updatingCategoryLoading}
+                      className="flex-1 bg-gradient-to-r from-[#4338ca] to-[#6366f1] text-white border-none rounded-xl py-3 text-sm font-bold cursor-pointer disabled:opacity-50 transition font-[inherit] hover:brightness-110 shadow-lg shadow-indigo-200"
+                    >
+                      {creatingCategory || updatingCategoryLoading
+                        ? "Saving..."
+                        : editingCategoryId
+                          ? "✓ Update Category"
+                          : "Create Category"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCategoryForm(false);
+                        setEditingCategoryId(null);
+                        setCategoryError("");
+                        setCategoryForm({
+                          name: "",
+                          description: "",
+                          parent: "",
+                          image: "",
+                        });
+                      }}
+                      className="bg-white text-gray-700 border border-gray-200 rounded-xl px-6 py-3 text-sm font-bold cursor-pointer hover:bg-gray-50 transition font-[inherit]"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {categoriesLoading && <Spinner text="Loading categories..." />}
+
+            <div className="flex flex-col gap-3">
+              {categoryData?.data?.length === 0 && !categoriesLoading && (
+                <EmptyState
+                  icon="📂"
+                  title="No categories yet"
+                  subtitle="Create your first category to organize products"
+                />
+              )}
+
+              {categoryData?.data?.map((cat) => (
+                <div
+                  key={cat._id}
+                  className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-all"
+                >
+                  <div className="p-4 sm:p-5 flex items-start gap-4">
+                    <div className="w-14 h-14 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-center overflow-hidden shrink-0">
+                      {cat.image ? (
+                        <img
+                          src={cat.image}
+                          alt={cat.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.style.display = "none";
+                          }}
+                        />
+                      ) : (
+                        <span className="text-2xl">
+                          {categoryIcons?.[cat.name?.toLowerCase()] || "📦"}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <h3 className="text-sm font-extrabold text-gray-900 m-0">
                           {cat.name}
                         </h3>
-                        {cat.description && (
-                          <p className="text-xs text-gray-400 mt-0.5 m-0">
-                            {cat.description}
-                          </p>
-                        )}
-                        {cat.children?.length > 0 && (
-                          <p className="text-[11px] text-gray-400 mt-0.5 m-0">
-                            {cat.children.length} subcategories
-                          </p>
-                        )}
+                        <span className="text-[10px] bg-indigo-100 text-[#4338ca] px-2 py-0.5 rounded-full font-bold">
+                          {cat.children?.length || 0} sub
+                        </span>
                       </div>
-                      <ActionBtn
-                        variant="delete"
-                        onClick={() => handleDeleteCategory(cat._id)}
-                      >
-                        Delete
-                      </ActionBtn>
+                      {cat.description && (
+                        <p className="text-xs text-gray-500 m-0 mb-1 line-clamp-1">
+                          {cat.description}
+                        </p>
+                      )}
+                      <p className="text-[10px] text-gray-400 m-0">
+                        Slug: {cat.slug}
+                      </p>
                     </div>
-                    {cat.children?.length > 0 && (
-                      <div className="mt-2.5 ml-5 border-l-2 border-indigo-100 pl-3.5 flex flex-col gap-1.5">
+                    <div className="flex gap-1.5 shrink-0 flex-wrap">
+                      <button
+                        onClick={() => openEditCategory(cat)}
+                        className="bg-blue-50 text-blue-800 border border-blue-200 rounded-lg px-3 py-1.5 text-xs font-bold cursor-pointer hover:bg-blue-100 transition font-[inherit]"
+                      >
+                        ✏️ Edit
+                      </button>
+                      {deletingCategoryId === cat._id ? (
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => handleDeleteCategory(cat._id)}
+                            className="bg-red-500 text-white border-none rounded-lg px-3 py-1.5 text-xs font-bold cursor-pointer hover:bg-red-600 transition font-[inherit]"
+                          >
+                            Confirm
+                          </button>
+                          <button
+                            onClick={() => setDeletingCategoryId(null)}
+                            className="bg-white text-gray-700 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs cursor-pointer hover:bg-gray-50 transition font-[inherit]"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setDeletingCategoryId(cat._id)}
+                          className="bg-red-50 text-red-800 border border-red-200 rounded-lg px-3 py-1.5 text-xs font-bold cursor-pointer hover:bg-red-100 transition font-[inherit]"
+                        >
+                          🗑️ Delete
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {cat.children?.length > 0 && (
+                    <div className="border-t border-gray-100 px-5 py-3 bg-gray-50">
+                      <div className="flex flex-col gap-2">
                         {cat.children.map((sub) => (
                           <div
                             key={sub._id}
-                            className="flex justify-between items-center"
+                            className="flex items-center gap-3 pl-4 border-l-2 border-indigo-200"
                           >
-                            <p className="text-xs font-semibold text-gray-700 m-0">
-                              {sub.name}
-                            </p>
-                            <button
-                              onClick={() => handleDeleteCategory(sub._id)}
-                              className="bg-red-50 text-red-800 border border-red-200 rounded-md px-2.5 py-1 text-[11px] font-bold cursor-pointer hover:bg-red-100 transition font-[inherit]"
-                            >
-                              Delete
-                            </button>
+                            <div className="w-8 h-8 bg-white rounded-lg border border-gray-200 flex items-center justify-center overflow-hidden shrink-0">
+                              {sub.image ? (
+                                <img
+                                  src={sub.image}
+                                  alt={sub.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <span className="text-sm">📁</span>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold text-gray-700 m-0">
+                                {sub.name}
+                              </p>
+                              {sub.description && (
+                                <p className="text-[10px] text-gray-400 m-0 truncate">
+                                  {sub.description}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex gap-1 shrink-0">
+                              <button
+                                onClick={() => openEditCategory(sub, cat._id)}
+                                className="bg-blue-50 text-blue-700 border border-blue-200 rounded-md px-2 py-1 text-[10px] font-bold cursor-pointer hover:bg-blue-100 transition font-[inherit]"
+                              >
+                                Edit
+                              </button>
+                              {deletingCategoryId === sub._id ? (
+                                <div className="flex gap-1">
+                                  <button
+                                    onClick={() =>
+                                      handleDeleteCategory(sub._id)
+                                    }
+                                    className="bg-red-500 text-white border-none rounded-md px-2 py-1 text-[10px] font-bold cursor-pointer font-[inherit]"
+                                  >
+                                    Yes
+                                  </button>
+                                  <button
+                                    onClick={() => setDeletingCategoryId(null)}
+                                    className="bg-white text-gray-700 border border-gray-200 rounded-md px-2 py-1 text-[10px] cursor-pointer font-[inherit]"
+                                  >
+                                    No
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => setDeletingCategoryId(sub._id)}
+                                  className="bg-red-50 text-red-800 border border-red-200 rounded-md px-2 py-1 text-[10px] font-bold cursor-pointer hover:bg-red-100 transition font-[inherit]"
+                                >
+                                  Delete
+                                </button>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         )}
