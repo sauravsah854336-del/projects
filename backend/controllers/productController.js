@@ -5,11 +5,27 @@ const Category = require("../models/category");
 
 const createProduct = async (req, res) => {
   try {
+
+    console.log("=== CREATE PRODUCT DEBUG ===");
+    console.log("Body keys:", Object.keys(req.body));
+    console.log("Has 'model' key?", "model" in req.body);
+    console.log("Has 'modelNumber' key?", "modelNumber" in req.body);
+    console.log("=========================");
     const {
-      name, description, shortDescription, category, brand,
-      price, comparePrice, costPrice, images, variants,
-      specifications, stock, lowStockThreshold, sku, weight, dimensions, tags,
+      name, description, shortDescription, keyFeatures,
+      category, brand, modelNumber,
+      price, comparePrice, costPrice, bulkPricing,
+      images, videoUrl, model3dUrl,
+      colors, sizes, materials, variants, specifications,
+      stock, lowStockThreshold, sku, barcode,
+      weight, weightUnit, dimensions,
+      roomType, assemblyRequired, assemblyTime,
+      warranty, returnPolicy, shipping,
+      faqs, seo, tags,
+      availableCountries, restrictedCountries, shippingCountries,
     } = req.body;
+
+    
 
     if (!name || !description || !category || !price || stock === undefined) {
       return res.status(400).json({
@@ -41,24 +57,45 @@ const createProduct = async (req, res) => {
       slug,
       description: description.trim(),
       shortDescription: shortDescription || "",
+      keyFeatures: keyFeatures || [],
       category,
       brand: brand || "",
+      modelNumber: modelNumber || "",
       price,
       basePrice: price,
       baseCurrency: "INR",
       comparePrice: comparePrice || 0,
       costPrice: costPrice || 0,
+      bulkPricing: bulkPricing || [],
       images: images || [],
+      videoUrl: videoUrl || "",
+      model3dUrl: model3dUrl || "",
+      colors: colors || [],
+      sizes: sizes || [],
+      materials: materials || [],
       variants: variants || [],
       specifications: specifications || [],
       stock,
       lowStockThreshold: lowStockThreshold || 5,
       sku: sku || "",
+      barcode: barcode || "",
       weight: weight || 0,
-      dimensions: dimensions || { length: 0, width: 0, height: 0 },
+      weightUnit: weightUnit || "kg",
+      dimensions: dimensions || { length: 0, width: 0, height: 0, unit: "cm" },
+      roomType: roomType || [],
+      assemblyRequired: assemblyRequired || false,
+      assemblyTime: assemblyTime || 0,
+      warranty: warranty || { duration: 0, unit: "months", type: "none", description: "" },
+      returnPolicy: returnPolicy || { returnable: true, returnWindow: 10, returnConditions: "" },
+      shipping: shipping || { isFreeShipping: false, shippingCost: 0, handlingTime: 1, estimatedDeliveryDays: 5 },
+      faqs: faqs || [],
+      seo: seo || { metaTitle: "", metaDescription: "", keywords: [] },
+      tags: tags || [],
+      availableCountries: availableCountries || [],
+      restrictedCountries: restrictedCountries || [],
+      shippingCountries: shippingCountries || [],
       vendor: req.user.id,
       vendorStore: vendor._id,
-      tags: tags || [],
       status: "approved",
       isActive: true,
     });
@@ -120,45 +157,47 @@ const updateProduct = async (req, res) => {
       return res.status(400).json({ success: false, message: "Cannot edit a delisted product" });
     }
 
-    const {
-      name, description, shortDescription, category, brand,
-      price, comparePrice, costPrice, images, variants,
-      specifications, stock, lowStockThreshold, sku, weight, dimensions, tags,
-    } = req.body;
+    const allowedFields = [
+      "name", "description", "shortDescription", "keyFeatures",
+      "category", "brand", "modelNumber",
+      "price", "comparePrice", "costPrice", "bulkPricing",
+      "images", "videoUrl", "model3dUrl",
+      "colors", "sizes", "materials", "variants", "specifications",
+      "stock", "lowStockThreshold", "sku", "barcode",
+      "weight", "weightUnit", "dimensions",
+      "roomType", "assemblyRequired", "assemblyTime",
+      "warranty", "returnPolicy", "shipping",
+      "faqs", "seo", "tags",
+      "availableCountries", "restrictedCountries", "shippingCountries",
+    ];
 
     const updateData = {};
 
-    if (name) {
-      updateData.name = name.trim();
-      let slug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    for (const field of allowedFields) {
+      if (req.body[field] !== undefined) {
+        updateData[field] = req.body[field];
+      }
+    }
+
+    if (updateData.name) {
+      updateData.name = updateData.name.trim();
+      let slug = updateData.name.toLowerCase().trim()
+        .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
       const existSlug = await Product.findOne({ slug, _id: { $ne: id } });
       if (existSlug) slug = `${slug}-${Date.now()}`;
       updateData.slug = slug;
     }
 
-    if (description) updateData.description = description.trim();
-    if (shortDescription !== undefined) updateData.shortDescription = shortDescription;
-    if (category) {
-      const catExists = await Category.findById(category);
+    if (updateData.description) updateData.description = updateData.description.trim();
+
+    if (updateData.category) {
+      const catExists = await Category.findById(updateData.category);
       if (!catExists) return res.status(404).json({ success: false, message: "Category not found" });
-      updateData.category = category;
     }
-    if (brand !== undefined) updateData.brand = brand;
-    if (price !== undefined) {
-      updateData.price = price;
-      updateData.basePrice = price;
+
+    if (updateData.price !== undefined) {
+      updateData.basePrice = updateData.price;
     }
-    if (comparePrice !== undefined) updateData.comparePrice = comparePrice;
-    if (costPrice !== undefined) updateData.costPrice = costPrice;
-    if (images) updateData.images = images;
-    if (variants) updateData.variants = variants;
-    if (specifications) updateData.specifications = specifications;
-    if (stock !== undefined) updateData.stock = stock;
-    if (lowStockThreshold !== undefined) updateData.lowStockThreshold = lowStockThreshold;
-    if (sku !== undefined) updateData.sku = sku;
-    if (weight !== undefined) updateData.weight = weight;
-    if (dimensions) updateData.dimensions = dimensions;
-    if (tags) updateData.tags = tags;
 
     const updated = await Product.findByIdAndUpdate(id, updateData, { new: true })
       .populate("category", "name slug");
@@ -198,7 +237,14 @@ const getAllProducts = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 12;
     const skip = (page - 1) * limit;
-    const { category, brand, minPrice, maxPrice, sort, search } = req.query;
+
+    const {
+      category, brand, brands, minPrice, maxPrice,
+      colors, sizes, materials, roomType,
+      minRating, inStock, hasDiscount, isFeatured, isNewArrival,
+      assemblyRequired, freeShipping,
+      sort, search, filterType,
+    } = req.query;
 
     const filter = { status: "approved", isActive: true, isDeleted: { $ne: true } };
 
@@ -207,11 +253,61 @@ const getAllProducts = async (req, res) => {
       const categoryIds = [category, ...subcategories.map((s) => s._id)];
       filter.category = { $in: categoryIds };
     }
+
     if (brand) filter.brand = brand;
+    if (brands) {
+      const brandArr = brands.split(",").filter(Boolean);
+      if (brandArr.length) filter.brand = { $in: brandArr };
+    }
+
     if (minPrice || maxPrice) {
       filter.price = {};
       if (minPrice) filter.price.$gte = Number(minPrice);
       if (maxPrice) filter.price.$lte = Number(maxPrice);
+    }
+
+    if (colors) {
+      const colorArr = colors.split(",").filter(Boolean);
+      if (colorArr.length) filter["colors.name"] = { $in: colorArr };
+    }
+
+    if (sizes) {
+      const sizeArr = sizes.split(",").filter(Boolean);
+      if (sizeArr.length) filter["sizes.name"] = { $in: sizeArr };
+    }
+
+    if (materials) {
+      const matArr = materials.split(",").filter(Boolean);
+      if (matArr.length) filter.materials = { $in: matArr };
+    }
+
+    if (roomType) {
+      const roomArr = roomType.split(",").filter(Boolean);
+      if (roomArr.length) filter.roomType = { $in: roomArr };
+    }
+
+    if (minRating) filter.averageRating = { $gte: Number(minRating) };
+    if (inStock === "true") filter.stock = { $gt: 0 };
+    if (hasDiscount === "true") filter.$expr = { $gt: ["$comparePrice", "$price"] };
+    if (isFeatured === "true") filter.isFeatured = true;
+    if (isNewArrival === "true") filter.isNewArrival = true;
+    if (assemblyRequired === "false") filter.assemblyRequired = false;
+    if (freeShipping === "true") filter["shipping.isFreeShipping"] = true;
+
+    if (filterType === "featured") {
+      filter.isFeatured = true;
+    }
+    if (filterType === "topRated") {
+      filter.averageRating = { $gte: 4 };
+    }
+    if (filterType === "bestSeller") {
+      filter.totalReviews = { $gte: 10 };
+    }
+    if (filterType === "discount") {
+      filter.$expr = { $gt: ["$comparePrice", "$price"] };
+    }
+    if (filterType === "newArrival") {
+      filter.isNewArrival = true;
     }
 
     if (search) {
@@ -225,38 +321,61 @@ const getAllProducts = async (req, res) => {
         isDeleted: { $ne: true },
       }).select("userId");
 
-      filter.$or = [
+      const searchOr = [
         { name: regex },
         { description: regex },
         { shortDescription: regex },
         { brand: regex },
+        { modelNumber: regex },
         { tags: regex },
+        { keyFeatures: regex },
+        { "colors.name": regex },
+        { "sizes.name": regex },
+        { materials: regex },
       ];
 
       if (matchingCategories.length > 0) {
-        filter.$or.push({ category: { $in: matchingCategories.map((c) => c._id) } });
+        searchOr.push({ category: { $in: matchingCategories.map((c) => c._id) } });
       }
       if (matchingVendors.length > 0) {
-        filter.$or.push({ vendor: { $in: matchingVendors.map((v) => v.userId) } });
+        searchOr.push({ vendor: { $in: matchingVendors.map((v) => v.userId) } });
       }
+
+      filter.$and = filter.$and || [];
+      filter.$and.push({ $or: searchOr });
     }
 
     let sortOption = { createdAt: -1 };
+
+    if (filterType === "topRated") {
+      sortOption = { averageRating: -1, totalReviews: -1 };
+    } else if (filterType === "bestSeller") {
+      sortOption = { totalSold: -1, totalReviews: -1 };
+    } else if (filterType === "discount") {
+      sortOption = { comparePrice: -1 };
+    } else if (filterType === "latest" || filterType === "newArrival") {
+      sortOption = { createdAt: -1 };
+    } else if (filterType === "featured") {
+      sortOption = { createdAt: -1 };
+    }
+
     if (sort === "price_low") sortOption = { price: 1 };
     if (sort === "price_high") sortOption = { price: -1 };
-    if (sort === "rating") sortOption = { averageRating: -1 };
+    if (sort === "rating") sortOption = { averageRating: -1, totalReviews: -1 };
     if (sort === "popular") sortOption = { totalSold: -1 };
     if (sort === "newest") sortOption = { createdAt: -1 };
+    if (sort === "discount") sortOption = { comparePrice: -1 };
 
-    const products = await Product.find(filter)
-      .populate("category", "name slug")
-      .populate("vendor", "firstName")
-      .populate("vendorStore", "storeName")
-      .sort(sortOption)
-      .skip(skip)
-      .limit(limit);
-
-    const total = await Product.countDocuments(filter);
+    const [products, total] = await Promise.all([
+      Product.find(filter)
+        .populate("category", "name slug")
+        .populate("vendor", "firstName")
+        .populate("vendorStore", "storeName")
+        .sort(sortOption)
+        .skip(skip)
+        .limit(limit),
+      Product.countDocuments(filter),
+    ]);
 
     return res.status(200).json({
       success: true,
@@ -530,6 +649,118 @@ const getVendorStats = async (req, res) => {
   }
 };
 
+const getProductFilters = async (req, res) => {
+  try {
+    const { category, search } = req.query;
+
+    const baseFilter = { status: "approved", isActive: true, isDeleted: { $ne: true } };
+
+    if (category) {
+      const subcategories = await Category.find({ parent: category }).select("_id");
+      const categoryIds = [category, ...subcategories.map((s) => s._id)];
+      baseFilter.category = { $in: categoryIds };
+    }
+
+    if (search) {
+      const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regex = new RegExp(escaped, "i");
+      baseFilter.$or = [
+        { name: regex }, { description: regex }, { brand: regex }, { tags: regex },
+      ];
+    }
+
+    const [brands, colors, materials, roomTypes, priceRange, ratingCounts] = await Promise.all([
+      Product.distinct("brand", { ...baseFilter, brand: { $ne: "" } }),
+      Product.aggregate([
+        { $match: baseFilter },
+        { $unwind: "$colors" },
+        { $group: { _id: "$colors.name", hex: { $first: "$colors.hex" }, count: { $sum: 1 } } },
+        { $match: { _id: { $ne: null, $ne: "" } } },
+        { $sort: { count: -1 } },
+      ]),
+      Product.aggregate([
+        { $match: baseFilter },
+        { $unwind: "$materials" },
+        { $group: { _id: "$materials", count: { $sum: 1 } } },
+        { $match: { _id: { $ne: null, $ne: "" } } },
+        { $sort: { count: -1 } },
+      ]),
+      Product.aggregate([
+        { $match: baseFilter },
+        { $unwind: "$roomType" },
+        { $group: { _id: "$roomType", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+      ]),
+      Product.aggregate([
+        { $match: baseFilter },
+        {
+          $group: {
+            _id: null,
+            min: { $min: "$price" },
+            max: { $max: "$price" },
+            avg: { $avg: "$price" },
+          },
+        },
+      ]),
+      Product.aggregate([
+        { $match: baseFilter },
+        {
+          $group: {
+            _id: null,
+            "5plus": { $sum: { $cond: [{ $gte: ["$averageRating", 5] }, 1, 0] } },
+            "4plus": { $sum: { $cond: [{ $gte: ["$averageRating", 4] }, 1, 0] } },
+            "3plus": { $sum: { $cond: [{ $gte: ["$averageRating", 3] }, 1, 0] } },
+            "2plus": { $sum: { $cond: [{ $gte: ["$averageRating", 2] }, 1, 0] } },
+            "1plus": { $sum: { $cond: [{ $gte: ["$averageRating", 1] }, 1, 0] } },
+          },
+        },
+      ]),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        brands: brands.filter(Boolean).sort(),
+        colors: colors.map((c) => ({ name: c._id, hex: c.hex || "", count: c.count })),
+        materials: materials.map((m) => ({ name: m._id, count: m.count })),
+        roomTypes: roomTypes.map((r) => ({ name: r._id, count: r.count })),
+        priceRange: priceRange[0] || { min: 0, max: 10000, avg: 500 },
+        ratings: ratingCounts[0] || { "5plus": 0, "4plus": 0, "3plus": 0, "2plus": 0, "1plus": 0 },
+      },
+    });
+  } catch (err) {
+    console.error("getProductFilters error:", err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+const getRelatedProducts = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const product = await Product.findById(id);
+    if (!product) {
+      return res.status(404).json({ success: false, message: "Product not found" });
+    }
+
+    const related = await Product.find({
+      _id: { $ne: id },
+      category: product.category,
+      status: "approved",
+      isActive: true,
+      isDeleted: { $ne: true },
+    })
+      .populate("category", "name slug")
+      .populate("vendorStore", "storeName")
+      .sort({ averageRating: -1, totalSold: -1 })
+      .limit(8);
+
+    return res.status(200).json({ success: true, data: related });
+  } catch (err) {
+    console.error("getRelatedProducts error:", err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 module.exports = {
   createProduct,
   getVendorProducts,
@@ -542,4 +773,6 @@ module.exports = {
   delistProduct,
   relistProduct,
   getVendorStats,
+  getProductFilters,
+  getRelatedProducts,
 };

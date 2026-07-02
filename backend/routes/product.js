@@ -13,12 +13,16 @@ const {
   delistProduct,
   relistProduct,
   getVendorStats,
+  getProductFilters,
+  getRelatedProducts,
 } = require("../controllers/productController");
 
 const router = express.Router();
 
 router.get("/", getAllProducts);
+router.get("/filters", getProductFilters);
 router.get("/single/:slug", getSingleProduct);
+router.get("/related/:id", getRelatedProducts);
 router.get("/vendor/stats", protect, authorized("vendor"), getVendorStats);
 router.get("/vendor", protect, authorized("vendor"), getVendorProducts);
 router.post("/", protect, authorized("vendor"), createProduct);
