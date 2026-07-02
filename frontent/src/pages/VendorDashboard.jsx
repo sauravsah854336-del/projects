@@ -32,28 +32,81 @@ const formatDate = (d) =>
   });
 
 const orderStatusConfig = {
-  confirmed: { bg: "bg-emerald-100", text: "text-emerald-800", label: "Confirmed", dot: "bg-emerald-500" },
-  processing: { bg: "bg-blue-100", text: "text-blue-800", label: "Processing", dot: "bg-blue-500" },
-  shipped: { bg: "bg-violet-100", text: "text-violet-800", label: "Shipped", dot: "bg-violet-500" },
-  out_for_delivery: { bg: "bg-amber-100", text: "text-amber-800", label: "Out for Delivery", dot: "bg-amber-500" },
-  delivered: { bg: "bg-green-100", text: "text-green-800", label: "Delivered", dot: "bg-green-500" },
-  cancelled: { bg: "bg-red-100", text: "text-red-800", label: "Cancelled", dot: "bg-red-500" },
-  approved: { bg: "bg-emerald-100", text: "text-emerald-800", label: "Live", dot: "bg-emerald-500" },
-  rejected: { bg: "bg-red-100", text: "text-red-800", label: "Rejected", dot: "bg-red-500" },
-  delisted: { bg: "bg-gray-100", text: "text-gray-600", label: "Delisted", dot: "bg-gray-400" },
+  confirmed: {
+    bg: "bg-emerald-100",
+    text: "text-emerald-800",
+    label: "Confirmed",
+    dot: "bg-emerald-500",
+  },
+  processing: {
+    bg: "bg-blue-100",
+    text: "text-blue-800",
+    label: "Processing",
+    dot: "bg-blue-500",
+  },
+  shipped: {
+    bg: "bg-violet-100",
+    text: "text-violet-800",
+    label: "Shipped",
+    dot: "bg-violet-500",
+  },
+  out_for_delivery: {
+    bg: "bg-amber-100",
+    text: "text-amber-800",
+    label: "Out for Delivery",
+    dot: "bg-amber-500",
+  },
+  delivered: {
+    bg: "bg-green-100",
+    text: "text-green-800",
+    label: "Delivered",
+    dot: "bg-green-500",
+  },
+  cancelled: {
+    bg: "bg-red-100",
+    text: "text-red-800",
+    label: "Cancelled",
+    dot: "bg-red-500",
+  },
+  approved: {
+    bg: "bg-emerald-100",
+    text: "text-emerald-800",
+    label: "Live",
+    dot: "bg-emerald-500",
+  },
+  rejected: {
+    bg: "bg-red-100",
+    text: "text-red-800",
+    label: "Rejected",
+    dot: "bg-red-500",
+  },
+  delisted: {
+    bg: "bg-gray-100",
+    text: "text-gray-600",
+    label: "Delisted",
+    dot: "bg-gray-400",
+  },
 };
 
 const Badge = ({ status }) => {
-  const cfg = orderStatusConfig[status] || { bg: "bg-gray-100", text: "text-gray-600", label: status, dot: "bg-gray-400" };
+  const cfg = orderStatusConfig[status] || {
+    bg: "bg-gray-100",
+    text: "text-gray-600",
+    label: status,
+    dot: "bg-gray-400",
+  };
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${cfg.bg} ${cfg.text}`}>
+    <span
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${cfg.bg} ${cfg.text}`}
+    >
       <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
       {cfg.label}
     </span>
   );
 };
 
-const inputCls = "w-full border-[1.5px] border-gray-200 rounded-xl px-3.5 py-[10px] text-sm text-gray-900 bg-gray-50 outline-none focus:border-[#4f46e5] focus:bg-white focus:ring-[3px] focus:ring-[#4f46e5]/10 transition-all font-[inherit] box-border placeholder:text-gray-400";
+const inputCls =
+  "w-full border-[1.5px] border-gray-200 rounded-xl px-3.5 py-[10px] text-sm text-gray-900 bg-gray-50 outline-none focus:border-[#4f46e5] focus:bg-white focus:ring-[3px] focus:ring-[#4f46e5]/10 transition-all font-[inherit] box-border placeholder:text-gray-400";
 const selectCls = `${inputCls} cursor-pointer`;
 
 const Lbl = ({ children, required }) => (
@@ -114,9 +167,13 @@ const PageBtn = ({ active, onClick, disabled, children }) => (
 
 const EmptyState = ({ icon, title, subtitle, action }) => (
   <div className="text-center py-16 bg-white rounded-2xl border border-gray-100 shadow-sm">
-    <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl">{icon}</div>
+    <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl">
+      {icon}
+    </div>
     <p className="text-base font-bold text-gray-900 m-0">{title}</p>
-    {subtitle && <p className="text-[13px] text-gray-500 mt-2 mb-5 m-0">{subtitle}</p>}
+    {subtitle && (
+      <p className="text-[13px] text-gray-500 mt-2 mb-5 m-0">{subtitle}</p>
+    )}
     {action}
   </div>
 );
@@ -128,19 +185,33 @@ const Spinner = ({ text }) => (
   </div>
 );
 
-const StatCard = ({ icon, label, value, sub, trend, iconBg = "bg-indigo-50", iconColor = "text-[#4f46e5]" }) => (
+const StatCard = ({
+  icon,
+  label,
+  value,
+  sub,
+  trend,
+  iconBg = "bg-indigo-50",
+  iconColor = "text-[#4f46e5]",
+}) => (
   <div className="bg-white rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100">
     <div className="flex items-center justify-between mb-4">
-      <div className={`w-12 h-12 ${iconBg} ${iconColor} rounded-xl flex items-center justify-center text-xl`}>
+      <div
+        className={`w-12 h-12 ${iconBg} ${iconColor} rounded-xl flex items-center justify-center text-xl`}
+      >
         {icon}
       </div>
       {trend !== undefined && (
-        <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${trend >= 0 ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"}`}>
+        <span
+          className={`text-xs font-bold px-2.5 py-1 rounded-full ${trend >= 0 ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"}`}
+        >
           {trend >= 0 ? "▲" : "▼"} {Math.abs(trend)}%
         </span>
       )}
     </div>
-    <p className="text-2xl font-black text-gray-900 m-0 leading-none">{value}</p>
+    <p className="text-2xl font-black text-gray-900 m-0 leading-none">
+      {value}
+    </p>
     <p className="text-sm text-gray-500 mt-1.5 m-0">{label}</p>
     {sub && <p className="text-xs text-gray-400 mt-0.5 m-0">{sub}</p>}
   </div>
@@ -148,29 +219,149 @@ const StatCard = ({ icon, label, value, sub, trend, iconBg = "bg-indigo-50", ico
 
 const MiniBar = ({ percent, color = "bg-[#4f46e5]" }) => (
   <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
-    <div className={`h-full ${color} rounded-full transition-all duration-700`} style={{ width: `${Math.min(percent, 100)}%` }} />
+    <div
+      className={`h-full ${color} rounded-full transition-all duration-700`}
+      style={{ width: `${Math.min(percent, 100)}%` }}
+    />
   </div>
 );
 
+const PillGroup = ({ options, selected, onToggle }) => (
+  <div className="flex flex-wrap gap-2">
+    {options.map((opt) => {
+      const value = typeof opt === "string" ? opt : opt.value;
+      const label = typeof opt === "string" ? opt : opt.label;
+      const isSelected = selected.includes(value);
+      return (
+        <button
+          key={value}
+          type="button"
+          onClick={() => onToggle(value)}
+          className={`px-3.5 py-1.5 rounded-full text-xs font-bold border-[1.5px] cursor-pointer transition-all font-[inherit] ${
+            isSelected
+              ? "bg-[#4f46e5] text-white border-[#4f46e5] shadow-md shadow-indigo-200"
+              : "bg-white text-gray-700 border-gray-200 hover:border-[#4f46e5] hover:text-[#4f46e5]"
+          }`}
+        >
+          {label}
+        </button>
+      );
+    })}
+  </div>
+);
+
+const commonMaterials = [
+  "Wood",
+  "Metal",
+  "Plastic",
+  "Glass",
+  "Fabric",
+  "Leather",
+  "Cotton",
+  "Polyester",
+  "Steel",
+  "Aluminum",
+  "Ceramic",
+  "Rubber",
+  "Silicone",
+  "Bamboo",
+];
+const commonSizes = ["XS", "S", "M", "L", "XL", "XXL", "3XL", "One Size"];
+const roomTypes = [
+  { value: "living-room", label: "🛋️ Living Room" },
+  { value: "bedroom", label: "🛏️ Bedroom" },
+  { value: "kitchen", label: "🍳 Kitchen" },
+  { value: "bathroom", label: "🚿 Bathroom" },
+  { value: "office", label: "💼 Office" },
+  { value: "outdoor", label: "🏡 Outdoor" },
+  { value: "kids-room", label: "🧸 Kids Room" },
+  { value: "dining-room", label: "🍽️ Dining Room" },
+  { value: "hallway", label: "🚪 Hallway" },
+  { value: "garage", label: "🚗 Garage" },
+];
+const specGroups = [
+  "General",
+  "Dimensions",
+  "Materials",
+  "Performance",
+  "Connectivity",
+  "Power",
+];
+
 const EMPTY_FORM = {
-  name: "", description: "", shortDescription: "", category: "", brand: "",
-  price: "", comparePrice: "", costPrice: "", stock: "", lowStockThreshold: "5",
-  sku: "", weight: "", dimensions: { length: "", width: "", height: "" }, tags: "",
+  name: "",
+  description: "",
+  shortDescription: "",
+  keyFeatures: [],
+  category: "",
+  brand: "",
+  modelNumber: "",
+  sku: "",
+  barcode: "",
+  price: "",
+  comparePrice: "",
+  costPrice: "",
+  bulkPricing: [],
+  stock: "",
+  lowStockThreshold: "5",
+  videoUrl: "",
+  model3dUrl: "",
+  colors: [],
+  sizes: [],
+  materials: [],
+  weight: "",
+  weightUnit: "kg",
+  dimensions: { length: "", width: "", height: "", unit: "cm" },
+  roomType: [],
+  assemblyRequired: false,
+  assemblyTime: "",
+  warranty: { duration: 0, unit: "months", type: "none", description: "" },
+  returnPolicy: {
+    returnable: true,
+    returnWindow: 10,
+    returnConditions: "Item must be unused and in original packaging",
+  },
+  shipping: {
+    isFreeShipping: false,
+    shippingCost: 0,
+    handlingTime: 1,
+    estimatedDeliveryDays: 5,
+  },
+  faqs: [],
+  tags: "",
 };
 
 const FORM_STEPS = [
-  { label: "Basic Info", icon: "📝" },
-  { label: "Pricing & Stock", icon: "💰" },
-  { label: "Images", icon: "🖼️" },
+  { label: "Basic", icon: "📝" },
+  { label: "Pricing", icon: "💰" },
+  { label: "Media", icon: "🖼️" },
   { label: "Variants", icon: "🎨" },
-  { label: "Specifications", icon: "📋" },
+  { label: "Details", icon: "📋" },
+  { label: "Policies", icon: "🛡️" },
+  { label: "Review", icon: "✓" },
 ];
 
 const ORDER_STATUS_FLOW = {
-  confirmed: { next: "processing", nextLabel: "⚙️ Start Processing", color: "bg-blue-500 hover:bg-blue-600 text-white" },
-  processing: { next: "shipped", nextLabel: "🚚 Mark Shipped", color: "bg-violet-500 hover:bg-violet-600 text-white" },
-  shipped: { next: "out_for_delivery", nextLabel: "🛵 Out for Delivery", color: "bg-amber-500 hover:bg-amber-600 text-white" },
-  out_for_delivery: { next: "delivered", nextLabel: "✅ Mark Delivered", color: "bg-green-500 hover:bg-green-600 text-white" },
+  confirmed: {
+    next: "processing",
+    nextLabel: "⚙️ Start Processing",
+    color: "bg-blue-500 hover:bg-blue-600 text-white",
+  },
+  processing: {
+    next: "shipped",
+    nextLabel: "🚚 Mark Shipped",
+    color: "bg-violet-500 hover:bg-violet-600 text-white",
+  },
+  shipped: {
+    next: "out_for_delivery",
+    nextLabel: "🛵 Out for Delivery",
+    color: "bg-amber-500 hover:bg-amber-600 text-white",
+  },
+  out_for_delivery: {
+    next: "delivered",
+    nextLabel: "✅ Mark Delivered",
+    color: "bg-green-500 hover:bg-green-600 text-white",
+  },
 };
 
 const VendorDashboard = () => {
@@ -187,14 +378,16 @@ const VendorDashboard = () => {
 
   const { data: categoryData } = useGetCategoryTreeQuery();
   const [statusFilter, setStatusFilter] = useState("");
-  const { data: productsData, isLoading: productsLoading } = useGetVendorProductsQuery({ status: statusFilter });
+  const { data: productsData, isLoading: productsLoading } =
+    useGetVendorProductsQuery({ status: statusFilter });
   const [createProduct, { isLoading: creating }] = useCreateProductMutation();
   const [updateProduct, { isLoading: updating }] = useUpdateProductMutation();
   const [deleteProduct] = useDeleteProductMutation();
 
   const [orderStatusFilter, setOrderStatusFilter] = useState("");
   const [orderPage, setOrderPage] = useState(1);
-  const { data: ordersData, isLoading: ordersLoading } = useVendorGetOrdersQuery({ status: orderStatusFilter, page: orderPage });
+  const { data: ordersData, isLoading: ordersLoading } =
+    useVendorGetOrdersQuery({ status: orderStatusFilter, page: orderPage });
   const [vendorUpdateOrderStatus] = useVendorUpdateOrderStatusMutation();
   const [cancellingOrderId, setCancellingOrderId] = useState(null);
   const [cancelReason, setCancelReason] = useState("");
@@ -202,9 +395,13 @@ const VendorDashboard = () => {
   const [reviewSort, setReviewSort] = useState("newest");
   const [reviewRatingFilter, setReviewRatingFilter] = useState(undefined);
   const [reviewPage, setReviewPage] = useState(1);
-  const { data: reviewsData, isLoading: reviewsLoading } = useVendorGetProductReviewsQuery({
-    sort: reviewSort, rating: reviewRatingFilter, page: reviewPage, limit: 10,
-  });
+  const { data: reviewsData, isLoading: reviewsLoading } =
+    useVendorGetProductReviewsQuery({
+      sort: reviewSort,
+      rating: reviewRatingFilter,
+      page: reviewPage,
+      limit: 10,
+    });
 
   const [formStep, setFormStep] = useState(1);
   const [showForm, setShowForm] = useState(false);
@@ -213,111 +410,380 @@ const VendorDashboard = () => {
   const [productImages, setProductImages] = useState([]);
   const [deletingId, setDeletingId] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
-  const [variants, setVariants] = useState([]);
   const [specifications, setSpecifications] = useState([]);
 
-  const categories = categoryData?.data || [];
+  const categories = [...(categoryData?.data || [])].sort(
+    (a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0),
+  );
   const allCategoryOptions = [];
   categories.forEach((cat) => {
     allCategoryOptions.push({ _id: cat._id, name: cat.name, level: 0 });
     (cat.children || []).forEach((sub) =>
-      allCategoryOptions.push({ _id: sub._id, name: `↳ ${sub.name}`, level: 1 })
+      allCategoryOptions.push({
+        _id: sub._id,
+        name: `↳ ${sub.name}`,
+        level: 1,
+      }),
     );
   });
 
   const resetForm = () => {
-    setForm(EMPTY_FORM); setProductImages([]); setVariants([]);
-    setSpecifications([]); setFormError(""); setFormStep(1); setEditingProduct(null);
+    setForm(EMPTY_FORM);
+    setProductImages([]);
+    setSpecifications([]);
+    setFormError("");
+    setFormStep(1);
+    setEditingProduct(null);
   };
 
-  const openAddForm = () => { resetForm(); setShowForm(true); setActiveTab("products"); };
+  const openAddForm = () => {
+    resetForm();
+    setShowForm(true);
+    setActiveTab("products");
+  };
 
   const openEditForm = (product) => {
     setEditingProduct(product);
     setForm({
-      name: product.name || "", description: product.description || "",
-      shortDescription: product.shortDescription || "", category: product.category?._id || "",
-      brand: product.brand || "", price: product.price || "", comparePrice: product.comparePrice || "",
-      costPrice: product.costPrice || "", stock: product.stock || "",
-      lowStockThreshold: product.lowStockThreshold || "5", sku: product.sku || "",
+      name: product.name || "",
+      description: product.description || "",
+      shortDescription: product.shortDescription || "",
+      keyFeatures: product.keyFeatures || [],
+      category: product.category?._id || "",
+      brand: product.brand || "",
+      modelNumber: product.modelNumber || "",
+      sku: product.sku || "",
+      barcode: product.barcode || "",
+      price: product.price || "",
+      comparePrice: product.comparePrice || "",
+      costPrice: product.costPrice || "",
+      bulkPricing: product.bulkPricing || [],
+      stock: product.stock || "",
+      lowStockThreshold: product.lowStockThreshold || "5",
+      videoUrl: product.videoUrl || "",
+      model3dUrl: product.model3dUrl || "",
+      colors: product.colors || [],
+      sizes: product.sizes || [],
+      materials: product.materials || [],
       weight: product.weight || "",
-      dimensions: { length: product.dimensions?.length || "", width: product.dimensions?.width || "", height: product.dimensions?.height || "" },
+      weightUnit: product.weightUnit || "kg",
+      dimensions: {
+        length: product.dimensions?.length || "",
+        width: product.dimensions?.width || "",
+        height: product.dimensions?.height || "",
+        unit: product.dimensions?.unit || "cm",
+      },
+      roomType: product.roomType || [],
+      assemblyRequired: product.assemblyRequired || false,
+      assemblyTime: product.assemblyTime || "",
+      warranty: product.warranty || {
+        duration: 0,
+        unit: "months",
+        type: "none",
+        description: "",
+      },
+      returnPolicy: product.returnPolicy || {
+        returnable: true,
+        returnWindow: 10,
+        returnConditions: "",
+      },
+      shipping: product.shipping || {
+        isFreeShipping: false,
+        shippingCost: 0,
+        handlingTime: 1,
+        estimatedDeliveryDays: 5,
+      },
+      faqs: product.faqs || [],
       tags: product.tags?.join(", ") || "",
     });
-    setProductImages(product.images?.map((img) => ({ url: img.url, filename: img.url.split("/").pop(), isDefault: img.isDefault })) || []);
-    setVariants(product.variants || []);
+    setProductImages(
+      product.images?.map((img) => ({
+        url: img.url,
+        filename: img.url.split("/").pop(),
+        isDefault: img.isDefault,
+      })) || [],
+    );
     setSpecifications(product.specifications || []);
     setFormStep(1);
     setShowForm(true);
   };
 
-  const closeForm = () => { setShowForm(false); resetForm(); };
+  const closeForm = () => {
+    setShowForm(false);
+    resetForm();
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     if (name.startsWith("dim_")) {
       const key = name.replace("dim_", "");
-      setForm((prev) => ({ ...prev, dimensions: { ...prev.dimensions, [key]: value } }));
+      setForm((prev) => ({
+        ...prev,
+        dimensions: { ...prev.dimensions, [key]: value },
+      }));
     } else {
       setForm((prev) => ({ ...prev, [name]: value }));
     }
     setFormError("");
   };
 
+  const updateNested = (parent, field, value) =>
+    setForm((prev) => ({
+      ...prev,
+      [parent]: { ...prev[parent], [field]: value },
+    }));
+
   const validateStep = (step) => {
     if (step === 1) {
       if (!form.name.trim()) return "Product name is required";
-      if (form.name.trim().length < 3) return "Product name must be at least 3 characters";
+      if (form.name.trim().length < 3)
+        return "Product name must be at least 3 characters";
       if (!form.category) return "Category is required";
       if (!form.description.trim()) return "Description is required";
-      if (form.description.trim().length < 20) return "Description must be at least 20 characters";
+      if (form.description.trim().length < 20)
+        return "Description must be at least 20 characters";
     }
     if (step === 2) {
-      if (!form.price || Number(form.price) <= 0) return "Valid price is required";
-      if (!form.stock || Number(form.stock) < 0) return "Valid stock quantity is required";
-      if (form.comparePrice && Number(form.comparePrice) < Number(form.price)) return "Compare price should be higher than selling price";
+      if (!form.price || Number(form.price) <= 0)
+        return "Valid price is required";
+      if (form.stock === "" || Number(form.stock) < 0)
+        return "Valid stock quantity is required";
+      if (form.comparePrice && Number(form.comparePrice) < Number(form.price))
+        return "Compare price should be higher than selling price";
     }
     if (step === 3) {
-      if (productImages.length === 0) return "At least one product image is required";
+      if (productImages.length === 0)
+        return "At least one product image is required";
     }
     return null;
   };
 
   const handleNext = () => {
     const err = validateStep(formStep);
-    if (err) { setFormError(err); return; }
-    setFormError(""); setFormStep((s) => s + 1);
+    if (err) {
+      setFormError(err);
+      return;
+    }
+    setFormError("");
+    setFormStep((s) => s + 1);
   };
-  const handleBack = () => { setFormError(""); setFormStep((s) => s - 1); };
+  const handleBack = () => {
+    setFormError("");
+    setFormStep((s) => s - 1);
+  };
 
-  const addVariant = () => setVariants((prev) => [...prev, { name: "", options: [{ label: "", value: "", priceModifier: 0 }] }]);
-  const updateVariantName = (i, name) => setVariants((prev) => prev.map((v, idx) => idx === i ? { ...v, name } : v));
-  const addVariantOption = (vi) => setVariants((prev) => prev.map((v, i) => i === vi ? { ...v, options: [...v.options, { label: "", value: "", priceModifier: 0 }] } : v));
-  const updateVariantOption = (vi, oi, key, value) => setVariants((prev) => prev.map((v, i) => i === vi ? { ...v, options: v.options.map((opt, j) => j === oi ? { ...opt, [key]: value } : opt) } : v));
-  const removeVariantOption = (vi, oi) => setVariants((prev) => prev.map((v, i) => i === vi ? { ...v, options: v.options.filter((_, j) => j !== oi) } : v));
-  const removeVariant = (i) => setVariants((prev) => prev.filter((_, idx) => idx !== i));
-  const addSpec = () => setSpecifications((prev) => [...prev, { key: "", value: "" }]);
-  const updateSpec = (i, field, value) => setSpecifications((prev) => prev.map((s, idx) => idx === i ? { ...s, [field]: value } : s));
-  const removeSpec = (i) => setSpecifications((prev) => prev.filter((_, idx) => idx !== i));
+  const addKeyFeature = () => {
+    if (form.keyFeatures.length >= 8) return;
+    setForm((prev) => ({ ...prev, keyFeatures: [...prev.keyFeatures, ""] }));
+  };
+  const updateKeyFeature = (i, value) =>
+    setForm((prev) => ({
+      ...prev,
+      keyFeatures: prev.keyFeatures.map((f, idx) => (idx === i ? value : f)),
+    }));
+  const removeKeyFeature = (i) =>
+    setForm((prev) => ({
+      ...prev,
+      keyFeatures: prev.keyFeatures.filter((_, idx) => idx !== i),
+    }));
+
+  const addBulkTier = () => {
+    if (form.bulkPricing.length >= 5) return;
+    setForm((prev) => ({
+      ...prev,
+      bulkPricing: [...prev.bulkPricing, { minQuantity: "", pricePerUnit: "" }],
+    }));
+  };
+  const updateBulkTier = (i, field, value) =>
+    setForm((prev) => ({
+      ...prev,
+      bulkPricing: prev.bulkPricing.map((b, idx) =>
+        idx === i ? { ...b, [field]: value } : b,
+      ),
+    }));
+  const removeBulkTier = (i) =>
+    setForm((prev) => ({
+      ...prev,
+      bulkPricing: prev.bulkPricing.filter((_, idx) => idx !== i),
+    }));
+
+  const addColor = () =>
+    setForm((prev) => ({
+      ...prev,
+      colors: [...prev.colors, { name: "", hex: "#000000", image: "" }],
+    }));
+  const updateColor = (i, field, value) =>
+    setForm((prev) => ({
+      ...prev,
+      colors: prev.colors.map((c, idx) =>
+        idx === i ? { ...c, [field]: value } : c,
+      ),
+    }));
+  const removeColor = (i) =>
+    setForm((prev) => ({
+      ...prev,
+      colors: prev.colors.filter((_, idx) => idx !== i),
+    }));
+
+  const addSize = () =>
+    setForm((prev) => ({
+      ...prev,
+      sizes: [...prev.sizes, { name: "", stock: 0, priceModifier: 0 }],
+    }));
+  const updateSize = (i, field, value) =>
+    setForm((prev) => ({
+      ...prev,
+      sizes: prev.sizes.map((s, idx) =>
+        idx === i ? { ...s, [field]: value } : s,
+      ),
+    }));
+  const removeSize = (i) =>
+    setForm((prev) => ({
+      ...prev,
+      sizes: prev.sizes.filter((_, idx) => idx !== i),
+    }));
+  const quickAddSize = (sizeName) => {
+    if (form.sizes.some((s) => s.name === sizeName)) return;
+    setForm((prev) => ({
+      ...prev,
+      sizes: [...prev.sizes, { name: sizeName, stock: 0, priceModifier: 0 }],
+    }));
+  };
+
+  const toggleMaterial = (mat) => {
+    const has = form.materials.includes(mat);
+    setForm((prev) => ({
+      ...prev,
+      materials: has
+        ? prev.materials.filter((m) => m !== mat)
+        : [...prev.materials, mat],
+    }));
+  };
+
+  const toggleRoom = (room) => {
+    const has = form.roomType.includes(room);
+    setForm((prev) => ({
+      ...prev,
+      roomType: has
+        ? prev.roomType.filter((r) => r !== room)
+        : [...prev.roomType, room],
+    }));
+  };
+
+  const addSpec = () =>
+    setSpecifications((prev) => [
+      ...prev,
+      { key: "", value: "", group: "General" },
+    ]);
+  const updateSpec = (i, field, value) =>
+    setSpecifications((prev) =>
+      prev.map((s, idx) => (idx === i ? { ...s, [field]: value } : s)),
+    );
+  const removeSpec = (i) =>
+    setSpecifications((prev) => prev.filter((_, idx) => idx !== i));
+
+  const addFaq = () =>
+    setForm((prev) => ({
+      ...prev,
+      faqs: [...prev.faqs, { question: "", answer: "" }],
+    }));
+  const updateFaq = (i, field, value) =>
+    setForm((prev) => ({
+      ...prev,
+      faqs: prev.faqs.map((f, idx) =>
+        idx === i ? { ...f, [field]: value } : f,
+      ),
+    }));
+  const removeFaq = (i) =>
+    setForm((prev) => ({
+      ...prev,
+      faqs: prev.faqs.filter((_, idx) => idx !== i),
+    }));
 
   const handleSubmit = async () => {
     setFormError("");
+    const safeTrim = (v) => (typeof v === "string" ? v.trim() : "");
+
     const productData = {
-      name: form.name.trim(), description: form.description.trim(),
-      shortDescription: form.shortDescription.trim(), category: form.category,
-      brand: form.brand.trim(), price: Number(form.price),
-      comparePrice: Number(form.comparePrice) || 0, costPrice: Number(form.costPrice) || 0,
-      stock: Number(form.stock), lowStockThreshold: Number(form.lowStockThreshold) || 5,
-      sku: form.sku.trim(), weight: Number(form.weight) || 0,
-      dimensions: { length: Number(form.dimensions.length) || 0, width: Number(form.dimensions.width) || 0, height: Number(form.dimensions.height) || 0 },
-      tags: form.tags.split(",").map((t) => t.trim()).filter((t) => t),
-      images: productImages.map((img, index) => ({ url: img.url, alt: form.name, isDefault: index === 0 })),
-      variants: variants.filter((v) => v.name.trim()),
-      specifications: specifications.filter((s) => s.key.trim() && s.value.trim()),
+      name: safeTrim(form.name),
+      description: safeTrim(form.description),
+      shortDescription: safeTrim(form.shortDescription),
+      keyFeatures: form.keyFeatures.filter((f) => f && f.trim()),
+      category: form.category,
+      brand: safeTrim(form.brand),
+      modelNumber: safeTrim(form.modelNumber),
+      sku: safeTrim(form.sku),
+      barcode: safeTrim(form.barcode),
+      price: Number(form.price),
+      comparePrice: Number(form.comparePrice) || 0,
+      costPrice: Number(form.costPrice) || 0,
+      bulkPricing: form.bulkPricing
+        .filter((b) => b.minQuantity && b.pricePerUnit)
+        .map((b) => ({
+          minQuantity: Number(b.minQuantity),
+          pricePerUnit: Number(b.pricePerUnit),
+        })),
+      stock: Number(form.stock),
+      lowStockThreshold: Number(form.lowStockThreshold) || 5,
+      videoUrl: safeTrim(form.videoUrl),
+      model3dUrl: safeTrim(form.model3dUrl),
+      colors: form.colors.filter((c) => c.name && c.name.trim()),
+      sizes: form.sizes
+        .filter((s) => s.name && s.name.trim())
+        .map((s) => ({
+          name: s.name.trim(),
+          stock: Number(s.stock) || 0,
+          priceModifier: Number(s.priceModifier) || 0,
+        })),
+      materials: form.materials,
+      weight: Number(form.weight) || 0,
+      weightUnit: form.weightUnit,
+      dimensions: {
+        length: Number(form.dimensions.length) || 0,
+        width: Number(form.dimensions.width) || 0,
+        height: Number(form.dimensions.height) || 0,
+        unit: form.dimensions.unit,
+      },
+      roomType: form.roomType,
+      assemblyRequired: form.assemblyRequired,
+      assemblyTime: Number(form.assemblyTime) || 0,
+      warranty: {
+        ...form.warranty,
+        duration: Number(form.warranty.duration) || 0,
+      },
+      returnPolicy: {
+        ...form.returnPolicy,
+        returnWindow: Number(form.returnPolicy.returnWindow) || 0,
+      },
+      shipping: {
+        ...form.shipping,
+        shippingCost: Number(form.shipping.shippingCost) || 0,
+        handlingTime: Number(form.shipping.handlingTime) || 1,
+        estimatedDeliveryDays: Number(form.shipping.estimatedDeliveryDays) || 5,
+      },
+      faqs: form.faqs.filter(
+        (f) => f.question && f.question.trim() && f.answer && f.answer.trim(),
+      ),
+      tags: (form.tags || "")
+        .split(",")
+        .map((t) => t.trim().toLowerCase())
+        .filter((t) => t),
+      images: productImages.map((img, index) => ({
+        url: img.url,
+        alt: form.name,
+        isDefault: index === 0,
+      })),
+      specifications: specifications.filter(
+        (s) => s.key && s.key.trim() && s.value && s.value.trim(),
+      ),
     };
+
     try {
       if (editingProduct) {
-        await updateProduct({ id: editingProduct._id, ...productData }).unwrap();
+        await updateProduct({
+          id: editingProduct._id,
+          ...productData,
+        }).unwrap();
         toast.success("Product updated successfully!");
       } else {
         await createProduct(productData).unwrap();
@@ -326,20 +792,27 @@ const VendorDashboard = () => {
       closeForm();
     } catch (err) {
       const msg = err?.data?.message || "Failed to save product";
-      setFormError(msg); toast.error(msg);
+      setFormError(msg);
+      toast.error(msg);
     }
   };
 
   const handleDelete = async (id) => {
-    try { await deleteProduct(id).unwrap(); setDeletingId(null); toast.success("Product deleted"); }
-    catch (err) { toast.error(err?.data?.message || "Failed to delete"); }
+    try {
+      await deleteProduct(id).unwrap();
+      setDeletingId(null);
+      toast.success("Product deleted");
+    } catch (err) {
+      toast.error(err?.data?.message || "Failed to delete");
+    }
   };
 
   const handleVendorUpdateStatus = async (orderId, status, reason) => {
     try {
       await vendorUpdateOrderStatus({ id: orderId, status, reason }).unwrap();
       toast.success(`Order → ${orderStatusConfig[status]?.label || status}`);
-      setCancellingOrderId(null); setCancelReason("");
+      setCancellingOrderId(null);
+      setCancelReason("");
     } catch (err) {
       toast.error(err?.data?.message || "Failed to update order status");
     }
@@ -347,15 +820,26 @@ const VendorDashboard = () => {
 
   const ratingBreakdown = reviewsData?.ratingBreakdown || {};
   const totalReviews = reviewsData?.pagination?.total || 0;
-  const avgRating = totalReviews > 0
-    ? (Object.entries(ratingBreakdown).reduce((sum, [star, count]) => sum + Number(star) * count, 0) / totalReviews).toFixed(1)
-    : "0.0";
+  const avgRating =
+    totalReviews > 0
+      ? (
+          Object.entries(ratingBreakdown).reduce(
+            (sum, [star, count]) => sum + Number(star) * count,
+            0,
+          ) / totalReviews
+        ).toFixed(1)
+      : "0.0";
 
   const isSubmitting = creating || updating;
-  const dailyData = stats?.revenue?.daily ? Object.entries(stats.revenue.daily) : [];
-  const maxDaily = dailyData.length > 0 ? Math.max(...dailyData.map(([, v]) => v), 1) : 1;
-  const pendingOrdersCount = ordersData?.data?.filter((o) => o.orderStatus === "confirmed").length || 0;
-  const couponOrdersCount = ordersData?.data?.filter((o) => o.couponCode).length || 0;
+  const dailyData = stats?.revenue?.daily
+    ? Object.entries(stats.revenue.daily)
+    : [];
+  const maxDaily =
+    dailyData.length > 0 ? Math.max(...dailyData.map(([, v]) => v), 1) : 1;
+  const pendingOrdersCount =
+    ordersData?.data?.filter((o) => o.orderStatus === "confirmed").length || 0;
+  const couponOrdersCount =
+    ordersData?.data?.filter((o) => o.couponCode).length || 0;
 
   const greeting = () => {
     const h = new Date().getHours();
@@ -363,6 +847,16 @@ const VendorDashboard = () => {
     if (h < 17) return "Good Afternoon";
     return "Good Evening";
   };
+
+  const price = Number(form.price) || 0;
+  const comparePrice = Number(form.comparePrice) || 0;
+  const costPrice = Number(form.costPrice) || 0;
+  const discountPct =
+    comparePrice > price
+      ? Math.round(((comparePrice - price) / comparePrice) * 100)
+      : 0;
+  const profit = price - costPrice;
+  const profitMargin = price > 0 ? Math.round((profit / price) * 100) : 0;
 
   return (
     <div className="bg-gray-50 min-h-screen">
@@ -384,7 +878,14 @@ const VendorDashboard = () => {
               >
                 <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-[#4f46e5] font-black text-xl shadow-lg overflow-hidden group-hover:scale-105 transition-transform">
                   {user?.avatar ? (
-                    <img src={user.avatar} alt="" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = "none"; }} />
+                    <img
+                      src={user.avatar}
+                      alt=""
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                      }}
+                    />
                   ) : (
                     user?.firstName?.[0]?.toUpperCase()
                   )}
@@ -392,7 +893,9 @@ const VendorDashboard = () => {
                 <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white shadow" />
               </button>
               <div>
-                <p className="text-indigo-100 text-xs font-medium m-0">{greeting()} 👋</p>
+                <p className="text-indigo-100 text-xs font-medium m-0">
+                  {greeting()} 👋
+                </p>
                 <h1 className="text-white font-black text-xl sm:text-2xl m-0 mt-0.5">
                   {user?.firstName} {user?.lastName}
                 </h1>
@@ -418,14 +921,23 @@ const VendorDashboard = () => {
                   className="flex items-center gap-2 bg-white/15 border border-white/25 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl cursor-pointer hover:bg-white/25 transition font-[inherit]"
                 >
                   <span className="w-2 h-2 bg-yellow-300 rounded-full animate-pulse" />
-                  {pendingOrdersCount} new order{pendingOrdersCount > 1 ? "s" : ""}
+                  {pendingOrdersCount} new order
+                  {pendingOrdersCount > 1 ? "s" : ""}
                 </button>
               )}
               <button
                 onClick={() => navigate("/vendor/profile")}
                 className="flex items-center gap-2 bg-white/10 border border-white/20 text-white text-sm font-semibold px-4 py-2.5 rounded-xl cursor-pointer hover:bg-white/20 transition font-[inherit]"
               >
-                <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round">
+                <svg
+                  width="14"
+                  height="14"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                  strokeLinecap="round"
+                >
                   <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
                   <circle cx="12" cy="7" r="4" />
                 </svg>
@@ -435,7 +947,15 @@ const VendorDashboard = () => {
                 onClick={openAddForm}
                 className="flex items-center gap-2 bg-white text-[#4f46e5] border-none rounded-xl px-4 py-2.5 text-sm font-extrabold cursor-pointer shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all font-[inherit]"
               >
-                <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" strokeLinecap="round">
+                <svg
+                  width="14"
+                  height="14"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  viewBox="0 0 24 24"
+                  strokeLinecap="round"
+                >
                   <path d="M12 5v14M5 12h14" />
                 </svg>
                 Add Product
@@ -446,16 +966,39 @@ const VendorDashboard = () => {
           {!statsLoading && stats && (
             <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
-                { label: "Total Revenue", value: formatRupee(stats?.revenue?.total), icon: "💰" },
-                { label: "This Month", value: formatRupee(stats?.revenue?.thisMonth), icon: "📅" },
-                { label: "Total Orders", value: stats?.orders?.total || 0, icon: "🛒" },
-                { label: "Products Live", value: stats?.products?.approved || 0, icon: "📦" },
+                {
+                  label: "Total Revenue",
+                  value: formatRupee(stats?.revenue?.total),
+                  icon: "💰",
+                },
+                {
+                  label: "This Month",
+                  value: formatRupee(stats?.revenue?.thisMonth),
+                  icon: "📅",
+                },
+                {
+                  label: "Total Orders",
+                  value: stats?.orders?.total || 0,
+                  icon: "🛒",
+                },
+                {
+                  label: "Products Live",
+                  value: stats?.products?.approved || 0,
+                  icon: "📦",
+                },
               ].map((item) => (
-                <div key={item.label} className="bg-white/15 backdrop-blur-sm border border-white/20 rounded-2xl px-4 py-3.5 flex items-center gap-3">
+                <div
+                  key={item.label}
+                  className="bg-white/15 backdrop-blur-sm border border-white/20 rounded-2xl px-4 py-3.5 flex items-center gap-3"
+                >
                   <span className="text-2xl">{item.icon}</span>
                   <div>
-                    <p className="text-white font-extrabold text-lg m-0 leading-none">{item.value}</p>
-                    <p className="text-indigo-100 text-[11px] mt-0.5 m-0">{item.label}</p>
+                    <p className="text-white font-extrabold text-lg m-0 leading-none">
+                      {item.value}
+                    </p>
+                    <p className="text-indigo-100 text-[11px] mt-0.5 m-0">
+                      {item.label}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -466,7 +1009,12 @@ const VendorDashboard = () => {
             {[
               { key: "overview", label: "Overview", icon: "📊" },
               { key: "products", label: "Products", icon: "📦" },
-              { key: "orders", label: "Orders", icon: "🛒", badge: pendingOrdersCount },
+              {
+                key: "orders",
+                label: "Orders",
+                icon: "🛒",
+                badge: pendingOrdersCount,
+              },
               { key: "reviews", label: "Reviews", icon: "⭐" },
             ].map((tab) => (
               <TabBtn
@@ -483,35 +1031,57 @@ const VendorDashboard = () => {
       </div>
 
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
-
         {activeTab === "overview" && (
           <div className="flex flex-col gap-5 fade-up">
             {statsLoading ? (
               <Spinner text="Loading your dashboard..." />
             ) : (
               <>
-                {(stats?.products?.outOfStock > 0 || pendingOrdersCount > 0) && (
+                {(stats?.products?.outOfStock > 0 ||
+                  pendingOrdersCount > 0) && (
                   <div className="flex flex-col sm:flex-row gap-3">
                     {stats?.products?.outOfStock > 0 && (
                       <div className="flex-1 bg-red-50 border border-red-200 rounded-2xl px-5 py-4 flex items-center gap-3.5">
-                        <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center text-xl shrink-0">⚠️</div>
-                        <div className="flex-1">
-                          <p className="text-sm font-bold text-red-800 m-0">{stats.products.outOfStock} product{stats.products.outOfStock > 1 ? "s" : ""} out of stock</p>
-                          <p className="text-xs text-red-500 m-0 mt-0.5">Update inventory to avoid losing sales</p>
+                        <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center text-xl shrink-0">
+                          ⚠️
                         </div>
-                        <button onClick={() => setActiveTab("products")} className="text-xs font-bold text-red-700 bg-red-100 border border-red-200 rounded-lg px-3 py-1.5 cursor-pointer hover:bg-red-200 transition font-[inherit] whitespace-nowrap">
+                        <div className="flex-1">
+                          <p className="text-sm font-bold text-red-800 m-0">
+                            {stats.products.outOfStock} product
+                            {stats.products.outOfStock > 1 ? "s" : ""} out of
+                            stock
+                          </p>
+                          <p className="text-xs text-red-500 m-0 mt-0.5">
+                            Update inventory to avoid losing sales
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setActiveTab("products")}
+                          className="text-xs font-bold text-red-700 bg-red-100 border border-red-200 rounded-lg px-3 py-1.5 cursor-pointer hover:bg-red-200 transition font-[inherit] whitespace-nowrap"
+                        >
                           Fix Now →
                         </button>
                       </div>
                     )}
                     {pendingOrdersCount > 0 && (
                       <div className="flex-1 bg-indigo-50 border border-indigo-200 rounded-2xl px-5 py-4 flex items-center gap-3.5">
-                        <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center text-xl shrink-0">🛒</div>
-                        <div className="flex-1">
-                          <p className="text-sm font-bold text-indigo-800 m-0">{pendingOrdersCount} order{pendingOrdersCount > 1 ? "s" : ""} waiting to be processed</p>
-                          <p className="text-xs text-indigo-500 m-0 mt-0.5">Process quickly to maintain good ratings</p>
+                        <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center text-xl shrink-0">
+                          🛒
                         </div>
-                        <button onClick={() => setActiveTab("orders")} className="text-xs font-bold text-indigo-700 bg-indigo-100 border border-indigo-200 rounded-lg px-3 py-1.5 cursor-pointer hover:bg-indigo-200 transition font-[inherit] whitespace-nowrap">
+                        <div className="flex-1">
+                          <p className="text-sm font-bold text-indigo-800 m-0">
+                            {pendingOrdersCount} order
+                            {pendingOrdersCount > 1 ? "s" : ""} waiting to be
+                            processed
+                          </p>
+                          <p className="text-xs text-indigo-500 m-0 mt-0.5">
+                            Process quickly to maintain good ratings
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setActiveTab("orders")}
+                          className="text-xs font-bold text-indigo-700 bg-indigo-100 border border-indigo-200 rounded-lg px-3 py-1.5 cursor-pointer hover:bg-indigo-200 transition font-[inherit] whitespace-nowrap"
+                        >
                           Process →
                         </button>
                       </div>
@@ -527,10 +1097,12 @@ const VendorDashboard = () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-extrabold text-green-800 m-0">
-                          {couponOrdersCount} order{couponOrdersCount > 1 ? "s" : ""} placed with coupons
+                          {couponOrdersCount} order
+                          {couponOrdersCount > 1 ? "s" : ""} placed with coupons
                         </p>
                         <p className="text-xs text-green-600 m-0 mt-1">
-                          💡 Customers using coupons boost your sales! Platform absorbs the discount, you get your full earnings.
+                          💡 Customers using coupons boost your sales! Platform
+                          absorbs the discount, you get your full earnings.
                         </p>
                       </div>
                       <button
@@ -544,32 +1116,80 @@ const VendorDashboard = () => {
                 )}
 
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  <StatCard icon="💰" label="Total Revenue" value={formatRupee(stats?.revenue?.total)} sub="All time earnings" trend={stats?.revenue?.monthlyGrowth} iconBg="bg-indigo-50" iconColor="text-[#4f46e5]" />
-                  <StatCard icon="📅" label="This Month" value={formatRupee(stats?.revenue?.thisMonth)} sub={`Last: ${formatRupee(stats?.revenue?.lastMonth)}`} iconBg="bg-blue-50" iconColor="text-blue-600" />
-                  <StatCard icon="🛒" label="Total Orders" value={stats?.orders?.total || 0} sub={`${stats?.orders?.last30Days || 0} last 30 days`} iconBg="bg-violet-50" iconColor="text-violet-600" />
-                  <StatCard icon="📦" label="Total Products" value={stats?.products?.total || 0} sub={`${stats?.products?.approved || 0} live`} iconBg="bg-emerald-50" iconColor="text-emerald-600" />
+                  <StatCard
+                    icon="💰"
+                    label="Total Revenue"
+                    value={formatRupee(stats?.revenue?.total)}
+                    sub="All time earnings"
+                    trend={stats?.revenue?.monthlyGrowth}
+                    iconBg="bg-indigo-50"
+                    iconColor="text-[#4f46e5]"
+                  />
+                  <StatCard
+                    icon="📅"
+                    label="This Month"
+                    value={formatRupee(stats?.revenue?.thisMonth)}
+                    sub={`Last: ${formatRupee(stats?.revenue?.lastMonth)}`}
+                    iconBg="bg-blue-50"
+                    iconColor="text-blue-600"
+                  />
+                  <StatCard
+                    icon="🛒"
+                    label="Total Orders"
+                    value={stats?.orders?.total || 0}
+                    sub={`${stats?.orders?.last30Days || 0} last 30 days`}
+                    iconBg="bg-violet-50"
+                    iconColor="text-violet-600"
+                  />
+                  <StatCard
+                    icon="📦"
+                    label="Total Products"
+                    value={stats?.products?.total || 0}
+                    sub={`${stats?.products?.approved || 0} live`}
+                    iconBg="bg-emerald-50"
+                    iconColor="text-emerald-600"
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
                     <div className="flex items-center justify-between mb-6">
                       <div>
-                        <h3 className="text-sm font-extrabold text-gray-900 m-0">Revenue — Last 7 Days</h3>
+                        <h3 className="text-sm font-extrabold text-gray-900 m-0">
+                          Revenue — Last 7 Days
+                        </h3>
                         <p className="text-xs text-gray-400 mt-0.5 m-0">
-                          {formatRupee(dailyData.reduce((s, [, v]) => s + v, 0))} this week
+                          {formatRupee(
+                            dailyData.reduce((s, [, v]) => s + v, 0),
+                          )}{" "}
+                          this week
                         </p>
                       </div>
-                      <div className="w-9 h-9 bg-indigo-50 text-[#4f46e5] rounded-xl flex items-center justify-center text-lg">📈</div>
+                      <div className="w-9 h-9 bg-indigo-50 text-[#4f46e5] rounded-xl flex items-center justify-center text-lg">
+                        📈
+                      </div>
                     </div>
                     {dailyData.length > 0 ? (
                       <div className="flex items-end gap-2 sm:gap-3 h-36">
                         {dailyData.map(([date, value]) => {
-                          const pct = maxDaily > 0 ? (value / maxDaily) * 100 : 0;
-                          const label = new Date(date).toLocaleDateString("en-IN", { weekday: "short" });
-                          const isToday = new Date(date).toDateString() === new Date().toDateString();
+                          const pct =
+                            maxDaily > 0 ? (value / maxDaily) * 100 : 0;
+                          const label = new Date(date).toLocaleDateString(
+                            "en-IN",
+                            { weekday: "short" },
+                          );
+                          const isToday =
+                            new Date(date).toDateString() ===
+                            new Date().toDateString();
                           return (
-                            <div key={date} className="flex-1 flex flex-col items-center gap-2 group">
-                              <div className="relative w-full flex items-end justify-center" style={{ height: "112px" }}>
+                            <div
+                              key={date}
+                              className="flex-1 flex flex-col items-center gap-2 group"
+                            >
+                              <div
+                                className="relative w-full flex items-end justify-center"
+                                style={{ height: "112px" }}
+                              >
                                 <div
                                   className={`w-full rounded-t-xl transition-all duration-700 cursor-pointer ${isToday ? "bg-gradient-to-t from-[#4338ca] to-[#818cf8] shadow-md shadow-indigo-200" : "bg-gray-100 group-hover:bg-gray-200"}`}
                                   style={{ height: `${Math.max(pct, 4)}%` }}
@@ -581,7 +1201,11 @@ const VendorDashboard = () => {
                                   </div>
                                 )}
                               </div>
-                              <span className={`text-[10px] font-semibold ${isToday ? "text-[#4f46e5]" : "text-gray-400"}`}>{label}</span>
+                              <span
+                                className={`text-[10px] font-semibold ${isToday ? "text-[#4f46e5]" : "text-gray-400"}`}
+                              >
+                                {label}
+                              </span>
                             </div>
                           );
                         })}
@@ -595,30 +1219,79 @@ const VendorDashboard = () => {
                   </div>
 
                   <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
-                    <h3 className="text-sm font-extrabold text-gray-900 mb-5 m-0">Order Status</h3>
+                    <h3 className="text-sm font-extrabold text-gray-900 mb-5 m-0">
+                      Order Status
+                    </h3>
                     <div className="flex flex-col gap-3.5">
                       {[
-                        { label: "Confirmed", value: stats?.orders?.confirmed || 0, color: "bg-emerald-500" },
-                        { label: "Processing", value: stats?.orders?.processing || 0, color: "bg-blue-500" },
-                        { label: "Shipped", value: stats?.orders?.shipped || 0, color: "bg-violet-500" },
-                        { label: "Delivered", value: stats?.orders?.delivered || 0, color: "bg-green-500" },
-                        { label: "Cancelled", value: stats?.orders?.cancelled || 0, color: "bg-red-400" },
+                        {
+                          label: "Confirmed",
+                          value: stats?.orders?.confirmed || 0,
+                          color: "bg-emerald-500",
+                        },
+                        {
+                          label: "Processing",
+                          value: stats?.orders?.processing || 0,
+                          color: "bg-blue-500",
+                        },
+                        {
+                          label: "Shipped",
+                          value: stats?.orders?.shipped || 0,
+                          color: "bg-violet-500",
+                        },
+                        {
+                          label: "Delivered",
+                          value: stats?.orders?.delivered || 0,
+                          color: "bg-green-500",
+                        },
+                        {
+                          label: "Cancelled",
+                          value: stats?.orders?.cancelled || 0,
+                          color: "bg-red-400",
+                        },
                       ].map((item) => (
-                        <div key={item.label} className="flex items-center gap-3">
-                          <span className="text-xs text-gray-500 w-16 shrink-0">{item.label}</span>
-                          <MiniBar percent={stats?.orders?.total ? (item.value / stats.orders.total) * 100 : 0} color={item.color} />
-                          <span className="text-xs font-bold text-gray-700 w-5 text-right shrink-0">{item.value}</span>
+                        <div
+                          key={item.label}
+                          className="flex items-center gap-3"
+                        >
+                          <span className="text-xs text-gray-500 w-16 shrink-0">
+                            {item.label}
+                          </span>
+                          <MiniBar
+                            percent={
+                              stats?.orders?.total
+                                ? (item.value / stats.orders.total) * 100
+                                : 0
+                            }
+                            color={item.color}
+                          />
+                          <span className="text-xs font-bold text-gray-700 w-5 text-right shrink-0">
+                            {item.value}
+                          </span>
                         </div>
                       ))}
                     </div>
                     <div className="mt-5 pt-4 border-t border-gray-100 grid grid-cols-2 gap-2">
                       {[
-                        { value: stats?.orders?.last7Days || 0, label: "Last 7 days" },
-                        { value: stats?.orders?.last30Days || 0, label: "Last 30 days" },
+                        {
+                          value: stats?.orders?.last7Days || 0,
+                          label: "Last 7 days",
+                        },
+                        {
+                          value: stats?.orders?.last30Days || 0,
+                          label: "Last 30 days",
+                        },
                       ].map((item) => (
-                        <div key={item.label} className="text-center p-3 bg-gray-50 rounded-xl border border-gray-100">
-                          <p className="text-lg font-extrabold text-gray-900 m-0">{item.value}</p>
-                          <p className="text-[10px] text-gray-400 m-0 mt-0.5">{item.label}</p>
+                        <div
+                          key={item.label}
+                          className="text-center p-3 bg-gray-50 rounded-xl border border-gray-100"
+                        >
+                          <p className="text-lg font-extrabold text-gray-900 m-0">
+                            {item.value}
+                          </p>
+                          <p className="text-[10px] text-gray-400 m-0 mt-0.5">
+                            {item.label}
+                          </p>
                         </div>
                       ))}
                     </div>
@@ -627,19 +1300,54 @@ const VendorDashboard = () => {
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
-                    <h3 className="text-sm font-extrabold text-gray-900 mb-4 m-0">Product Health</h3>
+                    <h3 className="text-sm font-extrabold text-gray-900 mb-4 m-0">
+                      Product Health
+                    </h3>
                     <div className="grid grid-cols-2 gap-3">
                       {[
-                        { label: "Live", value: stats?.products?.approved || 0, icon: "✅", bg: "bg-emerald-50 border-emerald-100", text: "text-emerald-700" },
-                        { label: "Low Stock", value: stats?.products?.lowStock || 0, icon: "⚠️", bg: "bg-amber-50 border-amber-100", text: "text-amber-700" },
-                        { label: "Out of Stock", value: stats?.products?.outOfStock || 0, icon: "🚫", bg: "bg-red-50 border-red-100", text: "text-red-700" },
-                        { label: "Total Listed", value: stats?.products?.total || 0, icon: "📦", bg: "bg-indigo-50 border-indigo-100", text: "text-indigo-700" },
+                        {
+                          label: "Live",
+                          value: stats?.products?.approved || 0,
+                          icon: "✅",
+                          bg: "bg-emerald-50 border-emerald-100",
+                          text: "text-emerald-700",
+                        },
+                        {
+                          label: "Low Stock",
+                          value: stats?.products?.lowStock || 0,
+                          icon: "⚠️",
+                          bg: "bg-amber-50 border-amber-100",
+                          text: "text-amber-700",
+                        },
+                        {
+                          label: "Out of Stock",
+                          value: stats?.products?.outOfStock || 0,
+                          icon: "🚫",
+                          bg: "bg-red-50 border-red-100",
+                          text: "text-red-700",
+                        },
+                        {
+                          label: "Total Listed",
+                          value: stats?.products?.total || 0,
+                          icon: "📦",
+                          bg: "bg-indigo-50 border-indigo-100",
+                          text: "text-indigo-700",
+                        },
                       ].map((item) => (
-                        <div key={item.label} className={`${item.bg} border rounded-xl p-3.5 flex items-center gap-3`}>
+                        <div
+                          key={item.label}
+                          className={`${item.bg} border rounded-xl p-3.5 flex items-center gap-3`}
+                        >
                           <span className="text-xl">{item.icon}</span>
                           <div>
-                            <p className={`text-xl font-extrabold ${item.text} m-0 leading-none`}>{item.value}</p>
-                            <p className="text-[11px] text-gray-500 m-0 mt-0.5">{item.label}</p>
+                            <p
+                              className={`text-xl font-extrabold ${item.text} m-0 leading-none`}
+                            >
+                              {item.value}
+                            </p>
+                            <p className="text-[11px] text-gray-500 m-0 mt-0.5">
+                              {item.label}
+                            </p>
                           </div>
                         </div>
                       ))}
@@ -650,37 +1358,59 @@ const VendorDashboard = () => {
                     <div className="bg-blue-50 border border-blue-200 rounded-xl px-3.5 py-2.5 mb-4 flex items-start gap-2">
                       <span className="text-base shrink-0">💡</span>
                       <p className="text-xs text-blue-700 m-0 leading-relaxed">
-                        <strong>Good to know:</strong> Coupons applied by customers don't affect your earnings. Platform handles discounts.
+                        <strong>Good to know:</strong> Coupons applied by
+                        customers don't affect your earnings. Platform handles
+                        discounts.
                       </p>
                     </div>
-                    <h3 className="text-sm font-extrabold text-gray-900 mb-4 m-0">Top Selling Products</h3>
+                    <h3 className="text-sm font-extrabold text-gray-900 mb-4 m-0">
+                      Top Selling Products
+                    </h3>
                     {stats?.topProducts?.length > 0 ? (
                       <div className="flex flex-col gap-2.5">
                         {stats.topProducts.map((product, i) => (
-                          <div key={product._id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-gray-50 transition-colors">
-                            <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${
-                              i === 0 ? "bg-yellow-100 text-yellow-700" :
-                              i === 1 ? "bg-gray-100 text-gray-600" :
-                              i === 2 ? "bg-amber-100 text-amber-700" :
-                              "bg-gray-50 text-gray-400"
-                            }`}>
+                          <div
+                            key={product._id}
+                            className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-gray-50 transition-colors"
+                          >
+                            <span
+                              className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${i === 0 ? "bg-yellow-100 text-yellow-700" : i === 1 ? "bg-gray-100 text-gray-600" : i === 2 ? "bg-amber-100 text-amber-700" : "bg-gray-50 text-gray-400"}`}
+                            >
                               {i + 1}
                             </span>
                             {product.images?.[0]?.url ? (
-                              <img src={product.images[0].url} alt={product.name} className="w-11 h-11 rounded-xl object-cover border border-gray-100 shrink-0" />
+                              <img
+                                src={product.images[0].url}
+                                alt={product.name}
+                                className="w-11 h-11 rounded-xl object-cover border border-gray-100 shrink-0"
+                              />
                             ) : (
-                              <div className="w-11 h-11 bg-gray-50 rounded-xl flex items-center justify-center text-lg shrink-0 border border-gray-100">📦</div>
+                              <div className="w-11 h-11 bg-gray-50 rounded-xl flex items-center justify-center text-lg shrink-0 border border-gray-100">
+                                📦
+                              </div>
                             )}
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs font-bold text-gray-900 m-0 truncate">{product.name}</p>
+                              <p className="text-xs font-bold text-gray-900 m-0 truncate">
+                                {product.name}
+                              </p>
                               <div className="flex items-center gap-2 mt-0.5">
-                                <span className="text-[11px] text-gray-500">{formatRupee(product.price)}</span>
-                                {product.averageRating > 0 && <span className="text-[10px] text-yellow-500">★ {product.averageRating.toFixed(1)}</span>}
+                                <span className="text-[11px] text-gray-500">
+                                  {formatRupee(product.price)}
+                                </span>
+                                {product.averageRating > 0 && (
+                                  <span className="text-[10px] text-yellow-500">
+                                    ★ {product.averageRating.toFixed(1)}
+                                  </span>
+                                )}
                               </div>
                             </div>
                             <div className="text-right shrink-0">
-                              <p className="text-xs font-extrabold text-gray-900 m-0">{product.totalSold}</p>
-                              <p className="text-[10px] text-gray-400 m-0">sold</p>
+                              <p className="text-xs font-extrabold text-gray-900 m-0">
+                                {product.totalSold}
+                              </p>
+                              <p className="text-[10px] text-gray-400 m-0">
+                                sold
+                              </p>
                             </div>
                           </div>
                         ))}
@@ -688,8 +1418,12 @@ const VendorDashboard = () => {
                     ) : (
                       <div className="text-center py-10">
                         <p className="text-4xl mb-3">📈</p>
-                        <p className="text-sm text-gray-500 m-0">No sales data yet</p>
-                        <p className="text-xs text-gray-400 mt-1 m-0">Start selling to see top products</p>
+                        <p className="text-sm text-gray-500 m-0">
+                          No sales data yet
+                        </p>
+                        <p className="text-xs text-gray-400 mt-1 m-0">
+                          Start selling to see top products
+                        </p>
                       </div>
                     )}
                   </div>
@@ -706,24 +1440,59 @@ const VendorDashboard = () => {
                 <div className="bg-gradient-to-r from-[#4338ca] to-[#4f46e5] p-5 sm:p-7">
                   <div className="flex items-center justify-between mb-6">
                     <div>
-                      <h2 className="text-lg font-black text-white m-0">{editingProduct ? "Edit Product" : "Add New Product"}</h2>
-                      <p className="text-xs text-indigo-200 mt-1 m-0">Step {formStep} of {FORM_STEPS.length} — {FORM_STEPS[formStep - 1].label}</p>
+                      <h2 className="text-lg font-black text-white m-0">
+                        {editingProduct ? "Edit Product" : "Add New Product"}
+                      </h2>
+                      <p className="text-xs text-indigo-200 mt-1 m-0">
+                        Step {formStep} of {FORM_STEPS.length} —{" "}
+                        {FORM_STEPS[formStep - 1].label}
+                      </p>
                     </div>
-                    <button onClick={closeForm} className="bg-white/10 border border-white/15 text-white rounded-lg px-3.5 py-1.5 text-xs font-bold cursor-pointer hover:bg-white/20 transition font-[inherit]">
+                    <button
+                      onClick={closeForm}
+                      className="bg-white/10 border border-white/15 text-white rounded-lg px-3.5 py-1.5 text-xs font-bold cursor-pointer hover:bg-white/20 transition font-[inherit]"
+                    >
                       ✕ Cancel
                     </button>
                   </div>
-                  <div className="flex gap-2 sm:gap-3">
+                  <div className="flex gap-1.5 sm:gap-2">
                     {FORM_STEPS.map((step, i) => {
                       const isDone = formStep > i + 1;
                       const isActive = formStep === i + 1;
                       return (
-                        <div key={step.label} className="flex-1 flex flex-col items-center gap-1.5">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-black transition-all ${isDone ? "bg-green-500 text-white" : isActive ? "bg-white text-[#4f46e5]" : "bg-white/10 text-indigo-300"}`}>
-                            {isDone ? <svg width="14" height="14" fill="none" stroke="white" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" strokeLinecap="round" /></svg> : step.icon}
+                        <div
+                          key={step.label}
+                          className="flex-1 flex flex-col items-center gap-1.5"
+                        >
+                          <div
+                            className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-black transition-all ${isDone ? "bg-green-500 text-white" : isActive ? "bg-white text-[#4f46e5]" : "bg-white/10 text-indigo-300"}`}
+                          >
+                            {isDone ? (
+                              <svg
+                                width="12"
+                                height="12"
+                                fill="none"
+                                stroke="white"
+                                strokeWidth="2.5"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  d="M5 13l4 4L19 7"
+                                  strokeLinecap="round"
+                                />
+                              </svg>
+                            ) : (
+                              step.icon
+                            )}
                           </div>
-                          <span className={`text-[10px] hidden sm:block font-medium ${isActive ? "text-white" : "text-indigo-300"}`}>{step.label}</span>
-                          <div className={`h-[3px] rounded-full w-full transition-all duration-300 ${isDone ? "bg-green-500" : isActive ? "bg-white" : "bg-white/10"}`} />
+                          <span
+                            className={`text-[9px] sm:text-[10px] hidden sm:block font-medium ${isActive ? "text-white" : "text-indigo-300"}`}
+                          >
+                            {step.label}
+                          </span>
+                          <div
+                            className={`h-[3px] rounded-full w-full transition-all duration-300 ${isDone ? "bg-green-500" : isActive ? "bg-white" : "bg-white/10"}`}
+                          />
                         </div>
                       );
                     })}
@@ -736,29 +1505,173 @@ const VendorDashboard = () => {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="sm:col-span-2">
                           <Lbl required>Product Name</Lbl>
-                          <input name="name" placeholder="Enter a clear, descriptive product name" value={form.name} onChange={handleChange} className={inputCls} />
-                          <Hint text="Good product names are specific and include key details" />
+                          <input
+                            name="name"
+                            placeholder="e.g. Sony WH-1000XM5 Wireless Headphones"
+                            value={form.name}
+                            onChange={handleChange}
+                            className={inputCls}
+                            maxLength={200}
+                          />
+                          <Hint
+                            text={`${form.name.length}/200 — Include brand, model, key feature`}
+                          />
                         </div>
                         <div>
                           <Lbl required>Category</Lbl>
-                          <select name="category" value={form.category} onChange={handleChange} className={selectCls}>
+                          <select
+                            name="category"
+                            value={form.category}
+                            onChange={handleChange}
+                            className={selectCls}
+                          >
                             <option value="">Select Category</option>
-                            {allCategoryOptions.map((cat) => <option key={cat._id} value={cat._id}>{cat.name}</option>)}
+                            {allCategoryOptions.map((cat) => (
+                              <option key={cat._id} value={cat._id}>
+                                {cat.name}
+                              </option>
+                            ))}
                           </select>
                         </div>
                         <div>
                           <Lbl>Brand</Lbl>
-                          <input name="brand" placeholder="e.g. Nike, Samsung, Generic" value={form.brand} onChange={handleChange} className={inputCls} />
+                          <input
+                            name="brand"
+                            placeholder="e.g. Sony, Samsung, IKEA"
+                            value={form.brand}
+                            onChange={handleChange}
+                            className={inputCls}
+                          />
+                        </div>
+                        <div>
+                          <Lbl>Model Number</Lbl>
+                          <input
+                            name="model"
+                            placeholder="e.g. WH-1000XM5"
+                            value={form.modelNumber}
+                            onChange={handleChange}
+                            className={inputCls}
+                          />
+                        </div>
+                        <div>
+                          <Lbl>SKU / Product Code</Lbl>
+                          <input
+                            name="sku"
+                            placeholder="e.g. PROD-001"
+                            value={form.sku}
+                            onChange={handleChange}
+                            className={inputCls}
+                          />
                         </div>
                         <div className="sm:col-span-2">
                           <Lbl>Short Description</Lbl>
-                          <input name="shortDescription" placeholder="One line summary shown on product cards" value={form.shortDescription} onChange={handleChange} className={inputCls} />
+                          <input
+                            name="shortDescription"
+                            placeholder="One line summary shown on product cards"
+                            value={form.shortDescription}
+                            onChange={handleChange}
+                            className={inputCls}
+                            maxLength={500}
+                          />
+                          <Hint text={`${form.shortDescription.length}/500`} />
                         </div>
                         <div className="sm:col-span-2">
                           <Lbl required>Full Description</Lbl>
-                          <textarea name="description" placeholder="Write a detailed description. Minimum 20 characters." value={form.description} onChange={handleChange} rows={6} className={`${inputCls} resize-vertical`} />
-                          <Hint text={`${form.description.length} characters ${form.description.length < 20 ? "(minimum 20)" : "✓"}`} color={form.description.length < 20 ? "text-red-500" : "text-green-600"} />
+                          <textarea
+                            name="description"
+                            placeholder="Write a detailed description. Minimum 20 characters."
+                            value={form.description}
+                            onChange={handleChange}
+                            rows={6}
+                            className={`${inputCls} resize-vertical`}
+                          />
+                          <Hint
+                            text={`${form.description.length} characters ${form.description.length < 20 ? "(minimum 20)" : "✓"}`}
+                            color={
+                              form.description.length < 20
+                                ? "text-red-500"
+                                : "text-green-600"
+                            }
+                          />
                         </div>
+                      </div>
+
+                      <div className="h-px bg-gray-100" />
+
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <h3 className="text-sm font-extrabold text-gray-900 m-0">
+                              ✨ Key Features
+                            </h3>
+                            <p className="text-xs text-gray-500 mt-0.5 m-0">
+                              Bullet points shown at top of product page (Amazon
+                              style)
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          {form.keyFeatures.map((feat, i) => (
+                            <div key={i} className="flex gap-2">
+                              <div className="w-8 h-10 flex items-center justify-center bg-indigo-50 rounded-lg text-[#4f46e5] font-bold text-sm shrink-0">
+                                {i + 1}
+                              </div>
+                              <input
+                                type="text"
+                                placeholder="e.g. Industry-leading noise cancellation"
+                                value={feat}
+                                onChange={(e) =>
+                                  updateKeyFeature(i, e.target.value)
+                                }
+                                className={inputCls}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => removeKeyFeature(i)}
+                                className="w-10 h-10 rounded-lg bg-red-50 text-red-500 border-none cursor-pointer hover:bg-red-100 transition shrink-0 flex items-center justify-center"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+                          {form.keyFeatures.length < 8 && (
+                            <button
+                              type="button"
+                              onClick={addKeyFeature}
+                              className="w-full py-2.5 border-2 border-dashed border-indigo-300 rounded-xl text-sm font-bold text-[#4f46e5] hover:bg-indigo-50 hover:border-[#4f46e5] transition cursor-pointer bg-white font-[inherit]"
+                            >
+                              + Add Key Feature ({form.keyFeatures.length}/8)
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div>
+                        <Lbl>Tags</Lbl>
+                        <input
+                          name="tags"
+                          placeholder="e.g. wireless, bluetooth, gaming (comma separated)"
+                          value={form.tags}
+                          onChange={handleChange}
+                          className={inputCls}
+                        />
+                        <Hint text="Tags help customers find your product" />
+                        {form.tags && (
+                          <div className="flex gap-1.5 flex-wrap mt-2">
+                            {form.tags
+                              .split(",")
+                              .map((t) => t.trim())
+                              .filter((t) => t)
+                              .map((tag) => (
+                                <span
+                                  key={tag}
+                                  className="bg-indigo-50 text-[#4f46e5] border border-indigo-200 text-[11px] px-2.5 py-1 rounded-full font-semibold"
+                                >
+                                  #{tag}
+                                </span>
+                              ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -767,65 +1680,205 @@ const VendorDashboard = () => {
                     <div className="form-step flex flex-col gap-4 sm:gap-5">
                       <div className="bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-3 flex items-start gap-2.5">
                         <span className="text-base shrink-0">💡</span>
-                        <p className="text-xs text-indigo-800 m-0 leading-relaxed">Set competitive prices. Compare Price (MRP) creates a discount badge. Cost Price is for internal tracking only.</p>
+                        <p className="text-xs text-indigo-800 m-0 leading-relaxed">
+                          Set competitive prices. Compare Price (MRP) creates a
+                          discount badge. Cost Price is for internal tracking
+                          only.
+                        </p>
                       </div>
+
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         {[
-                          { name: "price", label: "Selling Price (₹)", required: true },
-                          { name: "comparePrice", label: "Compare Price / MRP (₹)" },
-                          { name: "costPrice", label: "Cost Price (₹)", hint: "Internal only" },
+                          {
+                            name: "price",
+                            label: "Selling Price (₹)",
+                            required: true,
+                          },
+                          {
+                            name: "comparePrice",
+                            label: "Compare Price / MRP (₹)",
+                          },
+                          {
+                            name: "costPrice",
+                            label: "Cost Price (₹)",
+                            hint: "Internal only",
+                          },
                         ].map((field) => (
                           <div key={field.name}>
                             <Lbl required={field.required}>{field.label}</Lbl>
                             <div className="relative">
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-500">₹</span>
-                              <input name={field.name} type="number" min="0" placeholder="0" value={form[field.name]} onChange={handleChange} className={`${inputCls} pl-7`} />
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-500">
+                                ₹
+                              </span>
+                              <input
+                                name={field.name}
+                                type="number"
+                                min="0"
+                                placeholder="0"
+                                value={form[field.name]}
+                                onChange={handleChange}
+                                className={`${inputCls} pl-7`}
+                              />
                             </div>
                             {field.hint && <Hint text={field.hint} />}
                           </div>
                         ))}
                       </div>
-                      {form.price && form.comparePrice && Number(form.comparePrice) > Number(form.price) && (
-                        <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-2.5">
-                          <p className="text-xs text-green-700 font-semibold m-0">{Math.round(((form.comparePrice - form.price) / form.comparePrice) * 100)}% discount badge will show</p>
+
+                      {(discountPct > 0 || profitMargin > 0) && (
+                        <div className="grid sm:grid-cols-3 gap-3">
+                          {discountPct > 0 && (
+                            <div className="bg-orange-50 border-2 border-orange-200 rounded-xl p-3 text-center">
+                              <p className="text-[10px] font-bold text-orange-600 uppercase m-0">
+                                Discount
+                              </p>
+                              <p className="text-xl font-extrabold text-orange-600 m-0 mt-1">
+                                {discountPct}% OFF
+                              </p>
+                            </div>
+                          )}
+                          {profitMargin > 0 && (
+                            <div className="bg-green-50 border-2 border-green-200 rounded-xl p-3 text-center">
+                              <p className="text-[10px] font-bold text-green-600 uppercase m-0">
+                                Profit Margin
+                              </p>
+                              <p className="text-xl font-extrabold text-green-600 m-0 mt-1">
+                                {profitMargin}%
+                              </p>
+                              <p className="text-[9px] text-green-500 m-0">
+                                ₹{profit.toLocaleString("en-IN")}
+                              </p>
+                            </div>
+                          )}
+                          <div className="bg-indigo-50 border-2 border-indigo-200 rounded-xl p-3 text-center">
+                            <p className="text-[10px] font-bold text-indigo-600 uppercase m-0">
+                              Customer Pays
+                            </p>
+                            <p className="text-xl font-extrabold text-indigo-600 m-0 mt-1">
+                              ₹{price.toLocaleString("en-IN")}
+                            </p>
+                          </div>
                         </div>
                       )}
-                      {form.price && form.costPrice && Number(form.costPrice) > 0 && (
-                        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5">
-                          <p className="text-xs text-blue-700 font-semibold m-0">
-                            Profit: {formatRupee(Number(form.price) - Number(form.costPrice))} ({Math.round(((form.price - form.costPrice) / form.price) * 100)}% margin)
-                          </p>
-                        </div>
-                      )}
+
                       <div className="h-px bg-gray-100" />
+
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <h3 className="text-sm font-extrabold text-gray-900 m-0">
+                              📦 Bulk Pricing (Optional)
+                            </h3>
+                            <p className="text-xs text-gray-500 mt-0.5 m-0">
+                              Offer discounts for larger quantities
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          {form.bulkPricing.map((tier, i) => (
+                            <div
+                              key={i}
+                              className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end p-3 bg-gray-50 rounded-xl"
+                            >
+                              <div>
+                                <Lbl>Min Quantity</Lbl>
+                                <input
+                                  type="number"
+                                  placeholder="5"
+                                  value={tier.minQuantity}
+                                  onChange={(e) =>
+                                    updateBulkTier(
+                                      i,
+                                      "minQuantity",
+                                      e.target.value,
+                                    )
+                                  }
+                                  min="2"
+                                  className={inputCls}
+                                />
+                              </div>
+                              <div>
+                                <Lbl>Price per unit</Lbl>
+                                <div className="relative">
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-500">
+                                    ₹
+                                  </span>
+                                  <input
+                                    type="number"
+                                    placeholder="800"
+                                    value={tier.pricePerUnit}
+                                    onChange={(e) =>
+                                      updateBulkTier(
+                                        i,
+                                        "pricePerUnit",
+                                        e.target.value,
+                                      )
+                                    }
+                                    min="0"
+                                    className={`${inputCls} pl-7`}
+                                  />
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => removeBulkTier(i)}
+                                className="w-10 h-10 rounded-lg bg-red-50 text-red-500 border-none cursor-pointer hover:bg-red-100 transition flex items-center justify-center"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+                          {form.bulkPricing.length < 5 && (
+                            <button
+                              type="button"
+                              onClick={addBulkTier}
+                              className="w-full py-2.5 border-2 border-dashed border-indigo-300 rounded-xl text-sm font-bold text-[#4f46e5] hover:bg-indigo-50 transition cursor-pointer bg-white font-[inherit]"
+                            >
+                              + Add Bulk Price Tier ({form.bulkPricing.length}
+                              /5)
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="h-px bg-gray-100" />
+
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
                           <Lbl required>Stock Quantity</Lbl>
-                          <input name="stock" type="number" min="0" placeholder="0" value={form.stock} onChange={handleChange} className={inputCls} />
+                          <input
+                            name="stock"
+                            type="number"
+                            min="0"
+                            placeholder="0"
+                            value={form.stock}
+                            onChange={handleChange}
+                            className={inputCls}
+                          />
                         </div>
                         <div>
                           <Lbl>Low Stock Alert</Lbl>
-                          <input name="lowStockThreshold" type="number" min="1" placeholder="5" value={form.lowStockThreshold} onChange={handleChange} className={inputCls} />
-                          <Hint text="Alert when stock falls below this" />
+                          <input
+                            name="lowStockThreshold"
+                            type="number"
+                            min="1"
+                            placeholder="5"
+                            value={form.lowStockThreshold}
+                            onChange={handleChange}
+                            className={inputCls}
+                          />
+                          <Hint text="Alert when stock falls below" />
                         </div>
                         <div>
-                          <Lbl>SKU / Product Code</Lbl>
-                          <input name="sku" placeholder="e.g. PROD-001" value={form.sku} onChange={handleChange} className={inputCls} />
+                          <Lbl>Barcode</Lbl>
+                          <input
+                            name="barcode"
+                            placeholder="e.g. 4548736134577"
+                            value={form.barcode}
+                            onChange={handleChange}
+                            className={inputCls}
+                          />
                         </div>
-                      </div>
-                      <div className="h-px bg-gray-100" />
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                        {[
-                          { name: "weight", label: "Weight (g)", ph: "e.g. 500" },
-                          { name: "dim_length", label: "Length (cm)", ph: "0" },
-                          { name: "dim_width", label: "Width (cm)", ph: "0" },
-                          { name: "dim_height", label: "Height (cm)", ph: "0" },
-                        ].map((f) => (
-                          <div key={f.name}>
-                            <Lbl>{f.label}</Lbl>
-                            <input name={f.name} type="number" min="0" placeholder={f.ph} value={f.name === "weight" ? form.weight : form.dimensions[f.name.replace("dim_", "")]} onChange={handleChange} className={inputCls} />
-                          </div>
-                        ))}
                       </div>
                     </div>
                   )}
@@ -833,61 +1886,243 @@ const VendorDashboard = () => {
                   {formStep === 3 && (
                     <div className="form-step flex flex-col gap-4">
                       <div className="bg-violet-50 border border-violet-200 rounded-xl px-4 py-3">
-                        <p className="text-xs text-violet-800 font-bold mb-1.5 m-0">📸 Image Guidelines</p>
+                        <p className="text-xs text-violet-800 font-bold mb-1.5 m-0">
+                          📸 Image Guidelines
+                        </p>
                         <ul className="text-[11px] text-violet-700 m-0 pl-4 leading-relaxed space-y-1">
                           <li>Upload at least 1 image (maximum 10)</li>
                           <li>First image will be the main product image</li>
-                          <li>Use square images (1:1 ratio) for best results</li>
+                          <li>
+                            Use square images (1:1 ratio) for best results
+                          </li>
                           <li>White or neutral background preferred</li>
                         </ul>
                       </div>
-                      <ImageUploader images={productImages} setImages={setProductImages} maxImages={10} />
+                      <ImageUploader
+                        images={productImages}
+                        setImages={setProductImages}
+                        maxImages={10}
+                      />
+
+                      <div className="h-px bg-gray-100" />
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <Lbl>Video URL (Optional)</Lbl>
+                          <input
+                            name="videoUrl"
+                            type="url"
+                            placeholder="https://youtube.com/watch?v=..."
+                            value={form.videoUrl}
+                            onChange={handleChange}
+                            className={inputCls}
+                          />
+                          <Hint text="🎬 Videos increase conversion by 80%" />
+                        </div>
+                        <div>
+                          <Lbl>3D Model URL (Optional)</Lbl>
+                          <input
+                            name="model3dUrl"
+                            type="url"
+                            placeholder="https://example.com/model.glb"
+                            value={form.model3dUrl}
+                            onChange={handleChange}
+                            className={inputCls}
+                          />
+                          <Hint text="🎨 Enables AR/3D view (IKEA style)" />
+                        </div>
+                      </div>
                     </div>
                   )}
 
                   {formStep === 4 && (
-                    <div className="form-step flex flex-col gap-4">
-                      <div className="flex items-center justify-between flex-wrap gap-3">
-                        <div>
-                          <h3 className="text-[15px] font-extrabold text-gray-900 m-0">Product Variants</h3>
-                          <p className="text-xs text-gray-500 mt-1 m-0">Add variants like Size, Color, Material.</p>
-                        </div>
-                        <button type="button" onClick={addVariant} className="bg-[#4f46e5] text-white border-none rounded-xl px-4 py-2.5 text-[13px] font-bold cursor-pointer font-[inherit] hover:bg-[#4338ca] transition">+ Add Variant</button>
-                      </div>
-                      {variants.length === 0 && (
-                        <div className="text-center py-10 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
-                          <p className="text-4xl mb-3">🎨</p>
-                          <p className="text-sm font-bold text-gray-700 m-0">No Variants Added</p>
-                          <p className="text-xs text-gray-500 mt-1 mb-4">Optional — Add if your product comes in different sizes, colors, or materials</p>
-                          <button type="button" onClick={addVariant} className="bg-[#4f46e5] text-white border-none rounded-xl px-5 py-2.5 text-[13px] font-bold cursor-pointer font-[inherit] hover:bg-[#4338ca] transition">+ Add First Variant</button>
-                        </div>
-                      )}
-                      <div className="flex flex-col gap-4">
-                        {variants.map((variant, vi) => (
-                          <div key={vi} className="bg-gray-50 rounded-2xl border border-gray-200 p-4">
-                            <div className="flex items-center gap-2.5 mb-3.5 flex-wrap">
-                              <select value={variant.name} onChange={(e) => updateVariantName(vi, e.target.value)} className={`${selectCls} flex-1`}>
-                                <option value="">Select Variant Type</option>
-                                {["Color", "Size", "Material", "Style", "Capacity", "Flavor", "Scent", "Pack Size", "Custom"].map((v) => <option key={v} value={v}>{v}</option>)}
-                              </select>
-                              <button type="button" onClick={() => removeVariant(vi)} className="bg-red-100 text-red-800 border border-red-200 rounded-lg px-3 py-2 text-xs font-bold cursor-pointer font-[inherit]">Remove</button>
-                            </div>
-                            <div className="flex flex-col gap-2">
-                              {variant.options.map((opt, oi) => (
-                                <div key={oi} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-center">
-                                  <input placeholder="Label (e.g. Red)" value={opt.label} onChange={(e) => updateVariantOption(vi, oi, "label", e.target.value)} className={inputCls} />
-                                  <input placeholder="Value (e.g. red)" value={opt.value} onChange={(e) => updateVariantOption(vi, oi, "value", e.target.value)} className={inputCls} />
-                                  <div className="relative">
-                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-500">{Number(opt.priceModifier) >= 0 ? "+₹" : "-₹"}</span>
-                                    <input type="number" placeholder="0" value={opt.priceModifier} onChange={(e) => updateVariantOption(vi, oi, "priceModifier", Number(e.target.value))} className={`${inputCls} pl-8`} />
-                                  </div>
-                                  <button type="button" onClick={() => removeVariantOption(vi, oi)} className="bg-red-100 text-red-800 border border-red-200 rounded-lg px-2.5 py-2 text-sm cursor-pointer font-[inherit]">×</button>
-                                </div>
-                              ))}
-                              <button type="button" onClick={() => addVariantOption(vi)} className="bg-white text-gray-600 border-[1.5px] border-dashed border-gray-300 rounded-lg py-2 text-xs font-semibold cursor-pointer font-[inherit]">+ Add Option</button>
-                            </div>
+                    <div className="form-step flex flex-col gap-5">
+                      <div>
+                        <div className="flex items-center justify-between mb-3 flex-wrap gap-3">
+                          <div>
+                            <h3 className="text-sm font-extrabold text-gray-900 m-0">
+                              🎨 Colors
+                            </h3>
+                            <p className="text-xs text-gray-500 mt-0.5 m-0">
+                              Add color variants (optional)
+                            </p>
                           </div>
-                        ))}
+                          <button
+                            type="button"
+                            onClick={addColor}
+                            className="bg-[#4f46e5] text-white border-none rounded-xl px-4 py-2 text-xs font-bold cursor-pointer font-[inherit] hover:bg-[#4338ca] transition"
+                          >
+                            + Add Color
+                          </button>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          {form.colors.map((color, i) => (
+                            <div
+                              key={i}
+                              className="flex gap-2 items-end p-3 bg-gray-50 rounded-xl"
+                            >
+                              <div
+                                className="w-12 h-11 rounded-xl border-2 border-white shadow-md shrink-0"
+                                style={{ background: color.hex }}
+                              />
+                              <div className="flex-1">
+                                <Lbl>Color Name</Lbl>
+                                <input
+                                  type="text"
+                                  placeholder="e.g. Midnight Blue"
+                                  value={color.name}
+                                  onChange={(e) =>
+                                    updateColor(i, "name", e.target.value)
+                                  }
+                                  className={inputCls}
+                                />
+                              </div>
+                              <div>
+                                <Lbl>Hex</Lbl>
+                                <input
+                                  type="color"
+                                  value={color.hex}
+                                  onChange={(e) =>
+                                    updateColor(i, "hex", e.target.value)
+                                  }
+                                  className="w-12 h-11 border-[1.5px] border-gray-200 rounded-xl cursor-pointer"
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => removeColor(i)}
+                                className="w-10 h-10 rounded-lg bg-red-50 text-red-500 border-none cursor-pointer hover:bg-red-100 transition shrink-0 flex items-center justify-center"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="h-px bg-gray-100" />
+
+                      <div>
+                        <div className="flex items-center justify-between mb-3 flex-wrap gap-3">
+                          <div>
+                            <h3 className="text-sm font-extrabold text-gray-900 m-0">
+                              📏 Sizes
+                            </h3>
+                            <p className="text-xs text-gray-500 mt-0.5 m-0">
+                              Sizes with individual stock
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mb-3">
+                          <p className="text-[10px] font-bold text-gray-500 uppercase mb-2">
+                            Quick Add
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {commonSizes.map((size) => (
+                              <button
+                                key={size}
+                                type="button"
+                                onClick={() => quickAddSize(size)}
+                                disabled={form.sizes.some(
+                                  (s) => s.name === size,
+                                )}
+                                className="px-3 py-1 rounded-full text-xs font-bold border-[1.5px] border-gray-200 bg-white text-gray-700 hover:border-[#4f46e5] hover:text-[#4f46e5] transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed font-[inherit]"
+                              >
+                                {size}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          {form.sizes.map((size, i) => (
+                            <div
+                              key={i}
+                              className="grid grid-cols-12 gap-2 items-end p-3 bg-gray-50 rounded-xl"
+                            >
+                              <div className="col-span-4">
+                                <Lbl>Size</Lbl>
+                                <input
+                                  type="text"
+                                  placeholder="M"
+                                  value={size.name}
+                                  onChange={(e) =>
+                                    updateSize(i, "name", e.target.value)
+                                  }
+                                  className={inputCls}
+                                />
+                              </div>
+                              <div className="col-span-3">
+                                <Lbl>Stock</Lbl>
+                                <input
+                                  type="number"
+                                  placeholder="10"
+                                  value={size.stock}
+                                  onChange={(e) =>
+                                    updateSize(i, "stock", e.target.value)
+                                  }
+                                  min="0"
+                                  className={inputCls}
+                                />
+                              </div>
+                              <div className="col-span-4">
+                                <Lbl>Price +/-</Lbl>
+                                <input
+                                  type="number"
+                                  placeholder="0"
+                                  value={size.priceModifier}
+                                  onChange={(e) =>
+                                    updateSize(
+                                      i,
+                                      "priceModifier",
+                                      e.target.value,
+                                    )
+                                  }
+                                  className={inputCls}
+                                />
+                              </div>
+                              <div className="col-span-1">
+                                <button
+                                  type="button"
+                                  onClick={() => removeSize(i)}
+                                  className="w-10 h-10 rounded-lg bg-red-50 text-red-500 border-none cursor-pointer hover:bg-red-100 transition flex items-center justify-center"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={addSize}
+                            className="w-full py-2.5 border-2 border-dashed border-indigo-300 rounded-xl text-sm font-bold text-[#4f46e5] hover:bg-indigo-50 transition cursor-pointer bg-white font-[inherit]"
+                          >
+                            + Add Custom Size
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="h-px bg-gray-100" />
+
+                      <div>
+                        <div className="mb-3">
+                          <h3 className="text-sm font-extrabold text-gray-900 m-0">
+                            🪵 Materials
+                          </h3>
+                          <p className="text-xs text-gray-500 mt-0.5 m-0">
+                            What is your product made of?
+                          </p>
+                        </div>
+                        <PillGroup
+                          options={commonMaterials}
+                          selected={form.materials}
+                          onToggle={toggleMaterial}
+                        />
+                        {form.materials.length > 0 && (
+                          <p className="text-xs text-gray-500 mt-3 m-0">
+                            Selected:{" "}
+                            <strong>{form.materials.join(", ")}</strong>
+                          </p>
+                        )}
                       </div>
                     </div>
                   )}
@@ -895,65 +2130,655 @@ const VendorDashboard = () => {
                   {formStep === 5 && (
                     <div className="form-step flex flex-col gap-5">
                       <div>
+                        <h3 className="text-sm font-extrabold text-gray-900 m-0 mb-3">
+                          📐 Weight & Dimensions
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
+                          <div>
+                            <Lbl>Weight</Lbl>
+                            <div className="flex gap-2">
+                              <input
+                                name="weight"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                placeholder="0.5"
+                                value={form.weight}
+                                onChange={handleChange}
+                                className={inputCls}
+                              />
+                              <select
+                                value={form.weightUnit}
+                                onChange={(e) =>
+                                  setForm({
+                                    ...form,
+                                    weightUnit: e.target.value,
+                                  })
+                                }
+                                className={`${selectCls} w-24`}
+                              >
+                                <option value="g">g</option>
+                                <option value="kg">kg</option>
+                                <option value="lb">lb</option>
+                                <option value="oz">oz</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div>
+                            <Lbl>Dimensions Unit</Lbl>
+                            <select
+                              value={form.dimensions.unit}
+                              onChange={(e) =>
+                                updateNested(
+                                  "dimensions",
+                                  "unit",
+                                  e.target.value,
+                                )
+                              }
+                              className={selectCls}
+                            >
+                              <option value="cm">Centimeters (cm)</option>
+                              <option value="m">Meters (m)</option>
+                              <option value="in">Inches (in)</option>
+                              <option value="ft">Feet (ft)</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <Lbl>Length</Lbl>
+                            <input
+                              name="dim_length"
+                              type="number"
+                              min="0"
+                              placeholder="30"
+                              value={form.dimensions.length}
+                              onChange={handleChange}
+                              className={inputCls}
+                            />
+                          </div>
+                          <div>
+                            <Lbl>Width</Lbl>
+                            <input
+                              name="dim_width"
+                              type="number"
+                              min="0"
+                              placeholder="20"
+                              value={form.dimensions.width}
+                              onChange={handleChange}
+                              className={inputCls}
+                            />
+                          </div>
+                          <div>
+                            <Lbl>Height</Lbl>
+                            <input
+                              name="dim_height"
+                              type="number"
+                              min="0"
+                              placeholder="15"
+                              value={form.dimensions.height}
+                              onChange={handleChange}
+                              className={inputCls}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="h-px bg-gray-100" />
+
+                      <div>
+                        <div className="mb-3">
+                          <h3 className="text-sm font-extrabold text-gray-900 m-0">
+                            🏠 Room Type
+                          </h3>
+                          <p className="text-xs text-gray-500 mt-0.5 m-0">
+                            Which rooms is this product for? (IKEA-style)
+                          </p>
+                        </div>
+                        <PillGroup
+                          options={roomTypes}
+                          selected={form.roomType}
+                          onToggle={toggleRoom}
+                        />
+                      </div>
+
+                      <div className="h-px bg-gray-100" />
+
+                      <div>
+                        <h3 className="text-sm font-extrabold text-gray-900 m-0 mb-3">
+                          🔧 Assembly
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <label
+                            className={`flex items-center gap-3 p-3.5 border-2 rounded-xl cursor-pointer transition-all ${form.assemblyRequired ? "bg-indigo-50 border-[#4f46e5]" : "bg-white border-gray-200 hover:border-indigo-300"}`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={form.assemblyRequired}
+                              onChange={(e) =>
+                                setForm({
+                                  ...form,
+                                  assemblyRequired: e.target.checked,
+                                })
+                              }
+                              className="w-4 h-4 accent-[#4f46e5] cursor-pointer"
+                            />
+                            <span className="text-xl">🔧</span>
+                            <div>
+                              <p className="text-sm font-bold text-gray-900 m-0">
+                                Assembly Required
+                              </p>
+                              <p className="text-[11px] text-gray-500 m-0 mt-0.5">
+                                Customer needs to assemble
+                              </p>
+                            </div>
+                          </label>
+                          {form.assemblyRequired && (
+                            <div>
+                              <Lbl>Assembly Time (minutes)</Lbl>
+                              <input
+                                name="assemblyTime"
+                                type="number"
+                                min="0"
+                                placeholder="30"
+                                value={form.assemblyTime}
+                                onChange={handleChange}
+                                className={inputCls}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="h-px bg-gray-100" />
+
+                      <div>
                         <div className="flex items-center justify-between mb-3 flex-wrap gap-3">
                           <div>
-                            <h3 className="text-[15px] font-extrabold text-gray-900 m-0">Specifications</h3>
-                            <p className="text-xs text-gray-500 mt-1 m-0">Technical details like material, dimensions, compatibility.</p>
+                            <h3 className="text-sm font-extrabold text-gray-900 m-0">
+                              📋 Specifications
+                            </h3>
+                            <p className="text-xs text-gray-500 mt-0.5 m-0">
+                              Technical specs (like Amazon)
+                            </p>
                           </div>
-                          <button type="button" onClick={addSpec} className="bg-[#4f46e5] text-white border-none rounded-xl px-4 py-2.5 text-[13px] font-bold cursor-pointer font-[inherit] hover:bg-[#4338ca] transition">+ Add Spec</button>
+                          <button
+                            type="button"
+                            onClick={addSpec}
+                            className="bg-[#4f46e5] text-white border-none rounded-xl px-4 py-2 text-xs font-bold cursor-pointer font-[inherit] hover:bg-[#4338ca] transition"
+                          >
+                            + Add Spec
+                          </button>
                         </div>
-                        {specifications.length === 0 && (
-                          <div className="text-center py-8 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
-                            <p className="text-3xl mb-2">📋</p>
-                            <p className="text-sm font-bold text-gray-700 m-0">No Specifications</p>
-                            <p className="text-xs text-gray-500 mt-1 m-0">Optional but improves discoverability</p>
-                          </div>
-                        )}
-                        {specifications.length > 0 && (
-                          <div className="grid grid-cols-[1fr_1fr_auto] gap-2 pb-1.5">
-                            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Specification</span>
-                            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Value</span>
-                            <span />
-                          </div>
-                        )}
                         <div className="flex flex-col gap-2">
                           {specifications.map((spec, i) => (
-                            <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2">
-                              <input placeholder="e.g. Material" value={spec.key} onChange={(e) => updateSpec(i, "key", e.target.value)} className={inputCls} />
-                              <input placeholder="e.g. Stainless Steel" value={spec.value} onChange={(e) => updateSpec(i, "value", e.target.value)} className={inputCls} />
-                              <button type="button" onClick={() => removeSpec(i)} className="bg-red-100 text-red-800 border border-red-200 rounded-lg px-2.5 py-2 text-sm cursor-pointer font-[inherit]">×</button>
+                            <div
+                              key={i}
+                              className="grid grid-cols-12 gap-2 items-end p-3 bg-gray-50 rounded-xl"
+                            >
+                              <div className="col-span-3">
+                                <Lbl>Group</Lbl>
+                                <select
+                                  value={spec.group || "General"}
+                                  onChange={(e) =>
+                                    updateSpec(i, "group", e.target.value)
+                                  }
+                                  className={selectCls}
+                                >
+                                  {specGroups.map((g) => (
+                                    <option key={g} value={g}>
+                                      {g}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div className="col-span-4">
+                                <Lbl>Key</Lbl>
+                                <input
+                                  type="text"
+                                  placeholder="e.g. Battery Life"
+                                  value={spec.key}
+                                  onChange={(e) =>
+                                    updateSpec(i, "key", e.target.value)
+                                  }
+                                  className={inputCls}
+                                />
+                              </div>
+                              <div className="col-span-4">
+                                <Lbl>Value</Lbl>
+                                <input
+                                  type="text"
+                                  placeholder="e.g. 30 hours"
+                                  value={spec.value}
+                                  onChange={(e) =>
+                                    updateSpec(i, "value", e.target.value)
+                                  }
+                                  className={inputCls}
+                                />
+                              </div>
+                              <div className="col-span-1">
+                                <button
+                                  type="button"
+                                  onClick={() => removeSpec(i)}
+                                  className="w-10 h-10 rounded-lg bg-red-50 text-red-500 border-none cursor-pointer hover:bg-red-100 transition flex items-center justify-center"
+                                >
+                                  ×
+                                </button>
+                              </div>
                             </div>
                           ))}
                         </div>
                       </div>
-                      <div className="h-px bg-gray-100" />
+                    </div>
+                  )}
+
+                  {formStep === 6 && (
+                    <div className="form-step flex flex-col gap-5">
                       <div>
-                        <Lbl>Tags</Lbl>
-                        <input name="tags" placeholder="e.g. wireless, bluetooth, gaming (comma separated)" value={form.tags} onChange={handleChange} className={inputCls} />
-                        <Hint text="Tags help customers find your product" />
-                        {form.tags && (
-                          <div className="flex gap-1.5 flex-wrap mt-2">
-                            {form.tags.split(",").map((t) => t.trim()).filter((t) => t).map((tag) => (
-                              <span key={tag} className="bg-indigo-50 text-[#4f46e5] border border-indigo-200 text-[11px] px-2.5 py-1 rounded-full font-semibold">#{tag}</span>
-                            ))}
+                        <h3 className="text-sm font-extrabold text-gray-900 m-0 mb-3">
+                          🛡️ Warranty
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-3">
+                          <div>
+                            <Lbl>Type</Lbl>
+                            <select
+                              value={form.warranty.type}
+                              onChange={(e) =>
+                                updateNested("warranty", "type", e.target.value)
+                              }
+                              className={selectCls}
+                            >
+                              <option value="none">No Warranty</option>
+                              <option value="manufacturer">
+                                Manufacturer Warranty
+                              </option>
+                              <option value="seller">Seller Warranty</option>
+                            </select>
                           </div>
+                          <div>
+                            <Lbl>Duration</Lbl>
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder="12"
+                              value={form.warranty.duration}
+                              onChange={(e) =>
+                                updateNested(
+                                  "warranty",
+                                  "duration",
+                                  e.target.value,
+                                )
+                              }
+                              className={inputCls}
+                            />
+                          </div>
+                          <div>
+                            <Lbl>Unit</Lbl>
+                            <select
+                              value={form.warranty.unit}
+                              onChange={(e) =>
+                                updateNested("warranty", "unit", e.target.value)
+                              }
+                              className={selectCls}
+                            >
+                              <option value="days">Days</option>
+                              <option value="months">Months</option>
+                              <option value="years">Years</option>
+                            </select>
+                          </div>
+                        </div>
+                        <Lbl>Warranty Description</Lbl>
+                        <textarea
+                          rows={2}
+                          placeholder="What does the warranty cover?"
+                          value={form.warranty.description}
+                          onChange={(e) =>
+                            updateNested(
+                              "warranty",
+                              "description",
+                              e.target.value,
+                            )
+                          }
+                          className={`${inputCls} resize-vertical`}
+                        />
+                      </div>
+
+                      <div className="h-px bg-gray-100" />
+
+                      <div>
+                        <h3 className="text-sm font-extrabold text-gray-900 m-0 mb-3">
+                          🔄 Return Policy
+                        </h3>
+                        <label
+                          className={`flex items-center gap-3 p-3.5 border-2 rounded-xl cursor-pointer transition-all mb-3 ${form.returnPolicy.returnable ? "bg-indigo-50 border-[#4f46e5]" : "bg-white border-gray-200"}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={form.returnPolicy.returnable}
+                            onChange={(e) =>
+                              updateNested(
+                                "returnPolicy",
+                                "returnable",
+                                e.target.checked,
+                              )
+                            }
+                            className="w-4 h-4 accent-[#4f46e5] cursor-pointer"
+                          />
+                          <span className="text-xl">🔄</span>
+                          <div>
+                            <p className="text-sm font-bold text-gray-900 m-0">
+                              Product is Returnable
+                            </p>
+                            <p className="text-[11px] text-gray-500 m-0 mt-0.5">
+                              Customers can return this product
+                            </p>
+                          </div>
+                        </label>
+                        {form.returnPolicy.returnable && (
+                          <>
+                            <div className="mb-3">
+                              <Lbl>Return Window (Days)</Lbl>
+                              <input
+                                type="number"
+                                min="0"
+                                placeholder="10"
+                                value={form.returnPolicy.returnWindow}
+                                onChange={(e) =>
+                                  updateNested(
+                                    "returnPolicy",
+                                    "returnWindow",
+                                    e.target.value,
+                                  )
+                                }
+                                className={inputCls}
+                              />
+                            </div>
+                            <Lbl>Return Conditions</Lbl>
+                            <textarea
+                              rows={2}
+                              placeholder="e.g. Item must be unused"
+                              value={form.returnPolicy.returnConditions}
+                              onChange={(e) =>
+                                updateNested(
+                                  "returnPolicy",
+                                  "returnConditions",
+                                  e.target.value,
+                                )
+                              }
+                              className={`${inputCls} resize-vertical`}
+                            />
+                          </>
                         )}
                       </div>
+
                       <div className="h-px bg-gray-100" />
-                      <div className="bg-gray-50 rounded-2xl border border-gray-200 p-4">
-                        <h4 className="text-[13px] font-extrabold text-gray-900 mb-3 m-0">📋 Product Summary</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+
+                      <div>
+                        <h3 className="text-sm font-extrabold text-gray-900 m-0 mb-3">
+                          🚚 Shipping Details
+                        </h3>
+                        <label
+                          className={`flex items-center gap-3 p-3.5 border-2 rounded-xl cursor-pointer transition-all mb-3 ${form.shipping.isFreeShipping ? "bg-indigo-50 border-[#4f46e5]" : "bg-white border-gray-200"}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={form.shipping.isFreeShipping}
+                            onChange={(e) =>
+                              updateNested(
+                                "shipping",
+                                "isFreeShipping",
+                                e.target.checked,
+                              )
+                            }
+                            className="w-4 h-4 accent-[#4f46e5] cursor-pointer"
+                          />
+                          <span className="text-xl">🎁</span>
+                          <div>
+                            <p className="text-sm font-bold text-gray-900 m-0">
+                              FREE Shipping
+                            </p>
+                            <p className="text-[11px] text-gray-500 m-0 mt-0.5">
+                              Show 'Free Shipping' badge
+                            </p>
+                          </div>
+                        </label>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          {!form.shipping.isFreeShipping && (
+                            <div>
+                              <Lbl>Shipping Cost (₹)</Lbl>
+                              <input
+                                type="number"
+                                min="0"
+                                placeholder="50"
+                                value={form.shipping.shippingCost}
+                                onChange={(e) =>
+                                  updateNested(
+                                    "shipping",
+                                    "shippingCost",
+                                    e.target.value,
+                                  )
+                                }
+                                className={inputCls}
+                              />
+                            </div>
+                          )}
+                          <div>
+                            <Lbl>Handling Time (Days)</Lbl>
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder="1"
+                              value={form.shipping.handlingTime}
+                              onChange={(e) =>
+                                updateNested(
+                                  "shipping",
+                                  "handlingTime",
+                                  e.target.value,
+                                )
+                              }
+                              className={inputCls}
+                            />
+                          </div>
+                          <div>
+                            <Lbl>Est. Delivery (Days)</Lbl>
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder="5"
+                              value={form.shipping.estimatedDeliveryDays}
+                              onChange={(e) =>
+                                updateNested(
+                                  "shipping",
+                                  "estimatedDeliveryDays",
+                                  e.target.value,
+                                )
+                              }
+                              className={inputCls}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="h-px bg-gray-100" />
+
+                      <div>
+                        <div className="flex items-center justify-between mb-3 flex-wrap gap-3">
+                          <div>
+                            <h3 className="text-sm font-extrabold text-gray-900 m-0">
+                              ❓ FAQs
+                            </h3>
+                            <p className="text-xs text-gray-500 mt-0.5 m-0">
+                              Answer common questions upfront
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={addFaq}
+                            className="bg-[#4f46e5] text-white border-none rounded-xl px-4 py-2 text-xs font-bold cursor-pointer font-[inherit] hover:bg-[#4338ca] transition"
+                          >
+                            + Add FAQ
+                          </button>
+                        </div>
+                        <div className="flex flex-col gap-3">
+                          {form.faqs.map((faq, i) => (
+                            <div
+                              key={i}
+                              className="p-3 bg-gray-50 rounded-xl space-y-2"
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs font-bold text-[#4f46e5] uppercase tracking-wider">
+                                  FAQ #{i + 1}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => removeFaq(i)}
+                                  className="text-red-500 hover:text-red-700 text-xs font-bold bg-transparent border-none cursor-pointer font-[inherit]"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                              <input
+                                type="text"
+                                placeholder="Question"
+                                value={faq.question}
+                                onChange={(e) =>
+                                  updateFaq(i, "question", e.target.value)
+                                }
+                                className={inputCls}
+                              />
+                              <textarea
+                                rows={2}
+                                placeholder="Answer"
+                                value={faq.answer}
+                                onChange={(e) =>
+                                  updateFaq(i, "answer", e.target.value)
+                                }
+                                className={`${inputCls} resize-vertical`}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {formStep === 7 && (
+                    <div className="form-step flex flex-col gap-4">
+                      <div className="bg-gradient-to-br from-indigo-50 via-white to-indigo-50/50 border-2 border-indigo-200 rounded-2xl p-5 shadow-sm">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#4338ca] to-[#4f46e5] flex items-center justify-center text-white text-2xl shadow-lg">
+                            ✓
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-extrabold text-gray-900 m-0">
+                              Ready to Publish!
+                            </h3>
+                            <p className="text-xs text-gray-600 m-0">
+                              Review your product below
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-white rounded-2xl border border-gray-200 p-5">
+                        <h4 className="text-sm font-extrabold text-gray-900 mb-4 m-0">
+                          👁️ Product Preview
+                        </h4>
+                        <div className="flex gap-4">
+                          <div className="w-32 h-32 bg-gray-50 rounded-2xl overflow-hidden shrink-0 border-2 border-gray-100">
+                            {productImages[0] ? (
+                              <img
+                                src={productImages[0].url}
+                                alt={form.name}
+                                className="w-full h-full object-contain p-2"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-3xl text-gray-300">
+                                📦
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[11px] font-bold text-[#4f46e5] uppercase mb-1 m-0">
+                              {allCategoryOptions.find(
+                                (c) => c._id === form.category,
+                              )?.name || "Category"}
+                            </p>
+                            <h3 className="text-base font-extrabold text-gray-900 mb-1 m-0 line-clamp-2">
+                              {form.name || "Product Name"}
+                            </h3>
+                            {form.brand && (
+                              <p className="text-xs text-gray-500 m-0 mb-2">
+                                by {form.brand}
+                              </p>
+                            )}
+                            <div className="flex items-baseline gap-2 mb-2">
+                              <span className="text-xl font-extrabold text-red-600">
+                                ₹{price.toLocaleString("en-IN")}
+                              </span>
+                              {comparePrice > price && (
+                                <>
+                                  <span className="text-sm text-gray-400 line-through">
+                                    ₹{comparePrice.toLocaleString("en-IN")}
+                                  </span>
+                                  <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                    -{discountPct}%
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              <span
+                                className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${form.stock > 0 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
+                              >
+                                {form.stock > 0
+                                  ? `${form.stock} in stock`
+                                  : "Out of stock"}
+                              </span>
+                              {form.shipping.isFreeShipping && (
+                                <span className="text-[10px] font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                                  🎁 Free Shipping
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-white rounded-2xl border border-gray-200 p-5">
+                        <h4 className="text-sm font-extrabold text-gray-900 mb-3 m-0">
+                          📋 Summary
+                        </h4>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
                           {[
-                            { label: "Name", value: form.name || "—" },
-                            { label: "Category", value: allCategoryOptions.find((c) => c._id === form.category)?.name || "—" },
-                            { label: "Price", value: form.price ? formatRupee(Number(form.price)) : "—" },
-                            { label: "Stock", value: form.stock || "—" },
-                            { label: "Images", value: `${productImages.length} uploaded` },
-                            { label: "Variants", value: `${variants.filter((v) => v.name).length} added` },
+                            {
+                              value: form.keyFeatures.filter(Boolean).length,
+                              label: "Key Features",
+                            },
+                            { value: productImages.length, label: "Images" },
+                            { value: form.colors.length, label: "Colors" },
+                            { value: form.sizes.length, label: "Sizes" },
+                            {
+                              value: form.materials.length,
+                              label: "Materials",
+                            },
+                            {
+                              value: form.roomType.length,
+                              label: "Room Types",
+                            },
+                            { value: specifications.length, label: "Specs" },
+                            { value: form.faqs.length, label: "FAQs" },
                           ].map((item) => (
-                            <div key={item.label} className="flex justify-between py-1.5 border-b border-gray-100">
-                              <span className="text-xs text-gray-500">{item.label}</span>
-                              <span className="text-xs font-bold text-gray-900">{item.value}</span>
+                            <div
+                              key={item.label}
+                              className="text-center p-2 bg-gray-50 rounded-lg"
+                            >
+                              <p className="text-lg font-extrabold text-gray-900 m-0">
+                                {item.value}
+                              </p>
+                              <p className="text-[10px] text-gray-500 m-0">
+                                {item.label}
+                              </p>
                             </div>
                           ))}
                         </div>
@@ -964,29 +2789,48 @@ const VendorDashboard = () => {
                   {formError && (
                     <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mt-4 flex items-center gap-2">
                       <span>⚠️</span>
-                      <p className="text-[13px] text-red-600 font-medium m-0">{formError}</p>
+                      <p className="text-[13px] text-red-600 font-medium m-0">
+                        {formError}
+                      </p>
                     </div>
                   )}
 
                   <div className="flex gap-2.5 mt-6 pt-5 border-t border-gray-100">
                     {formStep > 1 && (
-                      <button type="button" onClick={handleBack} className="bg-white text-gray-700 border-[1.5px] border-gray-200 rounded-xl px-5 py-3 text-sm font-bold cursor-pointer hover:bg-gray-50 transition font-[inherit]">
+                      <button
+                        type="button"
+                        onClick={handleBack}
+                        className="bg-white text-gray-700 border-[1.5px] border-gray-200 rounded-xl px-5 py-3 text-sm font-bold cursor-pointer hover:bg-gray-50 transition font-[inherit]"
+                      >
                         ← Back
                       </button>
                     )}
                     {formStep < FORM_STEPS.length ? (
-                      <button type="button" onClick={handleNext} className="flex-1 bg-gradient-to-r from-[#4338ca] to-[#6366f1] text-white border-none rounded-xl py-3.5 text-[15px] font-extrabold cursor-pointer shadow-lg shadow-indigo-200 font-[inherit] hover:brightness-110 transition">
+                      <button
+                        type="button"
+                        onClick={handleNext}
+                        className="flex-1 bg-gradient-to-r from-[#4338ca] to-[#6366f1] text-white border-none rounded-xl py-3.5 text-[15px] font-extrabold cursor-pointer shadow-lg shadow-indigo-200 font-[inherit] hover:brightness-110 transition"
+                      >
                         Continue to {FORM_STEPS[formStep].label} →
                       </button>
                     ) : (
-                      <button type="button" onClick={handleSubmit} disabled={isSubmitting} className={`flex-1 text-white border-none rounded-xl py-3.5 text-[15px] font-extrabold cursor-pointer transition-all font-[inherit] ${isSubmitting ? "bg-gray-400 cursor-not-allowed" : "bg-gradient-to-r from-green-600 to-green-500 shadow-lg shadow-green-200 hover:brightness-105"}`}>
+                      <button
+                        type="button"
+                        onClick={handleSubmit}
+                        disabled={isSubmitting}
+                        className={`flex-1 text-white border-none rounded-xl py-3.5 text-[15px] font-extrabold cursor-pointer transition-all font-[inherit] ${isSubmitting ? "bg-gray-400 cursor-not-allowed" : "bg-gradient-to-r from-green-600 to-green-500 shadow-lg shadow-green-200 hover:brightness-105"}`}
+                      >
                         {isSubmitting ? (
                           <span className="flex items-center justify-center gap-2">
                             <span className="w-[18px] h-[18px] border-[2.5px] border-white/40 border-t-white rounded-full animate-spin inline-block" />
                             {editingProduct ? "Saving..." : "Publishing..."}
                           </span>
                         ) : (
-                          <span>{editingProduct ? "✓ Save Changes" : "🚀 Publish Product"}</span>
+                          <span>
+                            {editingProduct
+                              ? "✓ Save Changes"
+                              : "🚀 Publish Product"}
+                          </span>
                         )}
                       </button>
                     )}
@@ -997,11 +2841,28 @@ const VendorDashboard = () => {
               <div>
                 <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
                   <div>
-                    <h2 className="text-xl font-extrabold text-gray-900 m-0">My Products</h2>
-                    <p className="text-xs text-gray-500 mt-1 m-0">{productsData?.pagination?.total || 0} products total</p>
+                    <h2 className="text-xl font-extrabold text-gray-900 m-0">
+                      My Products
+                    </h2>
+                    <p className="text-xs text-gray-500 mt-1 m-0">
+                      {productsData?.pagination?.total || 0} products total
+                    </p>
                   </div>
-                  <button onClick={openAddForm} className="flex items-center gap-2 bg-gradient-to-r from-[#4338ca] to-[#6366f1] text-white border-none rounded-xl px-5 py-2.5 text-[13px] font-extrabold cursor-pointer shadow-lg shadow-indigo-200 font-[inherit] hover:brightness-110 transition">
-                    <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                  <button
+                    onClick={openAddForm}
+                    className="flex items-center gap-2 bg-gradient-to-r from-[#4338ca] to-[#6366f1] text-white border-none rounded-xl px-5 py-2.5 text-[13px] font-extrabold cursor-pointer shadow-lg shadow-indigo-200 font-[inherit] hover:brightness-110 transition"
+                  >
+                    <svg
+                      width="13"
+                      height="13"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      viewBox="0 0 24 24"
+                      strokeLinecap="round"
+                    >
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
                     Add Product
                   </button>
                 </div>
@@ -1013,7 +2874,13 @@ const VendorDashboard = () => {
                     { label: "⚠️ Low Stock", value: "low_stock" },
                     { label: "🚫 Delisted", value: "delisted" },
                   ].map((item) => (
-                    <FilterBtn key={item.value} active={statusFilter === item.value} onClick={() => setStatusFilter(item.value)}>{item.label}</FilterBtn>
+                    <FilterBtn
+                      key={item.value}
+                      active={statusFilter === item.value}
+                      onClick={() => setStatusFilter(item.value)}
+                    >
+                      {item.label}
+                    </FilterBtn>
                   ))}
                 </div>
 
@@ -1023,65 +2890,147 @@ const VendorDashboard = () => {
                     icon="📦"
                     title="No products yet"
                     subtitle="Start selling by adding your first product"
-                    action={<button onClick={openAddForm} className="bg-[#4f46e5] text-white border-none rounded-xl px-6 py-3 text-sm font-bold cursor-pointer font-[inherit] hover:bg-[#4338ca] transition">+ Add First Product</button>}
+                    action={
+                      <button
+                        onClick={openAddForm}
+                        className="bg-[#4f46e5] text-white border-none rounded-xl px-6 py-3 text-sm font-bold cursor-pointer font-[inherit] hover:bg-[#4338ca] transition"
+                      >
+                        + Add First Product
+                      </button>
+                    }
                   />
                 )}
 
                 <div className="flex flex-col gap-3">
                   {productsData?.data?.map((product) => (
-                    <div key={product._id} className="bg-white border border-gray-100 hover:border-[#4f46e5]/30 hover:shadow-md rounded-2xl p-4 flex gap-4 items-start transition-all duration-200 shadow-sm">
+                    <div
+                      key={product._id}
+                      className="bg-white border border-gray-100 hover:border-[#4f46e5]/30 hover:shadow-md rounded-2xl p-4 flex gap-4 items-start transition-all duration-200 shadow-sm"
+                    >
                       <div className="w-20 h-20 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-center overflow-hidden shrink-0">
                         {product.images?.[0] ? (
-                          <img src={product.images[0].url} alt={product.name} className="w-full h-full object-contain p-1" onError={(e) => { e.target.src = "https://placehold.co/80?text=No+Image"; }} />
-                        ) : <span className="text-3xl">📦</span>}
+                          <img
+                            src={product.images[0].url}
+                            alt={product.name}
+                            className="w-full h-full object-contain p-1"
+                            onError={(e) => {
+                              e.target.src =
+                                "https://placehold.co/80?text=No+Image";
+                            }}
+                          />
+                        ) : (
+                          <span className="text-3xl">📦</span>
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-3 flex-wrap">
                           <div>
-                            <h3 className="text-sm font-extrabold text-gray-900 m-0 mb-1.5">{product.name}</h3>
+                            <h3 className="text-sm font-extrabold text-gray-900 m-0 mb-1.5">
+                              {product.name}
+                            </h3>
                             <div className="flex gap-2.5 flex-wrap text-xs text-gray-500">
-                              {product.category?.name && <span className="flex items-center gap-1">📂 {product.category.name}</span>}
-                              {product.brand && <span className="flex items-center gap-1">🏷️ {product.brand}</span>}
-                              {product.sku && <span className="font-mono bg-gray-100 px-2 py-0.5 rounded text-gray-600">SKU: {product.sku}</span>}
+                              {product.category?.name && (
+                                <span className="flex items-center gap-1">
+                                  📂 {product.category.name}
+                                </span>
+                              )}
+                              {product.brand && (
+                                <span className="flex items-center gap-1">
+                                  🏷️ {product.brand}
+                                </span>
+                              )}
+                              {product.sku && (
+                                <span className="font-mono bg-gray-100 px-2 py-0.5 rounded text-gray-600">
+                                  SKU: {product.sku}
+                                </span>
+                              )}
                             </div>
                             <div className="flex gap-3 mt-2 items-center flex-wrap">
-                              <span className="text-base font-extrabold text-gray-900">{formatRupee(product.price)}</span>
-                              {product.comparePrice > 0 && <span className="text-xs text-gray-400 line-through">{formatRupee(product.comparePrice)}</span>}
-                              <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
-                                product.stock === 0
-                                  ? "bg-red-100 text-red-600"
+                              <span className="text-base font-extrabold text-gray-900">
+                                {formatRupee(product.price)}
+                              </span>
+                              {product.comparePrice > 0 && (
+                                <span className="text-xs text-gray-400 line-through">
+                                  {formatRupee(product.comparePrice)}
+                                </span>
+                              )}
+                              <span
+                                className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
+                                  product.stock === 0
+                                    ? "bg-red-100 text-red-600"
+                                    : product.stock <= product.lowStockThreshold
+                                      ? "bg-amber-100 text-amber-700"
+                                      : "bg-gray-100 text-gray-600"
+                                }`}
+                              >
+                                {product.stock === 0
+                                  ? "🚫 Out of stock"
                                   : product.stock <= product.lowStockThreshold
-                                  ? "bg-amber-100 text-amber-700"
-                                  : "bg-gray-100 text-gray-600"
-                              }`}>
-                                {product.stock === 0 ? "🚫 Out of stock" : product.stock <= product.lowStockThreshold ? `⚠️ Low: ${product.stock}` : `Stock: ${product.stock}`}
+                                    ? `⚠️ Low: ${product.stock}`
+                                    : `Stock: ${product.stock}`}
                               </span>
                             </div>
                           </div>
                           <div className="flex flex-col items-end gap-2 shrink-0">
                             <Badge status={product.status} />
                             <div className="flex gap-1.5">
-                              <button onClick={() => openEditForm(product)} className="bg-indigo-50 text-[#4f46e5] border border-indigo-200 rounded-lg px-3 py-1.5 text-[11px] font-bold cursor-pointer hover:bg-indigo-100 transition font-[inherit]">✏️ Edit</button>
+                              <button
+                                onClick={() => openEditForm(product)}
+                                className="bg-indigo-50 text-[#4f46e5] border border-indigo-200 rounded-lg px-3 py-1.5 text-[11px] font-bold cursor-pointer hover:bg-indigo-100 transition font-[inherit]"
+                              >
+                                ✏️ Edit
+                              </button>
                               {deletingId === product._id ? (
                                 <div className="flex gap-1">
-                                  <button onClick={() => handleDelete(product._id)} className="bg-red-500 text-white border-none rounded-lg px-3 py-1.5 text-[11px] font-bold cursor-pointer font-[inherit]">Confirm</button>
-                                  <button onClick={() => setDeletingId(null)} className="bg-white text-gray-700 border border-gray-200 rounded-lg px-2.5 py-1.5 text-[11px] cursor-pointer font-[inherit]">Cancel</button>
+                                  <button
+                                    onClick={() => handleDelete(product._id)}
+                                    className="bg-red-500 text-white border-none rounded-lg px-3 py-1.5 text-[11px] font-bold cursor-pointer font-[inherit]"
+                                  >
+                                    Confirm
+                                  </button>
+                                  <button
+                                    onClick={() => setDeletingId(null)}
+                                    className="bg-white text-gray-700 border border-gray-200 rounded-lg px-2.5 py-1.5 text-[11px] cursor-pointer font-[inherit]"
+                                  >
+                                    Cancel
+                                  </button>
                                 </div>
                               ) : (
-                                <button onClick={() => setDeletingId(product._id)} className="bg-red-50 text-red-700 border border-red-200 rounded-lg px-3 py-1.5 text-[11px] font-bold cursor-pointer hover:bg-red-100 transition font-[inherit]">🗑️</button>
+                                <button
+                                  onClick={() => setDeletingId(product._id)}
+                                  className="bg-red-50 text-red-700 border border-red-200 rounded-lg px-3 py-1.5 text-[11px] font-bold cursor-pointer hover:bg-red-100 transition font-[inherit]"
+                                >
+                                  🗑️
+                                </button>
                               )}
                             </div>
                           </div>
                         </div>
-                        {product.delistReason && product.status === "delisted" && (
-                          <div className="mt-2.5 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
-                            <p className="text-xs text-red-600 font-bold m-0">Delisted: {product.delistReason}</p>
-                          </div>
-                        )}
+                        {product.delistReason &&
+                          product.status === "delisted" && (
+                            <div className="mt-2.5 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
+                              <p className="text-xs text-red-600 font-bold m-0">
+                                Delisted: {product.delistReason}
+                              </p>
+                            </div>
+                          )}
                         <div className="flex gap-3 mt-2">
-                          {product.averageRating > 0 && <span className="text-[11px] text-gray-400">⭐ {product.averageRating.toFixed(1)} ({product.totalReviews})</span>}
-                          {product.totalSold > 0 && <span className="text-[11px] text-gray-400">📦 {product.totalSold} sold</span>}
-                          {product.views > 0 && <span className="text-[11px] text-gray-400">👁️ {product.views} views</span>}
+                          {product.averageRating > 0 && (
+                            <span className="text-[11px] text-gray-400">
+                              ⭐ {product.averageRating.toFixed(1)} (
+                              {product.totalReviews})
+                            </span>
+                          )}
+                          {product.totalSold > 0 && (
+                            <span className="text-[11px] text-gray-400">
+                              📦 {product.totalSold} sold
+                            </span>
+                          )}
+                          {product.views > 0 && (
+                            <span className="text-[11px] text-gray-400">
+                              👁️ {product.views} views
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1096,7 +3045,9 @@ const VendorDashboard = () => {
           <div className="fade-up">
             <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
               <div>
-                <h2 className="text-xl font-extrabold text-gray-900 m-0">My Orders</h2>
+                <h2 className="text-xl font-extrabold text-gray-900 m-0">
+                  My Orders
+                </h2>
                 <p className="text-xs text-gray-500 mt-1 m-0">
                   {ordersData?.pagination?.total || 0} total orders
                   {couponOrdersCount > 0 && (
@@ -1112,47 +3063,75 @@ const VendorDashboard = () => {
               <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 mb-4 flex items-start gap-2.5">
                 <span className="text-base shrink-0">💡</span>
                 <div className="flex-1">
-                  <p className="text-xs text-blue-800 font-bold m-0">Good news about coupons:</p>
+                  <p className="text-xs text-blue-800 font-bold m-0">
+                    Good news about coupons:
+                  </p>
                   <p className="text-[11px] text-blue-700 m-0 mt-0.5 leading-relaxed">
-                    When customers use platform coupons, <strong>you still receive your full amount</strong>. The platform absorbs the discount as marketing expense.
+                    When customers use platform coupons,{" "}
+                    <strong>you still receive your full amount</strong>. The
+                    platform absorbs the discount as marketing expense.
                   </p>
                 </div>
               </div>
             )}
 
             <div className="flex gap-1.5 mb-4 flex-wrap">
-              {[{ l: "All", v: "" }, { l: "Confirmed", v: "confirmed" }, { l: "Processing", v: "processing" }, { l: "Shipped", v: "shipped" }, { l: "Delivered", v: "delivered" }, { l: "Cancelled", v: "cancelled" }].map((item) => (
-                <FilterBtn key={item.v} active={orderStatusFilter === item.v} onClick={() => { setOrderStatusFilter(item.v); setOrderPage(1); }}>{item.l}</FilterBtn>
+              {[
+                { l: "All", v: "" },
+                { l: "Confirmed", v: "confirmed" },
+                { l: "Processing", v: "processing" },
+                { l: "Shipped", v: "shipped" },
+                { l: "Delivered", v: "delivered" },
+                { l: "Cancelled", v: "cancelled" },
+              ].map((item) => (
+                <FilterBtn
+                  key={item.v}
+                  active={orderStatusFilter === item.v}
+                  onClick={() => {
+                    setOrderStatusFilter(item.v);
+                    setOrderPage(1);
+                  }}
+                >
+                  {item.l}
+                </FilterBtn>
               ))}
             </div>
 
             {ordersLoading && <Spinner text="Loading orders..." />}
             {ordersData?.data?.length === 0 && !ordersLoading && (
-              <EmptyState icon="🛒" title="No orders found" subtitle="Orders from customers will appear here" />
+              <EmptyState
+                icon="🛒"
+                title="No orders found"
+                subtitle="Orders from customers will appear here"
+              />
             )}
 
             <div className="flex flex-col gap-3">
               {ordersData?.data?.map((order) => {
                 const flow = ORDER_STATUS_FLOW[order.orderStatus];
-                const canCancel = ["confirmed", "processing"].includes(order.orderStatus);
-                const orderTotal = order.items?.reduce((s, item) => s + item.price * item.quantity, 0) || 0;
+                const canCancel = ["confirmed", "processing"].includes(
+                  order.orderStatus,
+                );
+                const orderTotal =
+                  order.items?.reduce(
+                    (s, item) => s + item.price * item.quantity,
+                    0,
+                  ) || 0;
                 const hasCoupon = !!order.couponCode;
                 const customerSaved = order.discount || 0;
 
                 return (
                   <div
                     key={order._id}
-                    className={`bg-white border hover:shadow-md rounded-2xl overflow-hidden shadow-sm transition-all ${
-                      hasCoupon
-                        ? "border-green-200 hover:border-green-400"
-                        : "border-gray-100 hover:border-[#4f46e5]/30"
-                    }`}
+                    className={`bg-white border hover:shadow-md rounded-2xl overflow-hidden shadow-sm transition-all ${hasCoupon ? "border-green-200 hover:border-green-400" : "border-gray-100 hover:border-[#4f46e5]/30"}`}
                   >
                     <div className="p-4 sm:p-5">
                       <div className="flex justify-between items-start gap-3 mb-4 flex-wrap">
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-sm font-extrabold text-gray-900 m-0">{order.orderNumber}</p>
+                            <p className="text-sm font-extrabold text-gray-900 m-0">
+                              {order.orderNumber}
+                            </p>
                             {hasCoupon && (
                               <span
                                 className="inline-flex items-center gap-1 text-[10px] bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 border border-green-200 px-2 py-0.5 rounded-full font-extrabold"
@@ -1163,14 +3142,24 @@ const VendorDashboard = () => {
                             )}
                           </div>
                           <div className="flex items-center gap-2 flex-wrap mt-1">
-                            <p className="text-xs text-gray-500 m-0">{order.user?.firstName} {order.user?.lastName}</p>
-                            {order.user?.phone && <span className="text-xs text-gray-400">📱 {order.user.phone}</span>}
+                            <p className="text-xs text-gray-500 m-0">
+                              {order.user?.firstName} {order.user?.lastName}
+                            </p>
+                            {order.user?.phone && (
+                              <span className="text-xs text-gray-400">
+                                📱 {order.user.phone}
+                              </span>
+                            )}
                           </div>
-                          <p className="text-[11px] text-gray-400 mt-0.5 m-0">{formatDate(order.createdAt)}</p>
+                          <p className="text-[11px] text-gray-400 mt-0.5 m-0">
+                            {formatDate(order.createdAt)}
+                          </p>
                         </div>
                         <div className="flex flex-col items-end gap-1.5">
                           <Badge status={order.orderStatus} />
-                          <span className="text-sm font-extrabold text-gray-900">{formatRupee(orderTotal)}</span>
+                          <span className="text-sm font-extrabold text-gray-900">
+                            {formatRupee(orderTotal)}
+                          </span>
                           {hasCoupon && customerSaved > 0 && (
                             <span className="text-[10px] text-green-600 font-bold">
                               Customer saved {formatRupee(customerSaved)}
@@ -1184,13 +3173,13 @@ const VendorDashboard = () => {
                           <span className="text-base shrink-0">💡</span>
                           <div className="flex-1 min-w-0">
                             <p className="text-[11px] font-bold text-green-800 m-0">
-                              Customer used coupon <strong>{order.couponCode}</strong>
-                              {order.couponType === "percentage" && " (% off)"}
-                              {order.couponType === "fixed" && " (Fixed discount)"}
-                              {order.couponType === "free_shipping" && " (Free shipping)"}
+                              Customer used coupon{" "}
+                              <strong>{order.couponCode}</strong>
                             </p>
                             <p className="text-[10px] text-green-600 m-0 mt-0.5">
-                              Customer saved {formatRupee(customerSaved)} • You get your full amount • Platform absorbs the discount
+                              Customer saved {formatRupee(customerSaved)} • You
+                              get your full amount • Platform absorbs the
+                              discount
                             </p>
                           </div>
                         </div>
@@ -1198,38 +3187,85 @@ const VendorDashboard = () => {
 
                       <div className="flex flex-col gap-2 mb-4">
                         {order.items?.map((item, i) => (
-                          <div key={i} className="flex gap-2.5 items-center bg-gray-50 rounded-xl p-2.5">
+                          <div
+                            key={i}
+                            className="flex gap-2.5 items-center bg-gray-50 rounded-xl p-2.5"
+                          >
                             <div className="w-11 h-11 bg-white rounded-xl border border-gray-100 flex items-center justify-center overflow-hidden shrink-0">
-                              {item.image ? <img src={item.image} alt={item.name} className="w-full h-full object-contain p-0.5" onError={(e) => { e.target.src = "https://placehold.co/44?text=P"; }} /> : <span className="text-lg">📦</span>}
+                              {item.image ? (
+                                <img
+                                  src={item.image}
+                                  alt={item.name}
+                                  className="w-full h-full object-contain p-0.5"
+                                  onError={(e) => {
+                                    e.target.src =
+                                      "https://placehold.co/44?text=P";
+                                  }}
+                                />
+                              ) : (
+                                <span className="text-lg">📦</span>
+                              )}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs font-semibold text-gray-900 m-0 truncate">{item.name}</p>
-                              <p className="text-[11px] text-gray-500 m-0">Qty: {item.quantity} · {formatRupee(item.price * item.quantity)}</p>
+                              <p className="text-xs font-semibold text-gray-900 m-0 truncate">
+                                {item.name}
+                              </p>
+                              <p className="text-[11px] text-gray-500 m-0">
+                                Qty: {item.quantity} ·{" "}
+                                {formatRupee(item.price * item.quantity)}
+                              </p>
                             </div>
                           </div>
                         ))}
                       </div>
 
                       <div className="bg-gray-50 border border-gray-100 rounded-xl px-3.5 py-2.5 mb-4 text-xs flex items-start gap-2">
-                        <span className="shrink-0 mt-0.5 text-gray-400">📍</span>
-                        <p className="text-gray-500 m-0">{order.shippingAddress?.fullName}, {order.shippingAddress?.street}, {order.shippingAddress?.city}, {order.shippingAddress?.state} — {order.shippingAddress?.postalCode}</p>
+                        <span className="shrink-0 mt-0.5 text-gray-400">
+                          📍
+                        </span>
+                        <p className="text-gray-500 m-0">
+                          {order.shippingAddress?.fullName},{" "}
+                          {order.shippingAddress?.street},{" "}
+                          {order.shippingAddress?.city},{" "}
+                          {order.shippingAddress?.state} —{" "}
+                          {order.shippingAddress?.postalCode}
+                        </p>
                       </div>
 
                       <div className="flex items-center justify-between gap-2 flex-wrap pt-3 border-t border-gray-100">
                         <p className="text-xs text-gray-500 m-0">
-                          {order.paymentMethod === "cod" ? "💵 COD" : "💳 Online"} ·{" "}
-                          <span className={`font-bold ${order.paymentStatus === "paid" ? "text-green-600" : order.paymentStatus === "refunded" ? "text-pink-600" : "text-amber-600"}`}>
+                          {order.paymentMethod === "cod"
+                            ? "💵 COD"
+                            : "💳 Online"}{" "}
+                          ·{" "}
+                          <span
+                            className={`font-bold ${order.paymentStatus === "paid" ? "text-green-600" : order.paymentStatus === "refunded" ? "text-pink-600" : "text-amber-600"}`}
+                          >
                             {order.paymentStatus}
                           </span>
                         </p>
                         <div className="flex gap-2 flex-wrap">
                           {flow && (
-                            <button onClick={() => handleVendorUpdateStatus(order._id, flow.next)} className={`${flow.color} border-none rounded-lg px-4 py-2 text-xs font-bold cursor-pointer transition font-[inherit]`}>
+                            <button
+                              onClick={() =>
+                                handleVendorUpdateStatus(order._id, flow.next)
+                              }
+                              className={`${flow.color} border-none rounded-lg px-4 py-2 text-xs font-bold cursor-pointer transition font-[inherit]`}
+                            >
                               {flow.nextLabel}
                             </button>
                           )}
                           {canCancel && (
-                            <button onClick={() => setCancellingOrderId(cancellingOrderId === order._id ? null : order._id)} className="bg-red-50 text-red-700 border border-red-200 rounded-lg px-3.5 py-2 text-xs font-bold cursor-pointer hover:bg-red-100 transition font-[inherit]">
+                            <button
+                              onClick={() =>
+                                setCancellingOrderId(
+                                  cancellingOrderId === order._id
+                                    ? null
+                                    : order._id,
+                                )
+                              }
+                              className="bg-red-50 text-red-700 border border-red-200 rounded-lg px-3.5 py-2 text-xs font-bold cursor-pointer hover:bg-red-100 transition font-[inherit]"
+                            >
                               ✕ Cancel
                             </button>
                           )}
@@ -1238,14 +3274,18 @@ const VendorDashboard = () => {
 
                       {order.cancelReason && (
                         <div className="mt-3 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                          <p className="text-[11px] text-red-600 font-semibold m-0">Cancel Reason: {order.cancelReason}</p>
+                          <p className="text-[11px] text-red-600 font-semibold m-0">
+                            Cancel Reason: {order.cancelReason}
+                          </p>
                         </div>
                       )}
                     </div>
 
                     {cancellingOrderId === order._id && (
                       <div className="px-4 sm:px-5 py-4 bg-red-50 border-t border-red-200">
-                        <p className="text-xs font-bold text-red-700 mb-2.5 m-0">⚠️ Reason for cancellation</p>
+                        <p className="text-xs font-bold text-red-700 mb-2.5 m-0">
+                          ⚠️ Reason for cancellation
+                        </p>
                         <div className="flex gap-2">
                           <input
                             type="text"
@@ -1254,8 +3294,27 @@ const VendorDashboard = () => {
                             onChange={(e) => setCancelReason(e.target.value)}
                             className="flex-1 border border-red-200 rounded-xl px-3 py-2.5 text-xs outline-none focus:border-red-400 bg-white font-[inherit]"
                           />
-                          <button onClick={() => handleVendorUpdateStatus(order._id, "cancelled", cancelReason)} className="bg-red-500 text-white border-none rounded-xl px-4 py-2.5 text-xs font-bold cursor-pointer font-[inherit] hover:bg-red-600 transition">Confirm</button>
-                          <button onClick={() => { setCancellingOrderId(null); setCancelReason(""); }} className="bg-white text-gray-700 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-semibold cursor-pointer font-[inherit] hover:bg-gray-50 transition">Back</button>
+                          <button
+                            onClick={() =>
+                              handleVendorUpdateStatus(
+                                order._id,
+                                "cancelled",
+                                cancelReason,
+                              )
+                            }
+                            className="bg-red-500 text-white border-none rounded-xl px-4 py-2.5 text-xs font-bold cursor-pointer font-[inherit] hover:bg-red-600 transition"
+                          >
+                            Confirm
+                          </button>
+                          <button
+                            onClick={() => {
+                              setCancellingOrderId(null);
+                              setCancelReason("");
+                            }}
+                            className="bg-white text-gray-700 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-semibold cursor-pointer font-[inherit] hover:bg-gray-50 transition"
+                          >
+                            Back
+                          </button>
                         </div>
                       </div>
                     )}
@@ -1266,8 +3325,22 @@ const VendorDashboard = () => {
 
             {ordersData?.pagination?.pages > 1 && (
               <div className="flex justify-center gap-1.5 mt-6">
-                <PageBtn onClick={() => setOrderPage((p) => Math.max(1, p - 1))} disabled={orderPage === 1}>← Prev</PageBtn>
-                <PageBtn onClick={() => setOrderPage((p) => Math.min(ordersData.pagination.pages, p + 1))} disabled={orderPage === ordersData.pagination.pages}>Next →</PageBtn>
+                <PageBtn
+                  onClick={() => setOrderPage((p) => Math.max(1, p - 1))}
+                  disabled={orderPage === 1}
+                >
+                  ← Prev
+                </PageBtn>
+                <PageBtn
+                  onClick={() =>
+                    setOrderPage((p) =>
+                      Math.min(ordersData.pagination.pages, p + 1),
+                    )
+                  }
+                  disabled={orderPage === ordersData.pagination.pages}
+                >
+                  Next →
+                </PageBtn>
               </div>
             )}
           </div>
@@ -1277,41 +3350,84 @@ const VendorDashboard = () => {
           <div className="fade-up">
             <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
               <div>
-                <h2 className="text-xl font-extrabold text-gray-900 m-0">Product Reviews</h2>
-                <p className="text-xs text-gray-500 mt-1 m-0">{totalReviews} total reviews</p>
+                <h2 className="text-xl font-extrabold text-gray-900 m-0">
+                  Product Reviews
+                </h2>
+                <p className="text-xs text-gray-500 mt-1 m-0">
+                  {totalReviews} total reviews
+                </p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
               {[
-                { value: totalReviews, label: "Total Reviews", icon: "💬", color: "text-[#4f46e5]", bg: "bg-indigo-50" },
-                { value: `${avgRating} ★`, label: "Average Rating", icon: "⭐", color: "text-amber-500", bg: "bg-amber-50" },
-                { value: ratingBreakdown[5] || 0, label: "5 Star Reviews", icon: "🏆", color: "text-green-600", bg: "bg-green-50" },
+                {
+                  value: totalReviews,
+                  label: "Total Reviews",
+                  icon: "💬",
+                  color: "text-[#4f46e5]",
+                  bg: "bg-indigo-50",
+                },
+                {
+                  value: `${avgRating} ★`,
+                  label: "Average Rating",
+                  icon: "⭐",
+                  color: "text-amber-500",
+                  bg: "bg-amber-50",
+                },
+                {
+                  value: ratingBreakdown[5] || 0,
+                  label: "5 Star Reviews",
+                  icon: "🏆",
+                  color: "text-green-600",
+                  bg: "bg-green-50",
+                },
               ].map((stat) => (
-                <div key={stat.label} className={`${stat.bg} border border-gray-100 rounded-2xl p-5 flex items-center gap-4 shadow-sm`}>
-                  <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-2xl shrink-0 shadow-sm">{stat.icon}</div>
+                <div
+                  key={stat.label}
+                  className={`${stat.bg} border border-gray-100 rounded-2xl p-5 flex items-center gap-4 shadow-sm`}
+                >
+                  <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-2xl shrink-0 shadow-sm">
+                    {stat.icon}
+                  </div>
                   <div>
-                    <p className={`text-2xl font-extrabold ${stat.color} m-0`}>{stat.value}</p>
-                    <p className="text-xs text-gray-500 mt-0.5 m-0">{stat.label}</p>
+                    <p className={`text-2xl font-extrabold ${stat.color} m-0`}>
+                      {stat.value}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5 m-0">
+                      {stat.label}
+                    </p>
                   </div>
                 </div>
               ))}
             </div>
 
             <div className="bg-white border border-gray-100 rounded-2xl p-5 mb-5 shadow-sm">
-              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3.5 m-0">Rating Breakdown</h3>
+              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3.5 m-0">
+                Rating Breakdown
+              </h3>
               <div className="flex flex-col gap-2.5">
                 {[5, 4, 3, 2, 1].map((star) => {
                   const count = ratingBreakdown[star] || 0;
-                  const percent = totalReviews > 0 ? (count / totalReviews) * 100 : 0;
+                  const percent =
+                    totalReviews > 0 ? (count / totalReviews) * 100 : 0;
                   return (
                     <div key={star} className="flex items-center gap-3">
-                      <span className="text-xs text-gray-500 w-4 text-right shrink-0">{star}</span>
-                      <span className="text-yellow-400 text-xs shrink-0">★</span>
+                      <span className="text-xs text-gray-500 w-4 text-right shrink-0">
+                        {star}
+                      </span>
+                      <span className="text-yellow-400 text-xs shrink-0">
+                        ★
+                      </span>
                       <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
-                        <div className="h-full bg-yellow-400 rounded-full transition-all duration-700" style={{ width: `${percent}%` }} />
+                        <div
+                          className="h-full bg-yellow-400 rounded-full transition-all duration-700"
+                          style={{ width: `${percent}%` }}
+                        />
                       </div>
-                      <span className="text-xs text-gray-500 w-6 text-right shrink-0">{count}</span>
+                      <span className="text-xs text-gray-500 w-6 text-right shrink-0">
+                        {count}
+                      </span>
                     </div>
                   );
                 })}
@@ -1321,7 +3437,10 @@ const VendorDashboard = () => {
             <div className="flex gap-2.5 mb-4 flex-wrap">
               <select
                 value={reviewSort}
-                onChange={(e) => { setReviewSort(e.target.value); setReviewPage(1); }}
+                onChange={(e) => {
+                  setReviewSort(e.target.value);
+                  setReviewPage(1);
+                }}
                 className="bg-white border border-gray-200 text-gray-700 rounded-xl px-3.5 py-2.5 text-[13px] outline-none focus:border-[#4f46e5] transition font-[inherit] cursor-pointer shadow-sm"
               >
                 <option value="newest">Most Recent</option>
@@ -1331,12 +3450,27 @@ const VendorDashboard = () => {
               </select>
               <div className="flex gap-1.5 flex-wrap">
                 {[5, 4, 3, 2, 1].map((star) => (
-                  <FilterBtn key={star} active={reviewRatingFilter === star} onClick={() => { setReviewRatingFilter(reviewRatingFilter === star ? undefined : star); setReviewPage(1); }}>
+                  <FilterBtn
+                    key={star}
+                    active={reviewRatingFilter === star}
+                    onClick={() => {
+                      setReviewRatingFilter(
+                        reviewRatingFilter === star ? undefined : star,
+                      );
+                      setReviewPage(1);
+                    }}
+                  >
                     {star} ★
                   </FilterBtn>
                 ))}
                 {reviewRatingFilter && (
-                  <button onClick={() => { setReviewRatingFilter(undefined); setReviewPage(1); }} className="px-3 py-2 text-xs text-gray-500 bg-transparent border-none cursor-pointer font-[inherit] hover:text-gray-700">
+                  <button
+                    onClick={() => {
+                      setReviewRatingFilter(undefined);
+                      setReviewPage(1);
+                    }}
+                    className="px-3 py-2 text-xs text-gray-500 bg-transparent border-none cursor-pointer font-[inherit] hover:text-gray-700"
+                  >
                     Clear
                   </button>
                 )}
@@ -1345,29 +3479,47 @@ const VendorDashboard = () => {
 
             {reviewsLoading && <Spinner text="Loading reviews..." />}
             {reviewsData?.data?.length === 0 && !reviewsLoading && (
-              <EmptyState icon="💬" title="No reviews yet" subtitle="Reviews from customers will appear here" />
+              <EmptyState
+                icon="💬"
+                title="No reviews yet"
+                subtitle="Reviews from customers will appear here"
+              />
             )}
 
             <div className="flex flex-col gap-3">
               {reviewsData?.data?.map((review) => (
-                <div key={review._id} className="bg-white border border-gray-100 hover:border-[#4f46e5]/30 hover:shadow-md rounded-2xl p-4 sm:p-5 transition-all shadow-sm">
+                <div
+                  key={review._id}
+                  className="bg-white border border-gray-100 hover:border-[#4f46e5]/30 hover:shadow-md rounded-2xl p-4 sm:p-5 transition-all shadow-sm"
+                >
                   <div className="flex gap-3 mb-3">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-100 to-indigo-200 flex items-center justify-center font-bold text-sm text-[#4f46e5] shrink-0">
                       {review.user?.firstName?.[0]?.toUpperCase() || "U"}
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center justify-between flex-wrap gap-1">
-                        <p className="font-bold text-[13px] text-gray-900 m-0">{review.user?.firstName} {review.user?.lastName}</p>
-                        <p className="text-[11px] text-gray-400 m-0">{formatDate(review.createdAt)}</p>
+                        <p className="font-bold text-[13px] text-gray-900 m-0">
+                          {review.user?.firstName} {review.user?.lastName}
+                        </p>
+                        <p className="text-[11px] text-gray-400 m-0">
+                          {formatDate(review.createdAt)}
+                        </p>
                       </div>
                       <div className="flex items-center gap-2 mt-1">
                         <div className="flex">
                           {[1, 2, 3, 4, 5].map((s) => (
-                            <span key={s} className={`text-[13px] ${s <= review.rating ? "text-yellow-400" : "text-gray-200"}`}>★</span>
+                            <span
+                              key={s}
+                              className={`text-[13px] ${s <= review.rating ? "text-yellow-400" : "text-gray-200"}`}
+                            >
+                              ★
+                            </span>
                           ))}
                         </div>
                         {review.isVerifiedPurchase && (
-                          <span className="text-[10px] bg-green-100 text-green-700 border border-green-200 px-2 py-0.5 rounded-full font-bold">✓ Verified</span>
+                          <span className="text-[10px] bg-green-100 text-green-700 border border-green-200 px-2 py-0.5 rounded-full font-bold">
+                            ✓ Verified
+                          </span>
                         )}
                       </div>
                     </div>
@@ -1376,35 +3528,82 @@ const VendorDashboard = () => {
                   {review.product && (
                     <div className="flex items-center gap-2 mb-3 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2">
                       {review.product.images?.[0] && (
-                        <img src={review.product.images[0].url} alt="" className="w-6 h-6 rounded-lg object-cover shrink-0" onError={(e) => { e.target.style.display = "none"; }} />
+                        <img
+                          src={review.product.images[0].url}
+                          alt=""
+                          className="w-6 h-6 rounded-lg object-cover shrink-0"
+                          onError={(e) => {
+                            e.target.style.display = "none";
+                          }}
+                        />
                       )}
-                      <span className="text-[11px] text-gray-600 font-semibold">{review.product.name}</span>
+                      <span className="text-[11px] text-gray-600 font-semibold">
+                        {review.product.name}
+                      </span>
                     </div>
                   )}
 
-                  {review.title && <p className="font-bold text-[13px] text-gray-900 m-0 mb-1">{review.title}</p>}
-                  {review.body && <p className="text-[13px] text-gray-600 m-0 leading-relaxed">{review.body}</p>}
+                  {review.title && (
+                    <p className="font-bold text-[13px] text-gray-900 m-0 mb-1">
+                      {review.title}
+                    </p>
+                  )}
+                  {review.body && (
+                    <p className="text-[13px] text-gray-600 m-0 leading-relaxed">
+                      {review.body}
+                    </p>
+                  )}
 
                   {review.images?.length > 0 && (
                     <div className="flex gap-1.5 mt-3">
                       {review.images.map((img, i) => (
-                        <img key={i} src={img.url} alt="" className="w-14 h-14 rounded-xl object-cover border border-gray-200" />
+                        <img
+                          key={i}
+                          src={img.url}
+                          alt=""
+                          className="w-14 h-14 rounded-xl object-cover border border-gray-200"
+                        />
                       ))}
                     </div>
                   )}
 
-                  <p className="text-[11px] text-gray-400 mt-3 m-0">👍 {review.helpfulVotes?.length || 0} found helpful</p>
+                  <p className="text-[11px] text-gray-400 mt-3 m-0">
+                    👍 {review.helpfulVotes?.length || 0} found helpful
+                  </p>
                 </div>
               ))}
             </div>
 
             {reviewsData?.pagination?.pages > 1 && (
               <div className="flex justify-center gap-1.5 mt-6">
-                <PageBtn onClick={() => setReviewPage((p) => Math.max(1, p - 1))} disabled={reviewPage === 1}>← Prev</PageBtn>
-                {Array.from({ length: reviewsData.pagination.pages }, (_, i) => i + 1).map((p) => (
-                  <PageBtn key={p} active={reviewPage === p} onClick={() => setReviewPage(p)}>{p}</PageBtn>
+                <PageBtn
+                  onClick={() => setReviewPage((p) => Math.max(1, p - 1))}
+                  disabled={reviewPage === 1}
+                >
+                  ← Prev
+                </PageBtn>
+                {Array.from(
+                  { length: reviewsData.pagination.pages },
+                  (_, i) => i + 1,
+                ).map((p) => (
+                  <PageBtn
+                    key={p}
+                    active={reviewPage === p}
+                    onClick={() => setReviewPage(p)}
+                  >
+                    {p}
+                  </PageBtn>
                 ))}
-                <PageBtn onClick={() => setReviewPage((p) => Math.min(reviewsData.pagination.pages, p + 1))} disabled={reviewPage === reviewsData.pagination.pages}>Next →</PageBtn>
+                <PageBtn
+                  onClick={() =>
+                    setReviewPage((p) =>
+                      Math.min(reviewsData.pagination.pages, p + 1),
+                    )
+                  }
+                  disabled={reviewPage === reviewsData.pagination.pages}
+                >
+                  Next →
+                </PageBtn>
               </div>
             )}
           </div>

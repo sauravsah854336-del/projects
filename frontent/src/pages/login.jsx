@@ -415,28 +415,7 @@ const Login = () => {
             </button>
           </form>
 
-          <div className="mt-5 sm:mt-6 flex items-center gap-3">
-            <div className="flex-1 h-px bg-gray-200" />
-            <span className="text-gray-400 text-xs font-medium">
-              OR CONTINUE WITH
-            </span>
-            <div className="flex-1 h-px bg-gray-200" />
-          </div>
-
-          <div className="mt-4 sm:mt-6 grid grid-cols-2 gap-3">
-            {socialBtns.map((btn) => (
-              <button
-                key={btn.label}
-                type="button"
-                disabled
-                title={`${btn.label} login coming soon`}
-                className="flex items-center justify-center gap-2 border border-gray-200 py-2.5 sm:py-3 rounded-xl text-sm font-medium text-gray-400 bg-white font-[inherit] opacity-50 cursor-not-allowed"
-              >
-                {btn.icon}
-                {btn.label}
-              </button>
-            ))}
-          </div>
+          
 
           <div className="mt-5 pt-5 border-t border-gray-100 space-y-2">
             <p className="text-center text-gray-500 text-sm m-0">

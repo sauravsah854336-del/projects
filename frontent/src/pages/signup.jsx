@@ -687,6 +687,10 @@ const Signup = () => {
             </Link>
           </p>
         </div>
+        <div>
+          <label htmlFor="productDetials">Product Details</label>
+          <input type="text" placeholder="Enter Products info" name="productInfo" />
+        </div>
       </div>
     </div>
   );

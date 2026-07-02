@@ -3,11 +3,19 @@ import { authApi } from "../auth/authApi";
 const categoryApi = authApi.injectEndpoints({
   endpoints: (builder) => ({
     getCategories: builder.query({
-      query: () => "/categories",
+      query: (params) => {
+        const q = new URLSearchParams();
+        if (params?.includeInactive) q.set("includeInactive", "true");
+        return `/categories?${q.toString()}`;
+      },
       providesTags: ["Categories"],
     }),
     getCategoryTree: builder.query({
       query: () => "/categories/tree",
+      providesTags: ["Categories"],
+    }),
+    getCategoryStats: builder.query({
+      query: () => "/categories/stats",
       providesTags: ["Categories"],
     }),
     getSingleCategory: builder.query({
@@ -29,6 +37,13 @@ const categoryApi = authApi.injectEndpoints({
       }),
       invalidatesTags: ["Categories"],
     }),
+    restoreCategory: builder.mutation({
+      query: (id) => ({
+        url: `/categories/${id}/restore`,
+        method: "PUT",
+      }),
+      invalidatesTags: ["Categories"],
+    }),
     deleteCategory: builder.mutation({
       query: (id) => ({
         url: `/categories/${id}`,
@@ -42,8 +57,10 @@ const categoryApi = authApi.injectEndpoints({
 export const {
   useGetCategoriesQuery,
   useGetCategoryTreeQuery,
+  useGetCategoryStatsQuery,
   useGetSingleCategoryQuery,
   useCreateCategoryMutation,
   useUpdateCategoryMutation,
+  useRestoreCategoryMutation,
   useDeleteCategoryMutation,
 } = categoryApi;

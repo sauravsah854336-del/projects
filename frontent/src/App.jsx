@@ -25,6 +25,8 @@ import ContactPage from "./pages/ContactPage";
 import HelpPage from "./pages/HelpPage";
 import PolicyPage from "./pages/PolicyPage";
 import NotFoundPage from "./pages/NotFoundPage";
+import CategoriesPage from "./pages/CategoriesPage";
+import SubcategoriesPage from "./pages/SubcategoriesPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PublicRoute from "./components/PublicRoute";
 import AuthVerifier from "./components/AuthVerifier";
@@ -40,8 +42,13 @@ function App() {
         <Layout>
           <Routes>
             <Route path="/" element={<Home />} />
+
+            <Route path="/categories" element={<CategoriesPage />} />
+            <Route path="/categories/:slug" element={<SubcategoriesPage />} />
+
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/products/:slug" element={<ProductDetailPage />} />
+
             <Route path="/cart" element={<CartPage />} />
             <Route path="/wishlist" element={<WishlistPage />} />
             <Route path="/about" element={<AboutPage />} />

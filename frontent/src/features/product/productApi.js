@@ -5,13 +5,29 @@ export const productApi = authApi.injectEndpoints({
     getAllProducts: builder.query({
       query: (params) => {
         const q = new URLSearchParams();
-        Object.entries(params || {}).forEach(([k, v]) => { if (v) q.set(k, v); });
+        Object.entries(params || {}).forEach(([k, v]) => {
+          if (v !== undefined && v !== null && v !== "") q.set(k, v);
+        });
         return `/products?${q.toString()}`;
+      },
+      providesTags: ["Products"],
+    }),
+    getProductFilters: builder.query({
+      query: (params) => {
+        const q = new URLSearchParams();
+        Object.entries(params || {}).forEach(([k, v]) => {
+          if (v !== undefined && v !== null && v !== "") q.set(k, v);
+        });
+        return `/products/filters?${q.toString()}`;
       },
       providesTags: ["Products"],
     }),
     getSingleProduct: builder.query({
       query: (slug) => `/products/single/${slug}`,
+      providesTags: ["Products"],
+    }),
+    getRelatedProducts: builder.query({
+      query: (id) => `/products/related/${id}`,
       providesTags: ["Products"],
     }),
     getVendorProducts: builder.query({
@@ -66,7 +82,9 @@ export const productApi = authApi.injectEndpoints({
 
 export const {
   useGetAllProductsQuery,
+  useGetProductFiltersQuery,
   useGetSingleProductQuery,
+  useGetRelatedProductsQuery,
   useGetVendorProductsQuery,
   useCreateProductMutation,
   useUpdateProductMutation,
