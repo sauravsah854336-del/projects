@@ -17,37 +17,29 @@ const SbTitle = ({ children, action }) => (
 
 const SbSep = () => <div className="border-t border-gray-100 my-2 mx-4" />;
 
-const SbIcon = ({ children, active, theme = "orange" }) => {
+const SbIcon = ({ children, active, theme = "blue" }) => {
   const themes = {
-    orange: active
-      ? "bg-gradient-to-br from-orange-100 to-orange-200 border-orange-300 text-[#D85A30] shadow-sm"
-      : "bg-gray-50 border-gray-200 text-gray-500 group-hover:bg-orange-50 group-hover:border-orange-200 group-hover:text-[#D85A30]",
+    blue: active
+      ? "bg-gradient-to-br from-blue-100 to-blue-200 border-blue-300 text-blue-700 shadow-sm"
+      : "bg-gray-50 border-gray-200 text-gray-500 group-hover:bg-blue-50 group-hover:border-blue-200 group-hover:text-blue-700",
     indigo: active
       ? "bg-gradient-to-br from-indigo-100 to-indigo-200 border-indigo-300 text-[#4f46e5] shadow-sm"
       : "bg-gray-50 border-gray-200 text-gray-500 group-hover:bg-indigo-50 group-hover:border-indigo-200 group-hover:text-[#4f46e5]",
-    red: active
-      ? "bg-gradient-to-br from-red-100 to-red-200 border-red-300 text-red-600 shadow-sm"
-      : "bg-gray-50 border-gray-200 text-gray-500 group-hover:bg-red-50 group-hover:border-red-200 group-hover:text-red-600",
   };
   return (
-    <span
-      className={`w-9 h-9 flex items-center justify-center rounded-xl border-2 text-base shrink-0 transition-all duration-200 ${themes[theme]}`}
-    >
+    <span className={`w-9 h-9 flex items-center justify-center rounded-xl border-2 text-base shrink-0 transition-all duration-200 ${themes[theme]}`}>
       {children}
     </span>
   );
 };
 
-const SbItem = ({ onClick, active, children, disabled, className = "", theme = "orange" }) => {
+const SbItem = ({ onClick, active, children, disabled, className = "", theme = "blue" }) => {
   const themes = {
-    orange: active
-      ? "bg-gradient-to-r from-orange-50 via-orange-50/60 to-transparent text-[#D85A30] font-extrabold border-l-[3px] border-[#D85A30] shadow-sm"
-      : "bg-transparent text-gray-700 hover:bg-gray-50 font-medium border-l-[3px] border-transparent",
+    blue: active
+      ? "bg-gradient-to-r from-blue-50 via-blue-50/60 to-transparent text-blue-700 font-extrabold border-l-[3px] border-blue-600 shadow-sm"
+      : "bg-transparent text-gray-700 hover:bg-blue-50/50 font-medium border-l-[3px] border-transparent hover:text-blue-700",
     indigo: active
       ? "bg-gradient-to-r from-indigo-50 via-indigo-50/60 to-transparent text-[#4f46e5] font-extrabold border-l-[3px] border-[#4f46e5] shadow-sm"
-      : "bg-transparent text-gray-700 hover:bg-gray-50 font-medium border-l-[3px] border-transparent",
-    red: active
-      ? "bg-gradient-to-r from-red-50 via-red-50/60 to-transparent text-red-600 font-extrabold border-l-[3px] border-red-600 shadow-sm"
       : "bg-transparent text-gray-700 hover:bg-gray-50 font-medium border-l-[3px] border-transparent",
   };
   return (
@@ -65,11 +57,9 @@ const SbName = ({ children }) => (
   <span className="flex-1 truncate">{children}</span>
 );
 
-const SbBadge = ({ count, color = "bg-[#D85A30]" }) =>
+const SbBadge = ({ count, color = "bg-blue-600" }) =>
   count > 0 ? (
-    <span
-      className={`${color} text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full min-w-[20px] text-center shadow-sm`}
-    >
+    <span className={`${color} text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full min-w-[20px] text-center shadow-sm`}>
       {count > 99 ? "99+" : count}
     </span>
   ) : null;
@@ -126,9 +116,7 @@ const CategorySidebar = () => {
           className={`relative px-4 py-5 border-b border-gray-100 overflow-hidden ${
             isVendor
               ? "bg-gradient-to-br from-indigo-50 via-indigo-50/50 to-white"
-              : isAdmin
-              ? "bg-gradient-to-br from-red-50 via-red-50/50 to-white"
-              : "bg-gradient-to-br from-orange-50 via-orange-50/50 to-white"
+              : "bg-gradient-to-br from-blue-50 via-blue-50/50 to-white"
           }`}
         >
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/40 rounded-full blur-3xl pointer-events-none" />
@@ -144,9 +132,7 @@ const CategorySidebar = () => {
               className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-lg overflow-hidden shrink-0 shadow-lg group-hover:scale-105 transition-transform ${
                 isVendor
                   ? "bg-gradient-to-br from-[#4338ca] to-[#6366f1] shadow-indigo-200"
-                  : isAdmin
-                  ? "bg-gradient-to-br from-red-500 to-red-600 shadow-red-200"
-                  : "bg-gradient-to-br from-[#D85A30] to-[#FF8C5A] shadow-orange-200"
+                  : "bg-gradient-to-br from-blue-500 to-blue-700 shadow-blue-200"
               }`}
             >
               {user.avatar ? (
@@ -178,7 +164,7 @@ const CategorySidebar = () => {
                   </span>
                 )}
                 {isAdmin && (
-                  <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200">
+                  <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 border border-blue-200">
                     ADMIN
                   </span>
                 )}
@@ -214,7 +200,7 @@ const CategorySidebar = () => {
           <div className="relative flex flex-col gap-2">
             <button
               onClick={() => go("/login")}
-              className="w-full bg-gradient-to-r from-[#D85A30] to-[#FF8C5A] text-white border-none rounded-xl py-2.5 text-sm font-bold cursor-pointer shadow-md shadow-orange-200 hover:shadow-lg hover:shadow-orange-300 hover:brightness-105 transition font-[inherit]"
+              className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white border-none rounded-xl py-2.5 text-sm font-bold cursor-pointer shadow-md shadow-blue-200 hover:shadow-lg hover:shadow-blue-300 hover:brightness-105 transition font-[inherit]"
             >
               Sign In
             </button>
@@ -270,6 +256,10 @@ const CategorySidebar = () => {
               <SbIcon>💰</SbIcon>
               <SbName>Deals & Offers</SbName>
             </SbItem>
+            <SbItem onClick={() => go("/categories")}>
+              <SbIcon>🗂️</SbIcon>
+              <SbName>All Categories</SbName>
+            </SbItem>
 
             <SbSep />
             <SbTitle>Customer Service</SbTitle>
@@ -306,57 +296,27 @@ const CategorySidebar = () => {
         {isVendor && (
           <>
             <SbTitle>Vendor Dashboard</SbTitle>
-            <SbItem
-              theme="indigo"
-              onClick={() => go("/vendor/dashboard")}
-              active={isPathActive("/vendor/dashboard") && !params.get("tab")}
-            >
-              <SbIcon theme="indigo" active={isPathActive("/vendor/dashboard") && !params.get("tab")}>
-                📊
-              </SbIcon>
+            <SbItem theme="indigo" onClick={() => go("/vendor/dashboard")} active={isPathActive("/vendor/dashboard") && !params.get("tab")}>
+              <SbIcon theme="indigo" active={isPathActive("/vendor/dashboard") && !params.get("tab")}>📊</SbIcon>
               <SbName>Overview</SbName>
             </SbItem>
-            <SbItem
-              theme="indigo"
-              onClick={() => go("/vendor/dashboard?tab=products")}
-              active={params.get("tab") === "products"}
-            >
-              <SbIcon theme="indigo" active={params.get("tab") === "products"}>
-                📦
-              </SbIcon>
+            <SbItem theme="indigo" onClick={() => go("/vendor/dashboard?tab=products")} active={params.get("tab") === "products"}>
+              <SbIcon theme="indigo" active={params.get("tab") === "products"}>📦</SbIcon>
               <SbName>Manage Products</SbName>
             </SbItem>
-            <SbItem
-              theme="indigo"
-              onClick={() => go("/vendor/dashboard?tab=orders")}
-              active={params.get("tab") === "orders"}
-            >
-              <SbIcon theme="indigo" active={params.get("tab") === "orders"}>
-                🛒
-              </SbIcon>
+            <SbItem theme="indigo" onClick={() => go("/vendor/dashboard?tab=orders")} active={params.get("tab") === "orders"}>
+              <SbIcon theme="indigo" active={params.get("tab") === "orders"}>🛒</SbIcon>
               <SbName>Orders</SbName>
             </SbItem>
-            <SbItem
-              theme="indigo"
-              onClick={() => go("/vendor/dashboard?tab=reviews")}
-              active={params.get("tab") === "reviews"}
-            >
-              <SbIcon theme="indigo" active={params.get("tab") === "reviews"}>
-                ⭐
-              </SbIcon>
+            <SbItem theme="indigo" onClick={() => go("/vendor/dashboard?tab=reviews")} active={params.get("tab") === "reviews"}>
+              <SbIcon theme="indigo" active={params.get("tab") === "reviews"}>⭐</SbIcon>
               <SbName>Reviews & Ratings</SbName>
             </SbItem>
 
             <SbSep />
             <SbTitle>Account & Settings</SbTitle>
-            <SbItem
-              theme="indigo"
-              onClick={() => go("/vendor/profile")}
-              active={isPathActive("/vendor/profile")}
-            >
-              <SbIcon theme="indigo" active={isPathActive("/vendor/profile")}>
-                👤
-              </SbIcon>
+            <SbItem theme="indigo" onClick={() => go("/vendor/profile")} active={isPathActive("/vendor/profile")}>
+              <SbIcon theme="indigo" active={isPathActive("/vendor/profile")}>👤</SbIcon>
               <SbName>Store Profile</SbName>
             </SbItem>
 
@@ -415,119 +375,83 @@ const CategorySidebar = () => {
         {isAdmin && (
           <>
             <SbTitle>Admin Control Panel</SbTitle>
-            <SbItem
-              theme="red"
-              onClick={() => go("/admin/dashboard")}
-              active={isPathActive("/admin/dashboard") && !params.get("tab")}
-            >
-              <SbIcon theme="red" active={isPathActive("/admin/dashboard") && !params.get("tab")}>
-                📊
-              </SbIcon>
+            <SbItem onClick={() => go("/admin/dashboard")} active={isPathActive("/admin/dashboard") && !params.get("tab")}>
+              <SbIcon active={isPathActive("/admin/dashboard") && !params.get("tab")}>📊</SbIcon>
               <SbName>Dashboard</SbName>
             </SbItem>
 
             <SbSep />
             <SbTitle>User Management</SbTitle>
-            <SbItem
-              theme="red"
-              onClick={() => go("/admin/dashboard?tab=vendors")}
-              active={params.get("tab") === "vendors"}
-            >
-              <SbIcon theme="red" active={params.get("tab") === "vendors"}>🏪</SbIcon>
+            <SbItem onClick={() => go("/admin/dashboard?tab=vendors")} active={params.get("tab") === "vendors"}>
+              <SbIcon active={params.get("tab") === "vendors"}>🏪</SbIcon>
               <SbName>Vendors</SbName>
             </SbItem>
-            <SbItem
-              theme="red"
-              onClick={() => go("/admin/dashboard?tab=customers")}
-              active={params.get("tab") === "customers"}
-            >
-              <SbIcon theme="red" active={params.get("tab") === "customers"}>👥</SbIcon>
+            <SbItem onClick={() => go("/admin/dashboard?tab=customers")} active={params.get("tab") === "customers"}>
+              <SbIcon active={params.get("tab") === "customers"}>👥</SbIcon>
               <SbName>Customers</SbName>
             </SbItem>
-            <SbItem
-              theme="red"
-              onClick={() => go("/admin/dashboard?tab=admins")}
-              active={params.get("tab") === "admins"}
-            >
-              <SbIcon theme="red" active={params.get("tab") === "admins"}>👑</SbIcon>
+            <SbItem onClick={() => go("/admin/dashboard?tab=admins")} active={params.get("tab") === "admins"}>
+              <SbIcon active={params.get("tab") === "admins"}>👑</SbIcon>
               <SbName>Administrators</SbName>
             </SbItem>
 
             <SbSep />
             <SbTitle>Catalog Management</SbTitle>
-            <SbItem
-              theme="red"
-              onClick={() => go("/admin/dashboard?tab=categories")}
-              active={params.get("tab") === "categories"}
-            >
-              <SbIcon theme="red" active={params.get("tab") === "categories"}>📂</SbIcon>
+            <SbItem onClick={() => go("/admin/dashboard?tab=categories")} active={params.get("tab") === "categories"}>
+              <SbIcon active={params.get("tab") === "categories"}>📂</SbIcon>
               <SbName>Categories</SbName>
             </SbItem>
-            <SbItem
-              theme="red"
-              onClick={() => go("/admin/dashboard?tab=products")}
-              active={params.get("tab") === "products"}
-            >
-              <SbIcon theme="red" active={params.get("tab") === "products"}>📦</SbIcon>
+            <SbItem onClick={() => go("/admin/dashboard?tab=products")} active={params.get("tab") === "products"}>
+              <SbIcon active={params.get("tab") === "products"}>📦</SbIcon>
               <SbName>All Products</SbName>
             </SbItem>
 
             <SbSep />
             <SbTitle>Operations</SbTitle>
-            <SbItem
-              theme="red"
-              onClick={() => go("/admin/dashboard?tab=orders")}
-              active={params.get("tab") === "orders"}
-            >
-              <SbIcon theme="red" active={params.get("tab") === "orders"}>🛒</SbIcon>
+            <SbItem onClick={() => go("/admin/dashboard?tab=orders")} active={params.get("tab") === "orders"}>
+              <SbIcon active={params.get("tab") === "orders"}>🛒</SbIcon>
               <SbName>Orders</SbName>
             </SbItem>
-            <SbItem
-              theme="red"
-              onClick={() => go("/admin/dashboard?tab=reviews")}
-              active={params.get("tab") === "reviews"}
-            >
-              <SbIcon theme="red" active={params.get("tab") === "reviews"}>⭐</SbIcon>
+            <SbItem onClick={() => go("/admin/dashboard?tab=coupons")} active={params.get("tab") === "coupons"}>
+              <SbIcon active={params.get("tab") === "coupons"}>🎟️</SbIcon>
+              <SbName>Coupons</SbName>
+            </SbItem>
+            <SbItem onClick={() => go("/admin/dashboard?tab=reviews")} active={params.get("tab") === "reviews"}>
+              <SbIcon active={params.get("tab") === "reviews"}>⭐</SbIcon>
               <SbName>Reviews</SbName>
             </SbItem>
 
             <SbSep />
             <SbTitle>Settings</SbTitle>
-            <SbItem
-              theme="red"
-              onClick={() => go("/admin/profile")}
-              active={isPathActive("/admin/profile")}
-            >
-              <SbIcon theme="red" active={isPathActive("/admin/profile")}>👤</SbIcon>
+            <SbItem onClick={() => go("/admin/profile")} active={isPathActive("/admin/profile")}>
+              <SbIcon active={isPathActive("/admin/profile")}>👤</SbIcon>
               <SbName>My Profile</SbName>
             </SbItem>
 
             <SbSep />
             <SbTitle>Advanced Features</SbTitle>
-            <SbItem theme="red" disabled>
-              <SbIcon theme="red">📈</SbIcon>
+            <SbItem onClick={() => go("/admin/dashboard?tab=analytics")} active={params.get("tab") === "analytics"}>
+              <SbIcon active={params.get("tab") === "analytics"}>📈</SbIcon>
               <SbName>Analytics</SbName>
-              <SoonBadge />
             </SbItem>
-            <SbItem theme="red" disabled>
-              <SbIcon theme="red">💳</SbIcon>
+            <SbItem onClick={() => go("/admin/dashboard?tab=countries")} active={params.get("tab") === "countries"}>
+              <SbIcon active={params.get("tab") === "countries"}>🌍</SbIcon>
+              <SbName>Countries</SbName>
+            </SbItem>
+            <SbItem disabled>
+              <SbIcon>💳</SbIcon>
               <SbName>Payment Gateway</SbName>
-              <SoonBadge />
-            </SbItem>
-            <SbItem theme="red" disabled>
-              <SbIcon theme="red">🎟️</SbIcon>
-              <SbName>Coupon Manager</SbName>
               <SoonBadge />
             </SbItem>
 
             <SbSep />
             <SbTitle>Quick Links</SbTitle>
-            <SbItem theme="red" onClick={() => go("/")}>
-              <SbIcon theme="red">🏠</SbIcon>
+            <SbItem onClick={() => go("/")}>
+              <SbIcon>🏠</SbIcon>
               <SbName>View Homepage</SbName>
             </SbItem>
-            <SbItem theme="red" onClick={() => go("/products")}>
-              <SbIcon theme="red">🛍️</SbIcon>
+            <SbItem onClick={() => go("/products")}>
+              <SbIcon>🛍️</SbIcon>
               <SbName>Browse Products</SbName>
             </SbItem>
 
@@ -567,6 +491,7 @@ const CategorySidebar = () => {
               <SbIcon>💰</SbIcon>
               <SbName>Deals & Offers</SbName>
             </SbItem>
+            
 
             <SbSep />
             <SbTitle>Sell With Us</SbTitle>

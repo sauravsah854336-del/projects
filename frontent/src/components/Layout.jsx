@@ -11,23 +11,33 @@ const hideSidebarPaths = [
   "/unauthorized",
   "/checkout",
   "/forgot-password",
+  "/about",
+  "/contact",
+  "/help",
+  "/categories",
+];
+
+const hideSidebarPrefixes = [
+  "/policy/",
+  "/categories/",
 ];
 
 const Layout = ({ children }) => {
   const location = useLocation();
-  const hideSidebar = hideSidebarPaths.includes(location.pathname);
+
+  const hideSidebar =
+    hideSidebarPaths.includes(location.pathname) ||
+    hideSidebarPrefixes.some((prefix) => location.pathname.startsWith(prefix));
 
   return (
     <div className="min-h-screen flex flex-col bg-[#EAEDED]">
       <Navbar />
-
       <div className="flex-1 flex max-w-full">
         {!hideSidebar && <CategorySidebar />}
         <main className="flex-1 min-w-0">
           {children}
         </main>
       </div>
-
       <Footer />
     </div>
   );
