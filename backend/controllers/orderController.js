@@ -6,20 +6,53 @@ const { applyCouponUsage } = require("./couponController");
 
 const generateOrderNumber = () => {
   const timestamp = Date.now().toString();
-  const random = Math.floor(Math.random() * 10000).toString().padStart(4, "0");
+  const random = Math.floor(Math.random() * 10000)
+    .toString()
+    .padStart(4, "0");
   return `ORD-${timestamp}-${random}`;
 };
 
 const placeOrder = async (req, res) => {
   try {
-    const { shippingAddress, paymentMethod = "cod", notes = "", country } = req.body;
+    const {
+      shippingAddress,
+      paymentMethod = "online",
+      notes = "",
+      country,
+    } = req.body;
 
-    if (!shippingAddress?.fullName || !shippingAddress?.phone || !shippingAddress?.street ||
-        !shippingAddress?.city || !shippingAddress?.state || !shippingAddress?.postalCode) {
-      return res.status(400).json({ success: false, message: "Complete shipping address is required" });
+    if (paymentMethod === "cod") {
+      return res.status(400).json({
+        success: false,
+        message: "Cash on Delivery is coming soon. Please use Online Payment.",
+      });
     }
 
-    const cart = await Cart.findOne({ user: req.user.id }).populate("items.product");
+    const allowedPaymentMethods = ["online"];
+    if (!allowedPaymentMethods.includes(paymentMethod)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid payment method. Only online payment is available.",
+      });
+    }
+
+    if (
+      !shippingAddress?.fullName ||
+      !shippingAddress?.phone ||
+      !shippingAddress?.street ||
+      !shippingAddress?.city ||
+      !shippingAddress?.state ||
+      !shippingAddress?.postalCode
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Complete shipping address is required",
+      });
+    }
+
+    const cart = await Cart.findOne({ user: req.user.id }).populate(
+      "items.product"
+    );
 
     if (!cart || cart.items.length === 0) {
       return res.status(400).json({ success: false, message: "Cart is empty" });
@@ -29,9 +62,17 @@ const placeOrder = async (req, res) => {
     let subtotalINR = 0;
 
     for (const item of cart.items) {
-      const product = await Product.findById(item.product._id).populate("vendorStore", "storeName");
+      const product = await Product.findById(item.product._id).populate(
+        "vendorStore",
+        "storeName"
+      );
 
-      if (!product || product.status !== "approved" || product.isDeleted || !product.isActive) {
+      if (
+        !product ||
+        product.status !== "approved" ||
+        product.isDeleted ||
+        !product.isActive
+      ) {
         return res.status(400).json({
           success: false,
           message: `Product "${item.name}" is no longer available`,
@@ -60,6 +101,7 @@ const placeOrder = async (req, res) => {
 
     const discountINR = cart.coupon?.discount || 0;
     const couponCode = cart.coupon?.code || "";
+    const isFreeShippingCoupon = cart.coupon?.freeShipping || false;
     const subtotalAfterDiscountINR = subtotalINR - discountINR;
 
     const countryInfo = country || {
@@ -75,17 +117,46 @@ const placeOrder = async (req, res) => {
     const exchangeRate = countryInfo.exchangeRate || 1;
     const subtotalLocal = subtotalINR * exchangeRate;
     const discountLocal = discountINR * exchangeRate;
+    const subtotalAfterDiscountLocal = subtotalAfterDiscountINR * exchangeRate;
 
     const taxRate = countryInfo.tax?.rate || 0;
     const taxIncluded = countryInfo.tax?.includedInPrice !== false;
-    const taxAmount = taxIncluded ? 0 : (subtotalAfterDiscountINR * exchangeRate * taxRate) / 100;
+    const taxAmount = taxIncluded
+      ? 0
+      : (subtotalAfterDiscountINR * exchangeRate * taxRate) / 100;
 
     const freeThreshold = countryInfo.shipping?.freeShippingThreshold || 0;
     const standardShippingCost = countryInfo.shipping?.standardCost || 0;
-    const shippingCostLocal = (subtotalLocal - discountLocal) >= freeThreshold ? 0 : standardShippingCost;
-    const shippingCostINR = exchangeRate > 0 ? shippingCostLocal / exchangeRate : 0;
 
-    const totalINR = subtotalAfterDiscountINR + shippingCostINR + (exchangeRate > 0 ? taxAmount / exchangeRate : 0);
+    let shippingCostLocal = 0;
+
+    if (isFreeShippingCoupon) {
+      shippingCostLocal = 0;
+    } else if (freeThreshold > 0 && subtotalAfterDiscountLocal >= freeThreshold) {
+      shippingCostLocal = 0;
+    } else {
+      shippingCostLocal = standardShippingCost;
+    }
+
+    const shippingCostINR =
+      exchangeRate > 0 ? shippingCostLocal / exchangeRate : 0;
+
+    console.log("═══════════════════════════════════════════════");
+    console.log("🧾 ORDER CALCULATION:");
+    console.log(`   Subtotal INR:        ₹${subtotalINR.toFixed(2)}`);
+    console.log(`   Discount INR:        ₹${discountINR.toFixed(2)}`);
+    console.log(`   Subtotal After Disc: ₹${subtotalAfterDiscountINR.toFixed(2)}`);
+    console.log(`   Free Threshold:      ${countryInfo.currency.symbol}${freeThreshold}`);
+    console.log(`   Standard Ship Cost:  ${countryInfo.currency.symbol}${standardShippingCost}`);
+    console.log(`   Free Ship Coupon:    ${isFreeShippingCoupon ? "YES ✅" : "NO"}`);
+    console.log(`   Qualifies Free Ship: ${subtotalAfterDiscountLocal >= freeThreshold ? "YES ✅" : "NO"}`);
+    console.log(`   Final Shipping INR:  ₹${shippingCostINR.toFixed(2)}`);
+    console.log("═══════════════════════════════════════════════");
+
+    const totalINR =
+      subtotalAfterDiscountINR +
+      shippingCostINR +
+      (exchangeRate > 0 ? taxAmount / exchangeRate : 0);
     const totalLocal = totalINR * exchangeRate;
 
     const order = await Order.create({
@@ -96,13 +167,13 @@ const placeOrder = async (req, res) => {
       paymentMethod,
       paymentStatus: "pending",
       orderStatus: "confirmed",
+      confirmedAt: null,
       subtotal: subtotalINR,
       discount: discountINR,
       couponCode: couponCode,
       shippingCharge: shippingCostINR,
       total: totalINR,
       notes,
-      confirmedAt: new Date(),
       country: {
         code: countryInfo.code || "IN",
         name: countryInfo.name || "India",
@@ -146,7 +217,13 @@ const placeOrder = async (req, res) => {
 
     await Cart.findOneAndUpdate(
       { user: req.user.id },
-      { items: [], totalItems: 0, subtotal: 0, total: 0, coupon: { code: "", discount: 0, discountType: "fixed" } }
+      {
+        items: [],
+        totalItems: 0,
+        subtotal: 0,
+        total: 0,
+        coupon: { code: "", discount: 0, discountType: "fixed" },
+      }
     );
 
     if (countryInfo.code) {
@@ -160,6 +237,7 @@ const placeOrder = async (req, res) => {
       success: true,
       message: "Order placed successfully",
       data: order,
+      paymentRequired: true,
     });
   } catch (err) {
     console.error("placeOrder error:", err);
@@ -196,9 +274,14 @@ const getSingleOrder = async (req, res) => {
     const { id } = req.params;
     const order = await Order.findById(id);
 
-    if (!order) return res.status(404).json({ success: false, message: "Order not found" });
+    if (!order)
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found" });
     if (order.user.toString() !== req.user.id) {
-      return res.status(403).json({ success: false, message: "Not authorized" });
+      return res
+        .status(403)
+        .json({ success: false, message: "Not authorized" });
     }
 
     return res.status(200).json({ success: true, data: order });
@@ -214,9 +297,14 @@ const cancelOrder = async (req, res) => {
     const { reason } = req.body;
 
     const order = await Order.findById(id);
-    if (!order) return res.status(404).json({ success: false, message: "Order not found" });
+    if (!order)
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found" });
     if (order.user.toString() !== req.user.id) {
-      return res.status(403).json({ success: false, message: "Not authorized" });
+      return res
+        .status(403)
+        .json({ success: false, message: "Not authorized" });
     }
 
     if (!["confirmed", "processing"].includes(order.orderStatus)) {
@@ -230,9 +318,7 @@ const cancelOrder = async (req, res) => {
       orderStatus: "cancelled",
       cancelReason: reason || "Cancelled by customer",
       cancelledAt: new Date(),
-      ...(order.paymentMethod !== "cod" && order.paymentStatus === "paid"
-        ? { paymentStatus: "refunded" }
-        : {}),
+      ...(order.paymentStatus === "paid" ? { paymentStatus: "refunded" } : {}),
     });
 
     for (const item of order.items) {
@@ -241,7 +327,9 @@ const cancelOrder = async (req, res) => {
       });
     }
 
-    return res.status(200).json({ success: true, message: "Order cancelled successfully" });
+    return res
+      .status(200)
+      .json({ success: true, message: "Order cancelled successfully" });
   } catch (err) {
     console.error("cancelOrder error:", err);
     return res.status(500).json({ success: false, message: err.message });
@@ -297,19 +385,22 @@ const adminCancelOrder = async (req, res) => {
     const { reason } = req.body;
 
     const order = await Order.findById(id);
-    if (!order) return res.status(404).json({ success: false, message: "Order not found" });
+    if (!order)
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found" });
 
     if (["cancelled", "delivered", "refunded"].includes(order.orderStatus)) {
-      return res.status(400).json({ success: false, message: "Cannot cancel this order" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Cannot cancel this order" });
     }
 
     await Order.findByIdAndUpdate(id, {
       orderStatus: "cancelled",
       cancelReason: reason || "Cancelled by admin",
       cancelledAt: new Date(),
-      ...(order.paymentMethod !== "cod" && order.paymentStatus === "paid"
-        ? { paymentStatus: "refunded" }
-        : {}),
+      ...(order.paymentStatus === "paid" ? { paymentStatus: "refunded" } : {}),
     });
 
     for (const item of order.items) {
@@ -318,7 +409,9 @@ const adminCancelOrder = async (req, res) => {
       });
     }
 
-    return res.status(200).json({ success: true, message: "Order cancelled by admin" });
+    return res
+      .status(200)
+      .json({ success: true, message: "Order cancelled by admin" });
   } catch (err) {
     console.error("adminCancelOrder error:", err);
     return res.status(500).json({ success: false, message: err.message });
@@ -330,23 +423,40 @@ const vendorUpdateOrderStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
-    const allowedStatuses = ["processing", "shipped", "out_for_delivery", "delivered", "cancelled"];
+    const allowedStatuses = [
+      "processing",
+      "shipped",
+      "out_for_delivery",
+      "delivered",
+      "cancelled",
+    ];
     if (!allowedStatuses.includes(status)) {
-      return res.status(400).json({ success: false, message: "Invalid status" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid status" });
     }
 
     const order = await Order.findById(id);
-    if (!order) return res.status(404).json({ success: false, message: "Order not found" });
+    if (!order)
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found" });
 
     const vendorItems = order.items.filter(
       (item) => item.vendor.toString() === req.user.id
     );
 
     if (vendorItems.length === 0) {
-      return res.status(403).json({ success: false, message: "No items from your store in this order" });
+      return res.status(403).json({
+        success: false,
+        message: "No items from your store in this order",
+      });
     }
 
-    if (status === "cancelled" && !["confirmed", "processing"].includes(order.orderStatus)) {
+    if (
+      status === "cancelled" &&
+      !["confirmed", "processing"].includes(order.orderStatus)
+    ) {
       return res.status(400).json({
         success: false,
         message: "Cannot cancel order that has already been shipped",
@@ -360,7 +470,11 @@ const vendorUpdateOrderStatus = async (req, res) => {
       out_for_delivery: ["delivered"],
     };
 
-    if (status !== "cancelled" && progression[order.orderStatus] && !progression[order.orderStatus].includes(status)) {
+    if (
+      status !== "cancelled" &&
+      progression[order.orderStatus] &&
+      !progression[order.orderStatus].includes(status)
+    ) {
       return res.status(400).json({
         success: false,
         message: `Cannot change status from "${order.orderStatus}" to "${status}"`,
@@ -371,7 +485,6 @@ const vendorUpdateOrderStatus = async (req, res) => {
 
     if (status === "delivered") {
       updateData.deliveredAt = new Date();
-      updateData.paymentStatus = "paid";
     }
 
     if (status === "cancelled") {
@@ -384,9 +497,15 @@ const vendorUpdateOrderStatus = async (req, res) => {
       }
     }
 
-    const updatedOrder = await Order.findByIdAndUpdate(id, updateData, { new: true });
+    const updatedOrder = await Order.findByIdAndUpdate(id, updateData, {
+      new: true,
+    });
 
-    return res.status(200).json({ success: true, message: "Order status updated", data: updatedOrder });
+    return res.status(200).json({
+      success: true,
+      message: "Order status updated",
+      data: updatedOrder,
+    });
   } catch (err) {
     console.error("vendorUpdateOrderStatus error:", err);
     return res.status(500).json({ success: false, message: err.message });
@@ -411,7 +530,9 @@ const vendorGetOrders = async (req, res) => {
 
     const vendorOrders = orders.map((order) => ({
       ...order.toObject(),
-      items: order.items.filter((item) => item.vendor.toString() === req.user.id),
+      items: order.items.filter(
+        (item) => item.vendor.toString() === req.user.id
+      ),
     }));
 
     const total = await Order.countDocuments(filter);

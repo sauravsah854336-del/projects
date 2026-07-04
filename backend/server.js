@@ -21,6 +21,7 @@ const searchRouter = require("./routes/search");
 const reviewRouter = require("./routes/review");
 const countryRoutes = require("./routes/countryRoutes");
 const couponRoutes = require("./routes/couponRoutes");
+const paymentRoutes = require("./routes/paymentRoutes");
 
 const PORT = process.env.PORT || 5005;
 
@@ -37,12 +38,18 @@ app.use(
 
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: [
+      "http://localhost:5173",
+      "https://recliner-defiance-varied.ngrok-free.dev",
+    ],
     credentials: true,
   })
 );
 
 app.use(morgan("dev"));
+
+app.use("/api/payment/webhook", express.raw({ type: "application/json" }));
+
 app.use(express.json());
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
@@ -68,6 +75,7 @@ app.use("/api/search", searchRouter);
 app.use("/api/reviews", reviewRouter);
 app.use("/api/countries", countryRoutes);
 app.use("/api/coupons", couponRoutes);
+app.use("/api/payment", paymentRoutes);
 
 app.use((req, res) => {
   res.status(404).json({

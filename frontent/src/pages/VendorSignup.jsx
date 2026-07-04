@@ -22,18 +22,18 @@ const BUSINESS_TYPES = [
   { value: "other", label: "Other" },
 ];
 
-const inputCls = "w-full border-[1.5px] border-gray-200 rounded-xl px-3.5 py-[11px] text-sm text-gray-900 bg-gray-50 outline-none focus:border-purple-600 focus:bg-white focus:ring-4 focus:ring-purple-600/8 transition-all placeholder:text-gray-400 font-[inherit] box-border";
-const selectCls = `${inputCls} cursor-pointer appearance-none pr-9 bg-[url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M19 9l-7 7-7-7'/%3E%3C/svg%3E")] bg-no-repeat bg-[right_14px_center]`;
+const inputCls = "w-full border-2 border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 bg-gray-50 outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10 transition-all placeholder:text-gray-400 font-[inherit] box-border";
+const selectCls = `${inputCls} cursor-pointer appearance-none pr-9 bg-[url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M19 9l-7 7-7-7'/%3E%3C/svg%3E")] bg-no-repeat bg-[right_12px_center]`;
 
 const Label = ({ children, required }) => (
-  <label className="block text-[13px] font-bold text-gray-700 mb-1.5">
+  <label className="block text-xs font-semibold text-gray-700 mb-1">
     {children} {required && <span className="text-red-500">*</span>}
   </label>
 );
 
 const FieldError = ({ msg }) =>
   msg ? (
-    <span className="flex items-center gap-1 text-[11px] text-red-500 font-semibold mt-1.5">
+    <span className="flex items-center gap-1 text-[11px] text-red-500 font-semibold mt-1">
       <span>⚠</span>{msg}
     </span>
   ) : null;
@@ -43,13 +43,13 @@ const FieldHint = ({ text }) => (
 );
 
 const SectionLabel = ({ icon, children }) => (
-  <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.1em] text-purple-700 mb-4 pb-2.5 border-b-2 border-purple-100">
+  <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.1em] text-indigo-700 mb-3 pb-2 border-b-2 border-indigo-100">
     <span>{icon}</span>{children}
   </div>
 );
 
 const Divider = () => (
-  <div className="h-px bg-gradient-to-r from-purple-100 to-transparent my-1" />
+  <div className="h-px bg-gradient-to-r from-indigo-100 to-transparent my-1" />
 );
 
 const VerifiedBadge = ({ text }) => (
@@ -62,22 +62,22 @@ const VerifiedBadge = ({ text }) => (
 );
 
 const InputSpinner = () => (
-  <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
-    <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
+  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+    <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
   </div>
 );
 
 const InputCheck = () => (
-  <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
-    <svg width="18" height="18" fill="none" stroke="#22C55E" strokeWidth="2.5" viewBox="0 0 24 24">
+  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+    <svg width="16" height="16" fill="none" stroke="#22C55E" strokeWidth="2.5" viewBox="0 0 24 24">
       <path d="M5 13l4 4L19 7" strokeLinecap="round" />
     </svg>
   </div>
 );
 
 const InputCross = () => (
-  <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
-    <svg width="18" height="18" fill="none" stroke="#EF4444" strokeWidth="2.5" viewBox="0 0 24 24">
+  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+    <svg width="16" height="16" fill="none" stroke="#EF4444" strokeWidth="2.5" viewBox="0 0 24 24">
       <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
     </svg>
   </div>
@@ -87,9 +87,9 @@ const EyeBtn = ({ show, onToggle }) => (
   <button
     type="button"
     onClick={onToggle}
-    className="absolute right-3.5 top-1/2 -translate-y-1/2 bg-transparent border-none cursor-pointer text-gray-500 hover:text-gray-700 transition-colors p-1"
+    className="absolute right-3 top-1/2 -translate-y-1/2 bg-transparent border-none cursor-pointer text-gray-400 hover:text-gray-600 transition-colors p-0"
   >
-    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+    <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
       {show ? (
         <path strokeLinecap="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
       ) : (
@@ -315,26 +315,26 @@ const VendorSignup = () => {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4 py-10 bg-gradient-to-br from-[#F0F4FF] to-[#F5F3FF]">
-        <div className="max-w-[520px] w-full bg-white rounded-[28px] p-10 sm:p-14 text-center border border-gray-200 shadow-2xl shadow-black/10">
-          <div className="w-[90px] h-[90px] bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center mx-auto mb-7 shadow-xl shadow-green-500/30">
-            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
+      <div className="min-h-screen flex items-center justify-center px-4 py-10 bg-gray-50">
+        <div className="max-w-[480px] w-full bg-white rounded-2xl p-8 sm:p-10 text-center border border-gray-200 shadow-xl shadow-gray-200/50">
+          <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center mx-auto mb-5 shadow-xl shadow-green-500/30">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
               <path d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <div className="inline-flex items-center gap-1.5 bg-green-50 border border-green-200 rounded-full px-3.5 py-1 mb-5">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block"></span>
+          <div className="inline-flex items-center gap-1.5 bg-green-50 border border-green-200 rounded-full px-3 py-1 mb-4">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block animate-pulse"></span>
             <span className="text-xs font-bold text-green-700">Application Received</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-black text-gray-900 mb-3 leading-tight">You're Almost There!</h2>
-          <p className="text-sm text-gray-500 leading-relaxed mb-7">
+          <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 mb-2 leading-tight">You're Almost There!</h2>
+          <p className="text-sm text-gray-500 leading-relaxed mb-6">
             Your vendor application has been submitted. Our team will review within <strong className="text-gray-900">24–48 hours</strong>.
           </p>
           <div className="flex flex-col gap-2.5">
-            <Link to="/vendor/login" className="block bg-gradient-to-r from-purple-700 to-purple-600 text-white no-underline py-4 rounded-2xl font-extrabold text-[15px] shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 hover:scale-[1.01] transition-all">
+            <Link to="/vendor/login" className="block bg-gradient-to-r from-[#0F172A] to-[#1E3A8A] hover:brightness-110 text-white no-underline py-3.5 rounded-xl font-bold text-sm shadow-lg shadow-blue-900/20 transition-all">
               Go to Vendor Login
             </Link>
-            <Link to="/" className="block bg-transparent text-gray-500 no-underline py-3.5 rounded-2xl font-semibold text-sm border border-gray-200 hover:bg-gray-50 transition">
+            <Link to="/" className="block bg-transparent text-gray-600 no-underline py-3 rounded-xl font-semibold text-sm border-2 border-gray-200 hover:bg-gray-50 transition">
               Back to Home
             </Link>
           </div>
@@ -344,108 +344,111 @@ const VendorSignup = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F0F4FF] via-[#F5F3FF] to-[#FFF5F0] py-8 px-4 flex items-start justify-center">
+    <div className="min-h-screen bg-gray-50 py-6 px-4 flex items-start justify-center">
       <style>{`@keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } } .step-content { animation: fadeIn 0.25s ease both; }`}</style>
 
-      <div className="w-full max-w-[1100px] grid lg:grid-cols-[300px_1fr] bg-white rounded-[28px] shadow-2xl shadow-black/10 border border-white/80 overflow-hidden">
+      <div className="w-full max-w-[1050px] grid lg:grid-cols-[280px_1fr] bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-200 overflow-hidden">
 
-        <div className="bg-gradient-to-b from-slate-900 via-[#1a2744] to-indigo-950 p-8 sm:p-11 flex flex-col relative overflow-hidden">
-          <div className="absolute -top-20 -right-20 w-64 h-64 bg-purple-600/15 rounded-full blur-[60px] pointer-events-none" />
-          <div className="absolute -bottom-16 -left-16 w-56 h-56 bg-[#D85A30]/10 rounded-full blur-[50px] pointer-events-none" />
+        <div className="bg-gradient-to-br from-[#0F172A] via-[#1E3A8A] to-[#0F172A] p-6 sm:p-8 flex flex-col relative overflow-hidden">
+          <div className="absolute -top-20 -right-20 w-56 h-56 bg-indigo-500/15 rounded-full blur-[60px] pointer-events-none" />
+          <div className="absolute -bottom-16 -left-16 w-48 h-48 bg-purple-500/10 rounded-full blur-[50px] pointer-events-none" />
 
           <div className="relative flex-1">
-            <div className="flex items-center gap-2.5 mb-8">
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-700 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/40 shrink-0">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2">
-                  <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" strokeLinecap="round" />
-                </svg>
+            <Link to="/" className="flex items-center gap-2.5 mb-6 no-underline">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl flex items-center justify-center text-white font-black text-base shadow-lg shadow-blue-500/30 shrink-0">
+                E
               </div>
               <div>
-                <p className="text-base font-black text-white m-0">E-Commerce</p>
-                <p className="text-[11px] text-indigo-400 m-0 font-semibold">Vendor Portal</p>
+                <p className="text-sm font-black text-white m-0">E<span className="text-blue-400">·</span>Commerce</p>
+                <p className="text-[9px] text-blue-300/50 m-0 uppercase tracking-wider font-bold">Seller Central</p>
               </div>
+            </Link>
+
+            <div className="inline-flex items-center gap-1.5 bg-indigo-500/15 border border-indigo-400/20 px-2.5 py-1 rounded-full mb-3">
+              <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-pulse" />
+              <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-wider">Vendor Portal</span>
             </div>
 
-            <h2 className="text-xl sm:text-2xl font-black text-white mb-1.5 leading-tight">Start Selling Today</h2>
-            <p className="text-[13px] text-slate-500 leading-relaxed mb-8">Join thousands of verified sellers.</p>
+            <h2 className="text-lg sm:text-xl font-extrabold text-white mb-1.5 leading-tight">Start Selling Today</h2>
+            <p className="text-xs text-blue-200/60 leading-relaxed mb-6">Join thousands of verified sellers.</p>
 
-            <div className="flex flex-col gap-2 mb-8">
+            <div className="flex flex-col gap-1.5 mb-6">
               {stepLabels.map((label, i) => {
                 const isDone = step > i + 1;
                 const isActive = step === i + 1;
                 return (
-                  <div key={label} className={`flex items-center gap-3.5 px-4 py-3.5 rounded-2xl border transition-all ${isActive ? "bg-purple-600/25 border-purple-500/50" : isDone ? "bg-green-500/10 border-green-500/30" : "bg-white/[0.03] border-white/[0.06]"}`}>
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${isDone ? "bg-green-500 shadow-lg shadow-green-500/30" : isActive ? "bg-purple-600 shadow-lg shadow-purple-600/40" : "bg-white/[0.06]"}`}>
+                  <div key={label} className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-all ${isActive ? "bg-indigo-500/20 border-indigo-400/40" : isDone ? "bg-green-500/10 border-green-500/30" : "bg-white/5 border-white/10"}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${isDone ? "bg-green-500 shadow-md shadow-green-500/30" : isActive ? "bg-indigo-500 shadow-lg shadow-indigo-500/40" : "bg-white/10"}`}>
                       {isDone ? (
-                        <svg width="16" height="16" fill="none" stroke="white" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" strokeLinecap="round" /></svg>
+                        <svg width="14" height="14" fill="none" stroke="white" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" strokeLinecap="round" /></svg>
                       ) : (
-                        <span className={`text-sm font-black ${isActive ? "text-white" : "text-slate-500"}`}>{stepIcons[i]}</span>
+                        <span className={`text-xs font-black ${isActive ? "text-white" : "text-blue-300/50"}`}>{stepIcons[i]}</span>
                       )}
                     </div>
-                    <div className="flex-1">
-                      <p className={`text-[13px] m-0 ${isActive ? "font-extrabold text-white" : isDone ? "font-semibold text-green-300" : "font-medium text-slate-500"}`}>{label}</p>
-                      <p className={`text-[11px] m-0 mt-0.5 ${isActive ? "text-purple-300" : "text-slate-600"}`}>{stepDescriptions[i]}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs m-0 ${isActive ? "font-extrabold text-white" : isDone ? "font-semibold text-green-300" : "font-medium text-blue-300/50"}`}>{label}</p>
+                      <p className={`text-[10px] m-0 mt-0.5 truncate ${isActive ? "text-indigo-300" : "text-blue-300/40"}`}>{stepDescriptions[i]}</p>
                     </div>
                   </div>
                 );
               })}
             </div>
 
-            <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em] flex items-center gap-1.5 mb-3">
+            <div className="bg-white/5 border border-white/10 rounded-xl p-3 mb-5">
+              <p className="text-[10px] font-black text-blue-300/60 uppercase tracking-[0.1em] flex items-center gap-1.5 mb-2.5">
                 <span>🔍</span> Auto-Verification
               </p>
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-1.5">
                 {verificationItems.map((item) => (
                   <div key={item.text} className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm">{item.icon}</span>
-                      <span className="text-[11px] text-slate-500">{item.text}</span>
+                      <span className="text-xs">{item.icon}</span>
+                      <span className="text-[10px] text-blue-200/60">{item.text}</span>
                     </div>
-                    <span className="text-[11px]">{item.status}</span>
+                    <span className="text-[10px]">{item.status}</span>
                   </div>
                 ))}
               </div>
             </div>
           </div>
 
-          <div className="relative flex flex-col gap-1.5 mt-6">
+          <div className="relative flex flex-col gap-1.5">
             {[
               { icon: "🛡️", text: "256-bit SSL encryption" },
               { icon: "⚡", text: "Approval within 24-48 hours" },
               { icon: "💰", text: "Commission from just 6%" },
             ].map((item) => (
-              <div key={item.text} className="flex items-center gap-2.5 px-3 py-2.5 bg-white/[0.03] border border-white/[0.05] rounded-xl">
-                <span className="text-sm">{item.icon}</span>
-                <span className="text-[11px] text-slate-500">{item.text}</span>
+              <div key={item.text} className="flex items-center gap-2">
+                <span className="text-xs">{item.icon}</span>
+                <span className="text-[11px] text-blue-200/50 font-medium">{item.text}</span>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="p-6 sm:p-8 lg:p-11 overflow-y-auto max-h-[94vh]">
-          <div className="mb-7">
-            <div className="flex items-center justify-between mb-1.5">
+        <div className="p-6 sm:p-8 overflow-y-auto max-h-[94vh]">
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-1">
               <div>
-                <h1 className="text-xl sm:text-2xl font-black text-gray-900 m-0">Vendor Registration</h1>
-                <p className="text-[13px] text-gray-500 mt-1 m-0">Step {step} of 3 — {stepLabels[step - 1]}</p>
+                <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 m-0">Vendor Registration</h1>
+                <p className="text-xs text-gray-500 mt-1 m-0">Step {step} of 3 — {stepLabels[step - 1]}</p>
               </div>
-              <div className="w-12 h-12 bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl flex items-center justify-center text-2xl border border-purple-200">
+              <div className="w-11 h-11 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl flex items-center justify-center text-xl border border-indigo-200">
                 {stepIcons[step - 1]}
               </div>
             </div>
-            <div className="flex gap-1.5 mt-4">
+            <div className="flex gap-1.5 mt-3">
               {[1, 2, 3].map((s) => (
-                <div key={s} className={`flex-1 h-1.5 rounded-full transition-all duration-500 ${step >= s ? "bg-gradient-to-r from-purple-700 to-purple-600 shadow-sm shadow-purple-500/30" : "bg-gray-100"}`} />
+                <div key={s} className={`flex-1 h-1 rounded-full transition-all duration-500 ${step >= s ? "bg-gradient-to-r from-[#0F172A] to-[#1E3A8A]" : "bg-gray-100"}`} />
               ))}
             </div>
           </div>
 
           {step === 1 && (
-            <div className="step-content flex flex-col gap-4 sm:gap-[18px]">
+            <div className="step-content flex flex-col gap-3.5">
               <SectionLabel icon="👤">Personal Information</SectionLabel>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label required>First Name</Label>
                   <input name="firstName" placeholder="John" value={form.firstName} onChange={handleChange} className={inputCls} />
@@ -478,7 +481,7 @@ const VendorSignup = () => {
               <div>
                 <Label required>Store / Business Name</Label>
                 <div className="relative">
-                  <input name="storeName" placeholder="My Awesome Store" value={form.storeName} onChange={handleStoreNameChange} className={`${inputCls} pr-11`} />
+                  <input name="storeName" placeholder="My Awesome Store" value={form.storeName} onChange={handleStoreNameChange} className={`${inputCls} pr-10`} />
                   {storeNameChecking && <InputSpinner />}
                   {!storeNameChecking && storeNameStatus?.available === true && <InputCheck />}
                   {!storeNameChecking && storeNameStatus?.available === false && <InputCross />}
@@ -495,22 +498,22 @@ const VendorSignup = () => {
                 <FieldHint text="Optional — helps customers understand your brand" />
               </div>
 
-              <button type="button" onClick={handleNext} className="w-full bg-gradient-to-r from-purple-700 to-purple-600 text-white border-none rounded-2xl py-3.5 text-[15px] font-extrabold cursor-pointer shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 hover:scale-[1.01] transition-all font-[inherit]">
+              <button type="button" onClick={handleNext} className="w-full bg-gradient-to-r from-[#0F172A] to-[#1E3A8A] hover:brightness-110 text-white border-none rounded-xl py-3 text-sm font-bold cursor-pointer shadow-lg shadow-blue-900/20 transition-all font-[inherit]">
                 Continue to Tax & Banking →
               </button>
 
-              <p className="text-center text-[13px] text-gray-500 m-0">
+              <p className="text-center text-xs text-gray-500 m-0">
                 Already registered?{" "}
-                <Link to="/vendor/login" className="text-purple-700 font-extrabold no-underline hover:underline">Login to Dashboard</Link>
+                <Link to="/vendor/login" className="text-indigo-600 font-bold no-underline hover:underline">Login to Dashboard</Link>
               </p>
             </div>
           )}
 
           {step === 2 && (
-            <div className="step-content flex flex-col gap-4 sm:gap-[18px]">
+            <div className="step-content flex flex-col gap-3.5">
               <SectionLabel icon="📋">Tax Information & Documents</SectionLabel>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label required>PAN Number</Label>
                   <input name="panNumber" placeholder="ABCDE1234F" value={form.panNumber} onChange={(e) => { setFieldErrors((p) => ({ ...p, panNumber: "" })); setForm((p) => ({ ...p, panNumber: e.target.value.toUpperCase() })); }} maxLength={10} className={`${inputCls} font-mono tracking-[0.08em] font-semibold`} />
@@ -519,12 +522,12 @@ const VendorSignup = () => {
                 <div>
                   <Label required>GST Number</Label>
                   <div className="relative">
-                    <input name="gstNumber" placeholder="22AAAAA0000A1Z5" value={form.gstNumber} onChange={(e) => handleGSTChange(e.target.value)} maxLength={15} className={`${inputCls} font-mono tracking-[0.04em] pr-11`} />
+                    <input name="gstNumber" placeholder="22AAAAA0000A1Z5" value={form.gstNumber} onChange={(e) => handleGSTChange(e.target.value)} maxLength={15} className={`${inputCls} font-mono tracking-[0.04em] pr-10`} />
                     {form.gstNumber.length === 15 && gstValidation?.valid && <InputCheck />}
                     {form.gstNumber.length === 15 && gstValidation && !gstValidation.valid && <InputCross />}
                   </div>
                   {gstValidation?.valid && (
-                    <div className="flex items-center gap-2 flex-wrap mt-1.5">
+                    <div className="flex items-center gap-2 flex-wrap mt-1">
                       <VerifiedBadge text="GST format verified" />
                       {form.panNumber && (
                         <span className="text-[10px] text-green-700 font-semibold bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">PAN Match ✓</span>
@@ -537,7 +540,7 @@ const VendorSignup = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <DocumentUploader label="PAN Card" required hint="Front side (JPG/PNG/PDF, max 5MB)" value={documents.panDocument} onChange={handleDocumentChange} docKey="panDocument" />
                   <FieldError msg={fieldErrors.panDocument} />
@@ -559,7 +562,7 @@ const VendorSignup = () => {
                 <FieldError msg={fieldErrors.accountHolderName} />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label required>Bank Name</Label>
                   <input name="bankName" placeholder="State Bank of India" value={form.bankDetails.bankName} onChange={(e) => handleNestedChange("bankDetails", e)} readOnly={!!ifscVerified?.success}
@@ -593,15 +596,15 @@ const VendorSignup = () => {
               <div>
                 <Label required>IFSC Code</Label>
                 <div className="relative">
-                  <input name="ifscCode" placeholder="SBIN0001234" value={form.bankDetails.ifscCode} onChange={(e) => handleIFSCChange(e.target.value)} maxLength={11} className={`${inputCls} font-mono tracking-[0.06em] font-semibold pr-11`} />
+                  <input name="ifscCode" placeholder="SBIN0001234" value={form.bankDetails.ifscCode} onChange={(e) => handleIFSCChange(e.target.value)} maxLength={11} className={`${inputCls} font-mono tracking-[0.06em] font-semibold pr-10`} />
                   {ifscVerifying && <InputSpinner />}
                   {!ifscVerifying && ifscVerified?.success && <InputCheck />}
                   {!ifscVerifying && ifscVerified && !ifscVerified.success && <InputCross />}
                 </div>
                 {ifscVerified?.success && (
-                  <div className="mt-2 bg-green-50 border border-green-200 rounded-xl p-3.5">
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <svg width="14" height="14" fill="none" stroke="#22C55E" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" strokeLinecap="round" /></svg>
+                  <div className="mt-2 bg-green-50 border border-green-200 rounded-lg p-3">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <svg width="12" height="12" fill="none" stroke="#22C55E" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" strokeLinecap="round" /></svg>
                       <span className="text-xs font-extrabold text-green-700">IFSC Verified</span>
                     </div>
                     <div className="grid grid-cols-2 gap-1.5">
@@ -628,7 +631,7 @@ const VendorSignup = () => {
                 <FieldError msg={fieldErrors.street} />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label required>City</Label>
                   <input name="city" placeholder="Mumbai" value={form.businessAddress.city} onChange={(e) => handleNestedChange("businessAddress", e)} readOnly={!!pinVerified?.success}
@@ -640,13 +643,13 @@ const VendorSignup = () => {
                 <div>
                   <Label required>PIN Code</Label>
                   <div className="relative">
-                    <input name="postalCode" placeholder="400001" value={form.businessAddress.postalCode} onChange={(e) => handlePinCodeChange(e.target.value)} maxLength={6} className={`${inputCls} font-mono tracking-[0.1em] font-semibold pr-11`} />
+                    <input name="postalCode" placeholder="400001" value={form.businessAddress.postalCode} onChange={(e) => handlePinCodeChange(e.target.value)} maxLength={6} className={`${inputCls} font-mono tracking-[0.1em] font-semibold pr-10`} />
                     {pinVerifying && <InputSpinner />}
                     {!pinVerifying && pinVerified?.success && <InputCheck />}
                     {!pinVerifying && pinVerified && !pinVerified.success && <InputCross />}
                   </div>
                   {pinVerified?.success && (
-                    <div className="mt-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2 flex items-center gap-2">
+                    <div className="mt-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 flex items-center gap-2">
                       <svg width="12" height="12" fill="none" stroke="#22C55E" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" strokeLinecap="round" /></svg>
                       <span className="text-[11px] font-bold text-green-700">PIN Verified — {pinVerified.area && `${pinVerified.area}, `}{pinVerified.city}, {pinVerified.state}</span>
                     </div>
@@ -670,11 +673,11 @@ const VendorSignup = () => {
                 <FieldError msg={fieldErrors.state} />
               </div>
 
-              <div className="flex gap-3 mt-2">
-                <button type="button" onClick={handleBack} className="flex-1 bg-white text-gray-700 border-[1.5px] border-gray-200 rounded-2xl py-3.5 text-sm font-bold cursor-pointer hover:bg-gray-50 transition font-[inherit]">
+              <div className="flex gap-2.5 mt-2">
+                <button type="button" onClick={handleBack} className="flex-1 bg-white text-gray-700 border-2 border-gray-200 rounded-xl py-3 text-sm font-bold cursor-pointer hover:bg-gray-50 transition font-[inherit]">
                   ← Back
                 </button>
-                <button type="button" onClick={handleNext} className="flex-[2] bg-gradient-to-r from-purple-700 to-purple-600 text-white border-none rounded-2xl py-3.5 text-sm font-extrabold cursor-pointer shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 transition font-[inherit]">
+                <button type="button" onClick={handleNext} className="flex-[2] bg-gradient-to-r from-[#0F172A] to-[#1E3A8A] hover:brightness-110 text-white border-none rounded-xl py-3 text-sm font-bold cursor-pointer shadow-lg shadow-blue-900/20 transition font-[inherit]">
                   Continue to Security →
                 </button>
               </div>
@@ -682,17 +685,17 @@ const VendorSignup = () => {
           )}
 
           {step === 3 && (
-            <form className="step-content flex flex-col gap-4 sm:gap-[18px]" onSubmit={handleSubmit}>
+            <form className="step-content flex flex-col gap-3.5" onSubmit={handleSubmit}>
               <SectionLabel icon="📱">Contact Details</SectionLabel>
 
               <div>
                 <Label required>Phone Number</Label>
                 <div className="relative">
-                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
-                    <span className="text-[13px] font-extrabold text-gray-700">+91</span>
-                    <div className="w-px h-[18px] bg-gray-300" />
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
+                    <span className="text-xs font-extrabold text-gray-700">+91</span>
+                    <div className="w-px h-4 bg-gray-300" />
                   </div>
-                  <input name="phone" placeholder="9876543210" value={form.phone} onChange={handleChange} className={`${inputCls} pl-[58px]`} maxLength={10} />
+                  <input name="phone" placeholder="9876543210" value={form.phone} onChange={handleChange} className={`${inputCls} pl-14`} maxLength={10} />
                 </div>
                 <FieldError msg={fieldErrors.phone} />
               </div>
@@ -703,26 +706,26 @@ const VendorSignup = () => {
               <div>
                 <Label required>Password</Label>
                 <div className="relative">
-                  <input name="password" type={showPassword ? "text" : "password"} placeholder="Create a strong password" value={form.password} onChange={handleChange} className={`${inputCls} pr-12`} autoComplete="new-password" />
+                  <input name="password" type={showPassword ? "text" : "password"} placeholder="Create a strong password" value={form.password} onChange={handleChange} className={`${inputCls} pr-10`} autoComplete="new-password" />
                   <EyeBtn show={showPassword} onToggle={() => setShowPassword((v) => !v)} />
                 </div>
                 {form.password && (
-                  <div className="mt-2.5 p-3.5 bg-gray-50 rounded-xl border border-gray-200">
-                    <div className="flex items-center gap-2.5 mb-2">
-                      <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="mt-2 p-2.5 bg-gray-50 rounded-lg border border-gray-100">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <div className="flex-1 h-1 bg-gray-200 rounded-full overflow-hidden">
                         <div className={`h-full ${strength.color} ${strength.width} rounded-full transition-all duration-400`} />
                       </div>
-                      <span className={`text-[11px] font-extrabold ${strength.textColor} min-w-[46px] text-right`}>{strength.text}</span>
+                      <span className={`text-[10px] font-bold ${strength.textColor} min-w-[45px] text-right`}>{strength.text}</span>
                     </div>
-                    <div className="flex flex-wrap gap-x-4 gap-y-1">
+                    <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                       {[
                         { check: form.password.length >= 6, label: "6+ characters" },
                         { check: /[A-Z]/.test(form.password), label: "Uppercase" },
                         { check: /[0-9]/.test(form.password), label: "Number" },
                         { check: /[^A-Za-z0-9]/.test(form.password), label: "Special char" },
                       ].map((item) => (
-                        <span key={item.label} className={`text-[11px] flex items-center gap-1 ${item.check ? "text-green-500 font-semibold" : "text-gray-400"}`}>
-                          {item.check ? <svg width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" strokeLinecap="round" /></svg> : <span className="w-2.5 h-2.5 rounded-full border-[1.5px] border-gray-300 inline-block" />}
+                        <span key={item.label} className={`text-[10px] flex items-center gap-1 ${item.check ? "text-green-500 font-semibold" : "text-gray-400"}`}>
+                          {item.check ? <svg width="9" height="9" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" strokeLinecap="round" /></svg> : <span className="w-2 h-2 rounded-full border-[1.5px] border-gray-300 inline-block" />}
                           {item.label}
                         </span>
                       ))}
@@ -735,7 +738,7 @@ const VendorSignup = () => {
               <div>
                 <Label required>Confirm Password</Label>
                 <div className="relative">
-                  <input name="confirmPassword" type={showConfirmPassword ? "text" : "password"} placeholder="Re-enter your password" value={form.confirmPassword} onChange={handleChange} className={`${inputCls} pr-12`} autoComplete="new-password" />
+                  <input name="confirmPassword" type={showConfirmPassword ? "text" : "password"} placeholder="Re-enter your password" value={form.confirmPassword} onChange={handleChange} className={`${inputCls} pr-10`} autoComplete="new-password" />
                   <EyeBtn show={showConfirmPassword} onToggle={() => setShowConfirmPassword((v) => !v)} />
                 </div>
                 {form.confirmPassword && form.password === form.confirmPassword && <VerifiedBadge text="Passwords match" />}
@@ -745,29 +748,29 @@ const VendorSignup = () => {
               <Divider />
               <SectionLabel icon="✅">Agreements</SectionLabel>
 
-              <div className="flex flex-col gap-3">
-                <div className={`bg-gray-50 border rounded-2xl px-4 py-3.5 ${fieldErrors.agreeTerms ? "border-red-200" : "border-gray-200"}`}>
-                  <label className="flex items-start gap-3 cursor-pointer">
-                    <input type="checkbox" name="agreeTerms" checked={form.agreeTerms} onChange={handleChange} className="w-[18px] h-[18px] mt-0.5 cursor-pointer accent-purple-700 shrink-0" />
-                    <span className="text-[13px] text-gray-700 leading-relaxed">
+              <div className="flex flex-col gap-2.5">
+                <div className={`bg-gray-50 border-2 rounded-xl px-3.5 py-3 ${fieldErrors.agreeTerms ? "border-red-200" : "border-gray-200"}`}>
+                  <label className="flex items-start gap-2.5 cursor-pointer">
+                    <input type="checkbox" name="agreeTerms" checked={form.agreeTerms} onChange={handleChange} className="w-4 h-4 mt-0.5 cursor-pointer accent-indigo-600 shrink-0" />
+                    <span className="text-xs text-gray-700 leading-relaxed">
                       I agree to the{" "}
-                      <Link to="/policy/terms" target="_blank" className="text-purple-700 font-bold no-underline hover:underline">Terms</Link>{" "}
+                      <Link to="/policy/terms" target="_blank" className="text-indigo-600 font-bold no-underline hover:underline">Terms</Link>{" "}
                       and{" "}
-                      <Link to="/policy/privacy" target="_blank" className="text-purple-700 font-bold no-underline hover:underline">Privacy Policy</Link>
+                      <Link to="/policy/privacy" target="_blank" className="text-indigo-600 font-bold no-underline hover:underline">Privacy Policy</Link>
                     </span>
                   </label>
                   <FieldError msg={fieldErrors.agreeTerms} />
                 </div>
 
-                <div className={`bg-gray-50 border rounded-2xl px-4 py-3.5 ${fieldErrors.agreeVendorPolicy ? "border-red-200" : "border-gray-200"}`}>
-                  <label className="flex items-start gap-3 cursor-pointer">
-                    <input type="checkbox" name="agreeVendorPolicy" checked={form.agreeVendorPolicy} onChange={handleChange} className="w-[18px] h-[18px] mt-0.5 cursor-pointer accent-purple-700 shrink-0" />
-                    <span className="text-[13px] text-gray-700 leading-relaxed">
+                <div className={`bg-gray-50 border-2 rounded-xl px-3.5 py-3 ${fieldErrors.agreeVendorPolicy ? "border-red-200" : "border-gray-200"}`}>
+                  <label className="flex items-start gap-2.5 cursor-pointer">
+                    <input type="checkbox" name="agreeVendorPolicy" checked={form.agreeVendorPolicy} onChange={handleChange} className="w-4 h-4 mt-0.5 cursor-pointer accent-indigo-600 shrink-0" />
+                    <span className="text-xs text-gray-700 leading-relaxed">
                       I agree to the{" "}
-                      <Link to="/policy/vendor-agreement" target="_blank" className="text-purple-700 font-bold no-underline hover:underline">Vendor Agreement</Link>,{" "}
-                      <Link to="/policy/commission-policy" target="_blank" className="text-purple-700 font-bold no-underline hover:underline">Commission</Link>{" "}
+                      <Link to="/policy/vendor-agreement" target="_blank" className="text-indigo-600 font-bold no-underline hover:underline">Vendor Agreement</Link>,{" "}
+                      <Link to="/policy/commission-policy" target="_blank" className="text-indigo-600 font-bold no-underline hover:underline">Commission</Link>{" "}
                       and{" "}
-                      <Link to="/policy/vendor-privacy" target="_blank" className="text-purple-700 font-bold no-underline hover:underline">Vendor Privacy</Link>
+                      <Link to="/policy/vendor-privacy" target="_blank" className="text-indigo-600 font-bold no-underline hover:underline">Vendor Privacy</Link>
                     </span>
                   </label>
                   <FieldError msg={fieldErrors.agreeVendorPolicy} />
@@ -775,34 +778,34 @@ const VendorSignup = () => {
               </div>
 
               {error && (
-                <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3.5 flex items-start gap-2.5">
-                  <span className="text-lg shrink-0">❌</span>
-                  <p className="text-[13px] text-red-600 font-medium m-0">{error?.data?.message || "Something went wrong."}</p>
+                <div className="bg-red-50 border border-red-200 rounded-xl px-3.5 py-3 flex items-start gap-2">
+                  <span className="text-base shrink-0">❌</span>
+                  <p className="text-xs text-red-600 font-medium m-0">{error?.data?.message || "Something went wrong."}</p>
                 </div>
               )}
 
-              <div className="flex gap-3 mt-2">
-                <button type="button" onClick={handleBack} className="flex-1 bg-white text-gray-700 border-[1.5px] border-gray-200 rounded-2xl py-3.5 text-sm font-bold cursor-pointer hover:bg-gray-50 transition font-[inherit]">
+              <div className="flex gap-2.5 mt-2">
+                <button type="button" onClick={handleBack} className="flex-1 bg-white text-gray-700 border-2 border-gray-200 rounded-xl py-3 text-sm font-bold cursor-pointer hover:bg-gray-50 transition font-[inherit]">
                   ← Back
                 </button>
                 <button type="submit" disabled={isLoading}
-                  className={`flex-[2] text-white border-none rounded-2xl py-3.5 text-[15px] font-extrabold cursor-pointer transition-all font-[inherit] ${isLoading ? "bg-purple-400 cursor-not-allowed" : "bg-gradient-to-r from-purple-700 to-purple-600 shadow-lg shadow-purple-500/35 hover:shadow-purple-500/50 hover:scale-[1.01]"}`}
+                  className={`flex-[2] text-white border-none rounded-xl py-3 text-sm font-bold cursor-pointer transition-all font-[inherit] ${isLoading ? "bg-gray-400 cursor-not-allowed" : "bg-gradient-to-r from-[#0F172A] to-[#1E3A8A] hover:brightness-110 shadow-lg shadow-blue-900/20"}`}
                 >
                   {isLoading ? (
-                    <span className="flex items-center justify-center gap-2.5">
-                      <span className="w-[18px] h-[18px] border-[2.5px] border-white/40 border-t-white rounded-full animate-spin inline-block" />
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin inline-block" />
                       Submitting...
                     </span>
                   ) : (
                     <span className="flex items-center justify-center gap-2">
                       Submit Application
-                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" strokeLinecap="round" /></svg>
+                      <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" strokeLinecap="round" /></svg>
                     </span>
                   )}
                 </button>
               </div>
 
-              <p className="text-center text-xs text-gray-400 leading-relaxed m-0">
+              <p className="text-center text-[11px] text-gray-400 leading-relaxed m-0">
                 By submitting, you confirm all information is accurate and genuine.
               </p>
             </form>

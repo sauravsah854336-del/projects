@@ -74,6 +74,7 @@ export const authApi = createApi({
     "AdminProfile",
     "Countries",
     "Coupons",
+    "Payment",
   ],
   endpoints: (builder) => ({
     signup: builder.mutation({

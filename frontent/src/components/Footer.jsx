@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useSelector } from "react-redux";
 
@@ -9,6 +10,25 @@ const Footer = () => {
   const isVendor = user?.role === "vendor";
   const isAdmin = user?.role === "admin";
 
+  const [showBackToTop, setShowBackToTop] = useState(false);
+
+  useEffect(() => {
+    const checkScrollable = () => {
+      const scrolled = window.scrollY > 400;
+      const pageIsLongEnough = document.documentElement.scrollHeight > window.innerHeight + 300;
+      setShowBackToTop(scrolled && pageIsLongEnough);
+    };
+
+    checkScrollable();
+    window.addEventListener("scroll", checkScrollable, { passive: true });
+    window.addEventListener("resize", checkScrollable);
+
+    return () => {
+      window.removeEventListener("scroll", checkScrollable);
+      window.removeEventListener("resize", checkScrollable);
+    };
+  }, []);
+
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -16,12 +36,14 @@ const Footer = () => {
   return (
     <footer className="mt-auto">
 
-      <button
-        onClick={scrollToTop}
-        className="w-full bg-[#1E3A8A] hover:bg-[#2563EB] text-white text-sm font-semibold py-3.5 border-none cursor-pointer transition-colors font-[inherit]"
-      >
-        Back to top ↑
-      </button>
+      {showBackToTop && (
+        <button
+          onClick={scrollToTop}
+          className="w-full bg-[#1E3A8A] hover:bg-[#2563EB] text-white text-sm font-semibold py-3.5 border-none cursor-pointer transition-colors font-[inherit]"
+        >
+          Back to top ↑
+        </button>
+      )}
 
       <div className="bg-gradient-to-b from-[#0F172A] to-[#0A0F1A] text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">

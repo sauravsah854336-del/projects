@@ -254,6 +254,11 @@ productSchema.index({ tags: 1 });
 productSchema.index({ "colors.name": 1 });
 productSchema.index({ materials: 1 });
 productSchema.index({ roomType: 1 });
+productSchema.index({ vendor: 1, name: 1 });
+productSchema.index({ vendor: 1, sku: 1 });
+productSchema.index({ vendor: 1, modelNumber: 1 });
+productSchema.index({ modelNumber: 1, brand: 1 });
+productSchema.index({ name: "text", description: "text", brand: "text" });
 
 module.exports =
   mongoose.models.Product || mongoose.model("Product", productSchema);

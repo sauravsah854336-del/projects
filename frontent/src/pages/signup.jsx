@@ -7,121 +7,45 @@ import { setUserCountry } from "../features/country/countrySlice";
 import { useDispatch } from "react-redux";
 import { useNavigate, Link } from "react-router-dom";
 import { getGuestCartForMerge, clearGuestCart } from "../utils/guestCart";
-import {
-  getGuestWishlistForMerge,
-  clearGuestWishlist,
-} from "../utils/guestWishlist";
+import { getGuestWishlistForMerge, clearGuestWishlist } from "../utils/guestWishlist";
 import { toast } from "../components/Toast";
 import PhoneInput, { COUNTRIES } from "../components/PhoneInput";
 
 const ErrorAlert = ({ message }) => (
-  <div className="bg-red-50 border border-red-100 rounded-xl p-3 flex items-center gap-2">
-    <svg
-      className="w-4 h-4 text-red-500 shrink-0"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-      />
+  <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2.5">
+    <svg className="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
-    <p className="text-red-600 text-sm">{message}</p>
-  </div>
-);
-
-const FormInput = ({ icon, children, ...props }) => (
-  <div className="relative">
-    <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
-      {icon}
-    </div>
-    <input
-      className="w-full border border-gray-200 pl-12 pr-4 py-3 sm:py-3.5 rounded-xl outline-none focus:border-[#D85A30] focus:ring-4 focus:ring-[#D85A30]/10 transition-all text-[15px] bg-gray-50 focus:bg-white"
-      {...props}
-    />
-    {children}
+    <p className="text-red-600 text-sm font-medium m-0">{message}</p>
   </div>
 );
 
 const UserIcon = () => (
-  <svg
-    className="w-5 h-5 text-gray-400"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={1.8}
-      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-    />
+  <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
   </svg>
 );
 
 const EmailIcon = () => (
-  <svg
-    className="w-5 h-5 text-gray-400"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={1.8}
-      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-    />
+  <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
   </svg>
 );
 
 const LockIcon = () => (
-  <svg
-    className="w-5 h-5 text-gray-400"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={1.8}
-      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-    />
+  <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
   </svg>
 );
 
 const EyeIcon = ({ open }) => (
-  <svg
-    className="w-5 h-5 text-gray-400 hover:text-gray-600"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-  >
+  <svg className="w-5 h-5 text-gray-400 hover:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     {open ? (
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.8}
-        d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
-      />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
     ) : (
       <>
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={1.8}
-          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-        />
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={1.8}
-          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-        />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
       </>
     )}
   </svg>
@@ -149,8 +73,7 @@ const Signup = () => {
     confirmPassword: "",
   });
 
-  const selectedCountry =
-    COUNTRIES.find((c) => c.code === form.countryCode) || COUNTRIES[0];
+  const selectedCountry = COUNTRIES.find((c) => c.code === form.countryCode) || COUNTRIES[0];
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -221,19 +144,14 @@ const Signup = () => {
       setFormError("All fields are required");
       return;
     }
-
     if (phone.length !== country.length) {
-      setFormError(
-        `Phone number must be ${country.length} digits for ${country.name}`
-      );
+      setFormError(`Phone number must be ${country.length} digits for ${country.name}`);
       return;
     }
-
     if (!country.pattern.test(phone)) {
       setFormError(`Enter valid ${country.name} mobile number`);
       return;
     }
-
     if (password.length < 6) {
       setFormError("Password must be at least 6 characters");
       return;
@@ -279,8 +197,7 @@ const Signup = () => {
       }
 
       if (res.user?.role === "customer") {
-        const hasGuestData =
-          guestCartItems.length > 0 || guestWishlistIds.length > 0;
+        const hasGuestData = guestCartItems.length > 0 || guestWishlistIds.length > 0;
         if (hasGuestData) {
           setMergingData(true);
           await new Promise((resolve) => setTimeout(resolve, 300));
@@ -308,9 +225,7 @@ const Signup = () => {
           setMergingData(false);
           toast.success("Account created! Your data has been synced.");
         } else {
-          toast.success(
-            `Welcome, ${res.user.firstName}! Account created successfully.`
-          );
+          toast.success(`Welcome, ${res.user.firstName}! Account created successfully.`);
         }
       }
 
@@ -324,48 +239,19 @@ const Signup = () => {
 
   const getPasswordStrength = () => {
     const p = form.password;
-    if (!p)
-      return {
-        width: "0%",
-        color: "bg-gray-200",
-        text: "",
-        textColor: "text-gray-400",
-      };
+    if (!p) return { width: "0%", color: "bg-gray-200", text: "", textColor: "text-gray-400" };
     let score = 0;
     if (p.length >= 6) score++;
     if (p.length >= 10) score++;
     if (/[A-Z]/.test(p)) score++;
     if (/[0-9]/.test(p)) score++;
     if (/[^A-Za-z0-9]/.test(p)) score++;
-    if (score <= 2)
-      return {
-        width: "33%",
-        color: "bg-red-500",
-        text: "Weak",
-        textColor: "text-red-500",
-      };
-    if (score <= 3)
-      return {
-        width: "66%",
-        color: "bg-yellow-500",
-        text: "Medium",
-        textColor: "text-yellow-500",
-      };
-    return {
-      width: "100%",
-      color: "bg-green-500",
-      text: "Strong",
-      textColor: "text-green-500",
-    };
+    if (score <= 2) return { width: "33%", color: "bg-red-500", text: "Weak", textColor: "text-red-500" };
+    if (score <= 3) return { width: "66%", color: "bg-yellow-500", text: "Medium", textColor: "text-yellow-500" };
+    return { width: "100%", color: "bg-green-500", text: "Strong", textColor: "text-green-500" };
   };
 
   const strength = getPasswordStrength();
-
-  const benefits = [
-    { icon: "🚚", text: "Free delivery on orders above ₹499" },
-    { icon: "🔄", text: "Easy 10-day returns" },
-    { icon: "🛡️", text: "100% secure payments" },
-  ];
 
   const passwordChecks = [
     { check: form.password.length >= 6, label: "6+ characters" },
@@ -375,119 +261,152 @@ const Signup = () => {
   ];
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4 py-10 sm:py-12 bg-gray-50">
-      <div className="w-full max-w-[1000px] grid lg:grid-cols-2 bg-white rounded-3xl shadow-2xl shadow-black/5 overflow-hidden border border-gray-100">
-        <div className="hidden lg:flex flex-col justify-center items-center bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#0f172a] p-10 xl:p-12 relative overflow-hidden">
-          <div className="absolute top-10 right-10 w-48 h-48 bg-[#D85A30]/20 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-10 left-10 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="relative text-center">
-            <div className="w-16 h-16 bg-gradient-to-br from-[#D85A30] to-[#e8734d] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-[#D85A30]/30">
-              <span className="text-white font-extrabold text-2xl">E</span>
-            </div>
-            <h2 className="text-2xl xl:text-3xl font-bold text-white mb-3">
+    <div className="min-h-[85vh] flex items-center justify-center px-4 py-8 sm:py-12 bg-gray-50">
+      <div className="w-full max-w-[960px] grid lg:grid-cols-[1fr_1.2fr] bg-white rounded-2xl shadow-xl shadow-gray-200/50 overflow-hidden border border-gray-200">
+
+        <div className="hidden lg:flex flex-col justify-center bg-gradient-to-br from-[#0F172A] via-[#1E3A8A] to-[#0F172A] p-10 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-blue-500/15 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-40 h-40 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="relative">
+            <Link to="/" className="flex items-center gap-2.5 no-underline mb-8">
+              <div className="w-11 h-11 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl flex items-center justify-center text-white font-black text-lg shadow-lg shadow-blue-500/30">
+                E
+              </div>
+              <div>
+                <p className="text-base font-black text-white m-0">E<span className="text-blue-400">·</span>Commerce</p>
+                <p className="text-[9px] text-blue-300/50 m-0 uppercase tracking-wider font-bold">Marketplace</p>
+              </div>
+            </Link>
+
+            <h2 className="text-2xl font-extrabold text-white m-0 mb-2 leading-tight">
               Join Us Today!
             </h2>
-            <p className="text-gray-400 leading-relaxed max-w-xs mx-auto text-sm xl:text-base">
-              Create your account and start shopping from thousands of products
-              across multiple categories from verified sellers.
+            <p className="text-sm text-blue-200/60 m-0 mb-8 leading-relaxed max-w-xs">
+              Create your account and start shopping from thousands of products across verified sellers.
             </p>
-            <div className="mt-8 xl:mt-10 space-y-3">
-              {benefits.map((item) => (
-                <div
-                  key={item.text}
-                  className="flex items-center gap-3 bg-white/[0.06] border border-white/[0.08] rounded-xl px-4 py-3"
-                >
-                  <span className="text-xl">{item.icon}</span>
-                  <span className="text-gray-300 text-sm">{item.text}</span>
+
+            <div className="flex flex-col gap-2.5">
+              {[
+                { icon: "🚚", text: "Free delivery on orders above ₹499" },
+                { icon: "🔄", text: "Easy 10-day returns" },
+                { icon: "🛡️", text: "100% secure payments" },
+                { icon: "✅", text: "Verified sellers only" },
+              ].map((item) => (
+                <div key={item.text} className="flex items-center gap-2.5">
+                  <span className="text-sm">{item.icon}</span>
+                  <span className="text-[11px] text-blue-200/50 font-medium">{item.text}</span>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        <div className="p-6 sm:p-8 xl:p-12">
-          <div className="mb-6 sm:mb-8">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-              Create Account
-            </h1>
-            <p className="text-gray-500 mt-2 text-sm">
-              Step {step} of 2 —{" "}
-              {step === 1 ? "Personal Information" : "Security Details"}
+        <div className="p-6 sm:p-8 lg:p-10">
+          <div className="lg:hidden text-center mb-6">
+            <Link to="/" className="inline-flex items-center gap-2 no-underline mb-3">
+              <div className="w-9 h-9 bg-gradient-to-br from-[#0F172A] to-[#1E3A8A] rounded-lg flex items-center justify-center text-white font-black text-sm shadow-md">
+                E
+              </div>
+              <span className="text-base font-extrabold text-gray-900">Commerce</span>
+            </Link>
+          </div>
+
+          <div className="mb-6">
+            <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 m-0">Create Account</h1>
+            <p className="text-sm text-gray-500 mt-1 m-0">
+              Step {step} of 2 — {step === 1 ? "Personal Information" : "Security Details"}
             </p>
-            <div className="flex gap-2 mt-3">
-              <div
-                className={`flex-1 h-1.5 rounded-full transition-all duration-300 ${
-                  step >= 1 ? "bg-[#D85A30]" : "bg-gray-200"
-                }`}
-              />
-              <div
-                className={`flex-1 h-1.5 rounded-full transition-all duration-300 ${
-                  step >= 2 ? "bg-[#D85A30]" : "bg-gray-200"
-                }`}
-              />
+            <div className="flex gap-1.5 mt-3">
+              <div className={`flex-1 h-1.5 rounded-full transition-all duration-500 ${step >= 1 ? "bg-gradient-to-r from-[#0F172A] to-[#1E3A8A]" : "bg-gray-100"}`} />
+              <div className={`flex-1 h-1.5 rounded-full transition-all duration-500 ${step >= 2 ? "bg-gradient-to-r from-[#0F172A] to-[#1E3A8A]" : "bg-gray-100"}`} />
             </div>
           </div>
 
           {step === 1 && (
-            <div className="space-y-4 sm:space-y-5">
-              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1.5 block">
-                    First Name
-                  </label>
-                  <FormInput
-                    name="firstName"
-                    placeholder="John"
-                    value={form.firstName}
-                    onChange={handleChange}
-                    icon={<UserIcon />}
-                  />
+                  <label className="text-sm font-semibold text-gray-700 mb-1.5 block">First Name</label>
+                  <div className="relative">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <UserIcon />
+                    </div>
+                    <input
+                      name="firstName"
+                      placeholder="John"
+                      value={form.firstName}
+                      onChange={handleChange}
+                      className="w-full border-2 border-gray-200 pl-12 pr-4 py-3 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all text-sm bg-gray-50 focus:bg-white font-[inherit]"
+                    />
+                  </div>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1.5 block">
-                    Last Name
-                  </label>
-                  <FormInput
-                    name="lastName"
-                    placeholder="Doe"
-                    value={form.lastName}
-                    onChange={handleChange}
-                    icon={<UserIcon />}
-                  />
+                  <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Last Name</label>
+                  <div className="relative">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <UserIcon />
+                    </div>
+                    <input
+                      name="lastName"
+                      placeholder="Doe"
+                      value={form.lastName}
+                      onChange={handleChange}
+                      className="w-full border-2 border-gray-200 pl-12 pr-4 py-3 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all text-sm bg-gray-50 focus:bg-white font-[inherit]"
+                    />
+                  </div>
                 </div>
               </div>
+
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-1.5 block">
-                  Email Address
-                </label>
-                <FormInput
-                  name="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={form.email}
-                  autoComplete="username"
-                  onChange={handleChange}
-                  icon={<EmailIcon />}
-                />
+                <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Email Address</label>
+                <div className="relative">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <EmailIcon />
+                  </div>
+                  <input
+                    name="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={form.email}
+                    autoComplete="username"
+                    onChange={handleChange}
+                    className="w-full border-2 border-gray-200 pl-12 pr-4 py-3 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all text-sm bg-gray-50 focus:bg-white font-[inherit]"
+                  />
+                </div>
               </div>
+
               {formError && <ErrorAlert message={formError} />}
+
               <button
                 type="button"
                 onClick={handleNextStep}
-                className="w-full bg-gradient-to-r from-[#D85A30] to-[#e8734d] text-white py-3.5 sm:py-4 rounded-xl font-semibold shadow-lg shadow-[#D85A30]/20 hover:shadow-[#D85A30]/40 hover:scale-[1.01] transition-all duration-200 text-[15px] border-none cursor-pointer font-[inherit]"
+                className="w-full bg-gradient-to-r from-[#0F172A] to-[#1E3A8A] hover:brightness-110 text-white py-3.5 rounded-xl font-bold shadow-lg shadow-blue-900/20 transition-all duration-200 text-sm border-none cursor-pointer font-[inherit]"
               >
                 Continue →
               </button>
+
+              <div className="pt-4 border-t border-gray-100 text-center">
+                <p className="text-gray-500 text-sm m-0">
+                  Already have an account?{" "}
+                  <Link to="/login" className="text-blue-600 font-bold no-underline hover:underline">
+                    Sign In
+                  </Link>
+                </p>
+                <p className="text-gray-400 text-xs mt-1.5 m-0">
+                  Seller?{" "}
+                  <Link to="/vendor/login" className="text-blue-600 font-semibold no-underline hover:underline">
+                    Vendor Login →
+                  </Link>
+                </p>
+              </div>
             </div>
           )}
 
           {step === 2 && (
-            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-1.5 block">
-                  Phone Number
-                </label>
-
+                <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Phone Number</label>
                 <PhoneInput
                   value={form.phone}
                   countryCode={form.countryCode}
@@ -495,32 +414,25 @@ const Signup = () => {
                   onCountryChange={handleCountryChange}
                   error={phoneError}
                 />
-
                 {phoneError && (
-                  <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1">
+                  <p className="text-red-500 text-xs mt-1.5 m-0 flex items-center gap-1">
                     <span>⚠</span> {phoneError}
                   </p>
                 )}
-
-                {form.phone.length === selectedCountry.length &&
-                  !phoneError && (
-                    <p className="text-green-500 text-xs mt-1.5">
-                      ✓ Valid {selectedCountry.name} mobile number
-                    </p>
-                  )}
-
+                {form.phone.length === selectedCountry.length && !phoneError && (
+                  <p className="text-green-500 text-xs mt-1.5 m-0">
+                    ✓ Valid {selectedCountry.name} mobile number
+                  </p>
+                )}
                 {form.phone.length === 0 && !phoneError && (
-                  <p className="text-gray-400 text-xs mt-1.5">
-                    Click the flag {selectedCountry.flag} to change country •{" "}
-                    {selectedCountry.length} digits required
+                  <p className="text-gray-400 text-xs mt-1.5 m-0">
+                    Click the flag {selectedCountry.flag} to change country · {selectedCountry.length} digits required
                   </p>
                 )}
               </div>
 
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-1.5 block">
-                  Password
-                </label>
+                <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Password</label>
                 <div className="relative">
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
                     <LockIcon />
@@ -532,40 +444,44 @@ const Signup = () => {
                     value={form.password}
                     autoComplete="new-password"
                     onChange={handleChange}
-                    className="w-full border border-gray-200 pl-12 pr-12 py-3 sm:py-3.5 rounded-xl outline-none focus:border-[#D85A30] focus:ring-4 focus:ring-[#D85A30]/10 transition-all text-[15px] bg-gray-50 focus:bg-white"
+                    className="w-full border-2 border-gray-200 pl-12 pr-12 py-3 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all text-sm bg-gray-50 focus:bg-white font-[inherit]"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-transparent border-none cursor-pointer p-0"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 bg-transparent border-none cursor-pointer p-0"
                   >
                     <EyeIcon open={showPassword} />
                   </button>
                 </div>
+
                 {form.password && (
-                  <div className="mt-2">
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden mr-3">
+                  <div className="mt-2.5 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
                         <div
                           className={`h-full ${strength.color} rounded-full transition-all duration-300`}
                           style={{ width: strength.width }}
                         />
                       </div>
-                      <span
-                        className={`text-xs font-medium ${strength.textColor}`}
-                      >
+                      <span className={`text-xs font-bold ${strength.textColor} min-w-[50px]`}>
                         {strength.text}
                       </span>
                     </div>
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
+                    <div className="flex flex-wrap gap-x-4 gap-y-1">
                       {passwordChecks.map((r) => (
                         <span
                           key={r.label}
-                          className={`text-[11px] ${
-                            r.check ? "text-green-500" : "text-gray-400"
-                          }`}
+                          className={`text-[11px] flex items-center gap-1 ${r.check ? "text-green-500 font-semibold" : "text-gray-400"}`}
                         >
-                          {r.check ? "✓" : "○"} {r.label}
+                          {r.check ? (
+                            <svg width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                              <path d="M5 13l4 4L19 7" strokeLinecap="round" />
+                            </svg>
+                          ) : (
+                            <span className="w-2.5 h-2.5 rounded-full border-[1.5px] border-gray-300 inline-block" />
+                          )}
+                          {r.label}
                         </span>
                       ))}
                     </div>
@@ -574,28 +490,16 @@ const Signup = () => {
               </div>
 
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-1.5 block">
-                  Confirm Password
-                </label>
+                <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Confirm Password</label>
                 <div className="relative">
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
                     <svg
-                      className={`w-5 h-5 ${
-                        form.confirmPassword &&
-                        form.password === form.confirmPassword
-                          ? "text-green-500"
-                          : "text-gray-400"
-                      }`}
+                      className={`w-5 h-5 ${form.confirmPassword && form.password === form.confirmPassword ? "text-green-500" : "text-gray-400"}`}
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.8}
-                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                      />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                     </svg>
                   </div>
                   <input
@@ -605,52 +509,45 @@ const Signup = () => {
                     value={form.confirmPassword}
                     autoComplete="new-password"
                     onChange={handleChange}
-                    className="w-full border border-gray-200 pl-12 pr-4 py-3 sm:py-3.5 rounded-xl outline-none focus:border-[#D85A30] focus:ring-4 focus:ring-[#D85A30]/10 transition-all text-[15px] bg-gray-50 focus:bg-white"
+                    className="w-full border-2 border-gray-200 pl-12 pr-4 py-3 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all text-sm bg-gray-50 focus:bg-white font-[inherit]"
                   />
                 </div>
-                {form.confirmPassword &&
-                  form.password !== form.confirmPassword && (
-                    <p className="text-red-500 text-xs mt-1.5">
-                      Passwords do not match
-                    </p>
-                  )}
-                {form.confirmPassword &&
-                  form.password === form.confirmPassword && (
-                    <p className="text-green-500 text-xs mt-1.5">
-                      ✓ Passwords match
-                    </p>
-                  )}
+                {form.confirmPassword && form.password !== form.confirmPassword && (
+                  <p className="text-red-500 text-xs mt-1.5 m-0 flex items-center gap-1">
+                    <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
+                    </svg>
+                    Passwords do not match
+                  </p>
+                )}
+                {form.confirmPassword && form.password === form.confirmPassword && (
+                  <p className="text-green-500 text-xs mt-1.5 m-0 flex items-center gap-1">
+                    <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path d="M5 13l4 4L19 7" strokeLinecap="round" />
+                    </svg>
+                    Passwords match
+                  </p>
+                )}
               </div>
 
               {formError && <ErrorAlert message={formError} />}
-              {!formError && error && (
-                <ErrorAlert message={error?.data?.message} />
-              )}
+              {!formError && error && <ErrorAlert message={error?.data?.message} />}
 
               <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStep(1);
-                    setFormError("");
-                  }}
-                  className="flex-1 border border-gray-200 text-gray-700 py-3.5 sm:py-4 rounded-xl font-semibold hover:bg-gray-50 transition-all text-[15px] cursor-pointer bg-white font-[inherit]"
-                >
-                  ← Back
-                </button>
+               
                 <button
                   type="submit"
                   disabled={isLoading || mergingData}
-                  className="flex-[2] bg-gradient-to-r from-[#D85A30] to-[#e8734d] text-white py-3.5 sm:py-4 rounded-xl font-semibold shadow-lg shadow-[#D85A30]/20 hover:shadow-[#D85A30]/40 hover:scale-[1.01] transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100 text-[15px] border-none cursor-pointer font-[inherit]"
+                  className="flex-[2] bg-gradient-to-r from-[#0F172A] to-[#1E3A8A] hover:brightness-110 text-white py-3.5 rounded-xl font-bold shadow-lg shadow-blue-900/20 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed text-sm border-none cursor-pointer font-[inherit]"
                 >
                   {isLoading ? (
                     <span className="flex items-center justify-center gap-2">
-                      <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                       Creating...
                     </span>
                   ) : mergingData ? (
                     <span className="flex items-center justify-center gap-2">
-                      <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                       Syncing...
                     </span>
                   ) : (
@@ -658,38 +555,19 @@ const Signup = () => {
                   )}
                 </button>
               </div>
-              <p className="text-center text-gray-400 text-xs mt-2">
+
+              <p className="text-center text-gray-400 text-xs mt-2 m-0">
                 By creating an account, you agree to our{" "}
-                <Link
-                  to="/policy/terms"
-                  className="text-[#D85A30] no-underline hover:underline"
-                >
+                <Link to="/policy/terms" className="text-blue-600 no-underline hover:underline">
                   Terms
                 </Link>{" "}
                 and{" "}
-                <Link
-                  to="/policy/privacy"
-                  className="text-[#D85A30] no-underline hover:underline"
-                >
+                <Link to="/policy/privacy" className="text-blue-600 no-underline hover:underline">
                   Privacy Policy
                 </Link>
               </p>
             </form>
           )}
-
-          <p className="text-center mt-6 sm:mt-8 text-gray-500 text-sm">
-            Already have an account?{" "}
-            <Link
-              to="/login"
-              className="text-[#D85A30] font-semibold no-underline hover:underline"
-            >
-              Login
-            </Link>
-          </p>
-        </div>
-        <div>
-          <label htmlFor="productDetials">Product Details</label>
-          <input type="text" placeholder="Enter Products info" name="productInfo" />
         </div>
       </div>
     </div>

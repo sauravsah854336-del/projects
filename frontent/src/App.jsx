@@ -18,6 +18,7 @@ import CartPage from "./pages/CartPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import OrdersPage from "./pages/OrdersPage";
 import OrderDetailPage from "./pages/OrderDetailPage";
+import PaymentStatus from "./pages/PaymentStatus";
 import ProfilePage from "./pages/ProfilePage";
 import WishlistPage from "./pages/WishlistPage";
 import AboutPage from "./pages/AboutPage";
@@ -127,6 +128,15 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={["customer"]}>
                   <OrderDetailPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/payment/status"
+              element={
+                <ProtectedRoute allowedRoles={["customer"]}>
+                  <PaymentStatus />
                 </ProtectedRoute>
               }
             />

@@ -3,19 +3,22 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useGetCategoryTreeQuery } from "../features/category/categoryApi";
 import {
-  useGetVendorProductsQuery,
-  useGetVendorStatsQuery,
-  useCreateProductMutation,
-  useUpdateProductMutation,
-  useDeleteProductMutation,
-} from "../features/product/productApi";
-import {
   useVendorGetOrdersQuery,
   useVendorUpdateOrderStatusMutation,
 } from "../features/order/orderApi";
 import { useVendorGetProductReviewsQuery } from "../features/review/reviewApi";
 import ImageUploader from "../components/ImageUploader";
+import DuplicateProductWarning from "../components/DuplicateProductWarning";
+import CompetitionAlert from "../components/CompetitionAlert";
 import { toast } from "../components/Toast";
+import {
+  useGetVendorProductsQuery,
+  useGetVendorStatsQuery,
+  useCreateProductMutation,
+  useUpdateProductMutation,
+  useDeleteProductMutation,
+  useLazyCheckProductAvailabilityQuery,
+} from "../features/product/productApi";
 
 const formatRupee = (amt) =>
   new Intl.NumberFormat("en-IN", {
@@ -383,6 +386,10 @@ const VendorDashboard = () => {
   const [createProduct, { isLoading: creating }] = useCreateProductMutation();
   const [updateProduct, { isLoading: updating }] = useUpdateProductMutation();
   const [deleteProduct] = useDeleteProductMutation();
+  const [checkAvailability] = useLazyCheckProductAvailabilityQuery();
+  const [duplicateWarning, setDuplicateWarning] = useState(null);
+  const [competitionInfo, setCompetitionInfo] = useState(null);
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
 
   const [orderStatusFilter, setOrderStatusFilter] = useState("");
   const [orderPage, setOrderPage] = useState(1);
@@ -434,6 +441,8 @@ const VendorDashboard = () => {
     setFormError("");
     setFormStep(1);
     setEditingProduct(null);
+    setDuplicateWarning(null);
+    setCompetitionInfo(null);
   };
 
   const openAddForm = () => {
@@ -511,6 +520,52 @@ const VendorDashboard = () => {
   const closeForm = () => {
     setShowForm(false);
     resetForm();
+  };
+
+  const handleCheckDuplicate = async () => {
+    if (editingProduct) return;
+    if (!form.name && !form.sku && !form.modelNumber) return;
+
+    setCheckingAvailability(true);
+    try {
+      const res = await checkAvailability({
+        name: form.name,
+        sku: form.sku,
+        modelNumber: form.modelNumber,
+        brand: form.brand,
+      }).unwrap();
+
+      if (!res.available && res.isOwnProduct) {
+        setDuplicateWarning(res.duplicate);
+        setCompetitionInfo(null);
+      } else if (res.available && res.competition) {
+        setDuplicateWarning(null);
+        setCompetitionInfo(res.competition);
+      } else {
+        setDuplicateWarning(null);
+        setCompetitionInfo(null);
+      }
+    } catch (err) {
+      console.log("Duplicate check error:", err);
+    } finally {
+      setCheckingAvailability(false);
+    }
+  };
+
+  const handleEditExisting = (productId) => {
+    setDuplicateWarning(null);
+    closeForm();
+    setTimeout(() => {
+      const productToEdit = productsData?.data?.find(
+        (p) => p._id === productId,
+      );
+      if (productToEdit) {
+        openEditForm(productToEdit);
+      } else {
+        toast.info("Loading product for editing...");
+        setActiveTab("products");
+      }
+    }, 300);
   };
 
   const handleChange = (e) => {
@@ -702,6 +757,7 @@ const VendorDashboard = () => {
 
   const handleSubmit = async () => {
     setFormError("");
+    setDuplicateWarning(null);
     const safeTrim = (v) => (typeof v === "string" ? v.trim() : "");
 
     const productData = {
@@ -786,14 +842,27 @@ const VendorDashboard = () => {
         }).unwrap();
         toast.success("Product updated successfully!");
       } else {
-        await createProduct(productData).unwrap();
+        const res = await createProduct(productData).unwrap();
         toast.success("🎉 Product listed successfully!");
+
+        if (res.competition?.hasSimilar) {
+          setTimeout(() => {
+            toast.info(
+              `📊 ${res.competition.count} other sellers offer this product. Stay competitive!`,
+            );
+          }, 1500);
+        }
       }
       closeForm();
     } catch (err) {
-      const msg = err?.data?.message || "Failed to save product";
-      setFormError(msg);
-      toast.error(msg);
+      if (err?.data?.isDuplicate && err?.data?.duplicate) {
+        setDuplicateWarning(err.data.duplicate);
+        toast.error("You already have this product in your inventory");
+      } else {
+        const msg = err?.data?.message || "Failed to save product";
+        setFormError(msg);
+        toast.error(msg);
+      }
     }
   };
 
@@ -1510,6 +1579,7 @@ const VendorDashboard = () => {
                             placeholder="e.g. Sony WH-1000XM5 Wireless Headphones"
                             value={form.name}
                             onChange={handleChange}
+                            onBlur={handleCheckDuplicate}
                             className={inputCls}
                             maxLength={200}
                           />
@@ -1546,10 +1616,11 @@ const VendorDashboard = () => {
                         <div>
                           <Lbl>Model Number</Lbl>
                           <input
-                            name="model"
+                            name="modelNumber"
                             placeholder="e.g. WH-1000XM5"
                             value={form.modelNumber}
                             onChange={handleChange}
+                            onBlur={handleCheckDuplicate}
                             className={inputCls}
                           />
                         </div>
@@ -1560,6 +1631,7 @@ const VendorDashboard = () => {
                             placeholder="e.g. PROD-001"
                             value={form.sku}
                             onChange={handleChange}
+                            onBlur={handleCheckDuplicate}
                             className={inputCls}
                           />
                         </div>
@@ -1673,6 +1745,19 @@ const VendorDashboard = () => {
                           </div>
                         )}
                       </div>
+
+                      {checkingAvailability && (
+                        <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl">
+                          <span className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                          <span className="text-xs text-blue-700 font-semibold">
+                            Checking availability...
+                          </span>
+                        </div>
+                      )}
+
+                      {competitionInfo && !duplicateWarning && (
+                        <CompetitionAlert competition={competitionInfo} />
+                      )}
                     </div>
                   )}
 
@@ -3609,6 +3694,14 @@ const VendorDashboard = () => {
           </div>
         )}
       </div>
+
+      {duplicateWarning && (
+        <DuplicateProductWarning
+          duplicate={duplicateWarning}
+          onClose={() => setDuplicateWarning(null)}
+          onEdit={handleEditExisting}
+        />
+      )}
     </div>
   );
 };

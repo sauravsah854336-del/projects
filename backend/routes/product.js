@@ -15,6 +15,7 @@ const {
   getVendorStats,
   getProductFilters,
   getRelatedProducts,
+  checkProductAvailability,
 } = require("../controllers/productController");
 
 const router = express.Router();
@@ -25,6 +26,7 @@ router.get("/single/:slug", getSingleProduct);
 router.get("/related/:id", getRelatedProducts);
 router.get("/vendor/stats", protect, authorized("vendor"), getVendorStats);
 router.get("/vendor", protect, authorized("vendor"), getVendorProducts);
+router.get("/vendor/check-availability", protect, authorized("vendor"), checkProductAvailability);
 router.post("/", protect, authorized("vendor"), createProduct);
 router.put("/:id", protect, authorized("vendor"), updateProduct);
 router.delete("/:id", protect, authorized("vendor"), deleteProduct);

@@ -3,14 +3,95 @@ const Vendor = require("../models/vendors");
 const Order = require("../models/order");
 const Category = require("../models/category");
 
+const generateUniqueSlug = async (name, vendorStoreName, excludeId = null) => {
+  const baseSlug = name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  let slug = baseSlug;
+  const query = { slug };
+  if (excludeId) query._id = { $ne: excludeId };
+
+  const existSlug = await Product.findOne(query);
+  if (!existSlug) return slug;
+
+  const vendorPart = vendorStoreName
+    ? vendorStoreName.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 20)
+    : "";
+
+  if (vendorPart) {
+    slug = `${baseSlug}-${vendorPart}`;
+    const query2 = { slug };
+    if (excludeId) query2._id = { $ne: excludeId };
+    const exists2 = await Product.findOne(query2);
+    if (!exists2) return slug;
+  }
+
+  slug = `${baseSlug}-${Date.now()}`;
+  return slug;
+};
+
+const checkDuplicateProduct = async (vendorId, { name, sku, modelNumber }, excludeProductId = null) => {
+  const orConditions = [];
+
+  if (name) {
+    orConditions.push({
+      name: { $regex: `^${name.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" },
+    });
+  }
+
+  if (sku && sku.trim()) {
+    orConditions.push({ sku: sku.trim() });
+  }
+
+  if (modelNumber && modelNumber.trim()) {
+    orConditions.push({ modelNumber: modelNumber.trim() });
+  }
+
+  if (orConditions.length === 0) return null;
+
+  const query = {
+    vendor: vendorId,
+    isDeleted: { $ne: true },
+    $or: orConditions,
+  };
+
+  if (excludeProductId) {
+    query._id = { $ne: excludeProductId };
+  }
+
+  return await Product.findOne(query).select("name sku modelNumber slug");
+};
+
+const findSimilarProductsFromOtherVendors = async (vendorId, { modelNumber, brand, name }) => {
+  const orConditions = [];
+
+  if (modelNumber && modelNumber.trim() && brand && brand.trim()) {
+    orConditions.push({
+      modelNumber: modelNumber.trim(),
+      brand: brand.trim(),
+    });
+  }
+
+  if (orConditions.length === 0) return [];
+
+  return await Product.find({
+    vendor: { $ne: vendorId },
+    status: "approved",
+    isActive: true,
+    isDeleted: { $ne: true },
+    $or: orConditions,
+  })
+    .select("name price slug images vendorStore averageRating totalReviews stock")
+    .populate("vendorStore", "storeName")
+    .limit(5)
+    .lean();
+};
+
 const createProduct = async (req, res) => {
   try {
-
-    console.log("=== CREATE PRODUCT DEBUG ===");
-    console.log("Body keys:", Object.keys(req.body));
-    console.log("Has 'model' key?", "model" in req.body);
-    console.log("Has 'modelNumber' key?", "modelNumber" in req.body);
-    console.log("=========================");
     const {
       name, description, shortDescription, keyFeatures,
       category, brand, modelNumber,
@@ -24,8 +105,6 @@ const createProduct = async (req, res) => {
       faqs, seo, tags,
       availableCountries, restrictedCountries, shippingCountries,
     } = req.body;
-
-    
 
     if (!name || !description || !category || !price || stock === undefined) {
       return res.status(400).json({
@@ -48,9 +127,57 @@ const createProduct = async (req, res) => {
       return res.status(403).json({ success: false, message: "Vendor account is not approved" });
     }
 
-    let slug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-    const existSlug = await Product.findOne({ slug });
-    if (existSlug) slug = `${slug}-${Date.now()}`;
+    const duplicate = await checkDuplicateProduct(req.user.id, { name, sku, modelNumber });
+
+    if (duplicate) {
+  let field = "product";
+  let value = "";
+  let matchType = "";
+
+  if (duplicate.name.toLowerCase() === name.trim().toLowerCase()) {
+    field = "name";
+    value = duplicate.name;
+    matchType = "name";
+  } else if (sku && duplicate.sku === sku.trim()) {
+    field = "SKU";
+    value = duplicate.sku;
+    matchType = "sku";
+  } else if (modelNumber && duplicate.modelNumber === modelNumber.trim()) {
+    field = "model number";
+    value = duplicate.modelNumber;
+    matchType = "modelNumber";
+  }
+
+  return res.status(400).json({
+    success: false,
+    isDuplicate: true,
+    duplicateType: "own_product",
+    title: "You already sell this product",
+    message: `You have "${duplicate.name}" in your inventory with the same ${field}.`,
+    suggestion: "Update your existing product to change price, stock, or other details instead of creating a duplicate.",
+    duplicate: {
+      _id: duplicate._id,
+      name: duplicate.name,
+      slug: duplicate.slug,
+      sku: duplicate.sku,
+      modelNumber: duplicate.modelNumber,
+      matchedField: field,
+      matchType: matchType,
+    },
+    actions: {
+      editUrl: `/vendor/products/edit/${duplicate._id}`,
+      viewUrl: `/products/single/${duplicate.slug}`,
+    },
+  });
+}
+
+    const similarProducts = await findSimilarProductsFromOtherVendors(req.user.id, {
+      modelNumber,
+      brand,
+      name,
+    });
+
+    const slug = await generateUniqueSlug(name, vendor.storeName);
 
     const product = await Product.create({
       name: name.trim(),
@@ -59,8 +186,8 @@ const createProduct = async (req, res) => {
       shortDescription: shortDescription || "",
       keyFeatures: keyFeatures || [],
       category,
-      brand: brand || "",
-      modelNumber: modelNumber || "",
+      brand: brand?.trim() || "",
+      modelNumber: modelNumber?.trim() || "",
       price,
       basePrice: price,
       baseCurrency: "INR",
@@ -77,8 +204,8 @@ const createProduct = async (req, res) => {
       specifications: specifications || [],
       stock,
       lowStockThreshold: lowStockThreshold || 5,
-      sku: sku || "",
-      barcode: barcode || "",
+      sku: sku?.trim() || "",
+      barcode: barcode?.trim() || "",
       weight: weight || 0,
       weightUnit: weightUnit || "kg",
       dimensions: dimensions || { length: 0, width: 0, height: 0, unit: "cm" },
@@ -100,11 +227,35 @@ const createProduct = async (req, res) => {
       isActive: true,
     });
 
-    return res.status(201).json({
-      success: true,
-      message: "Product listed successfully.",
-      data: product,
-    });
+    let priceRange = null;
+if (similarProducts.length > 0) {
+  const prices = similarProducts.map(p => p.price).filter(p => p > 0);
+  if (prices.length > 0) {
+    priceRange = {
+      min: Math.min(...prices),
+      max: Math.max(...prices),
+      avg: Math.round(prices.reduce((a, b) => a + b, 0) / prices.length),
+    };
+  }
+}
+
+return res.status(201).json({
+  success: true,
+  message: "Product listed successfully!",
+  data: product,
+  competition: similarProducts.length > 0 ? {
+    hasSimilar: true,
+    count: similarProducts.length,
+    priceRange,
+    tips: [
+      "Set competitive pricing to attract customers",
+      "Upload high-quality product photos",
+      "Offer fast shipping options",
+      "Provide detailed product descriptions",
+    ],
+    sellers: similarProducts,
+  } : null,
+});
   } catch (err) {
     console.error("createProduct error:", err);
     return res.status(500).json({ success: false, message: err.message });
@@ -179,16 +330,68 @@ const updateProduct = async (req, res) => {
       }
     }
 
+    if (updateData.name || updateData.sku || updateData.modelNumber) {
+      const checkData = {
+        name: updateData.name || product.name,
+        sku: updateData.sku !== undefined ? updateData.sku : product.sku,
+        modelNumber: updateData.modelNumber !== undefined ? updateData.modelNumber : product.modelNumber,
+      };
+
+      const nameChanged = updateData.name && updateData.name.trim().toLowerCase() !== product.name.toLowerCase();
+      const skuChanged = updateData.sku !== undefined && updateData.sku.trim() !== (product.sku || "");
+      const modelChanged = updateData.modelNumber !== undefined && updateData.modelNumber.trim() !== (product.modelNumber || "");
+
+      if (nameChanged || skuChanged || modelChanged) {
+        const duplicate = await checkDuplicateProduct(
+          req.user.id,
+          {
+            name: nameChanged ? checkData.name : null,
+            sku: skuChanged ? checkData.sku : null,
+            modelNumber: modelChanged ? checkData.modelNumber : null,
+          },
+          id
+        );
+
+        if (duplicate) {
+          let field = "product";
+          let value = "";
+
+          if (nameChanged && duplicate.name.toLowerCase() === checkData.name.trim().toLowerCase()) {
+            field = "name";
+            value = duplicate.name;
+          } else if (skuChanged && duplicate.sku === checkData.sku.trim()) {
+            field = "SKU";
+            value = duplicate.sku;
+          } else if (modelChanged && duplicate.modelNumber === checkData.modelNumber.trim()) {
+            field = "model number";
+            value = duplicate.modelNumber;
+          }
+
+          return res.status(400).json({
+            success: false,
+            message: `Another product "${duplicate.name}" already uses this ${field}: "${value}".`,
+            duplicate: {
+              _id: duplicate._id,
+              name: duplicate.name,
+              slug: duplicate.slug,
+              matchedField: field,
+            },
+          });
+        }
+      }
+    }
+
     if (updateData.name) {
       updateData.name = updateData.name.trim();
-      let slug = updateData.name.toLowerCase().trim()
-        .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-      const existSlug = await Product.findOne({ slug, _id: { $ne: id } });
-      if (existSlug) slug = `${slug}-${Date.now()}`;
-      updateData.slug = slug;
+      const vendor = await Vendor.findOne({ userId: req.user.id });
+      updateData.slug = await generateUniqueSlug(updateData.name, vendor?.storeName, id);
     }
 
     if (updateData.description) updateData.description = updateData.description.trim();
+    if (updateData.brand) updateData.brand = updateData.brand.trim();
+    if (updateData.modelNumber) updateData.modelNumber = updateData.modelNumber.trim();
+    if (updateData.sku) updateData.sku = updateData.sku.trim();
+    if (updateData.barcode) updateData.barcode = updateData.barcode.trim();
 
     if (updateData.category) {
       const catExists = await Category.findById(updateData.category);
@@ -294,21 +497,11 @@ const getAllProducts = async (req, res) => {
     if (assemblyRequired === "false") filter.assemblyRequired = false;
     if (freeShipping === "true") filter["shipping.isFreeShipping"] = true;
 
-    if (filterType === "featured") {
-      filter.isFeatured = true;
-    }
-    if (filterType === "topRated") {
-      filter.averageRating = { $gte: 4 };
-    }
-    if (filterType === "bestSeller") {
-      filter.totalReviews = { $gte: 10 };
-    }
-    if (filterType === "discount") {
-      filter.$expr = { $gt: ["$comparePrice", "$price"] };
-    }
-    if (filterType === "newArrival") {
-      filter.isNewArrival = true;
-    }
+    if (filterType === "featured") filter.isFeatured = true;
+    if (filterType === "topRated") filter.averageRating = { $gte: 4 };
+    if (filterType === "bestSeller") filter.totalReviews = { $gte: 10 };
+    if (filterType === "discount") filter.$expr = { $gt: ["$comparePrice", "$price"] };
+    if (filterType === "newArrival") filter.isNewArrival = true;
 
     if (search) {
       const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -347,17 +540,11 @@ const getAllProducts = async (req, res) => {
 
     let sortOption = { createdAt: -1 };
 
-    if (filterType === "topRated") {
-      sortOption = { averageRating: -1, totalReviews: -1 };
-    } else if (filterType === "bestSeller") {
-      sortOption = { totalSold: -1, totalReviews: -1 };
-    } else if (filterType === "discount") {
-      sortOption = { comparePrice: -1 };
-    } else if (filterType === "latest" || filterType === "newArrival") {
-      sortOption = { createdAt: -1 };
-    } else if (filterType === "featured") {
-      sortOption = { createdAt: -1 };
-    }
+    if (filterType === "topRated") sortOption = { averageRating: -1, totalReviews: -1 };
+    else if (filterType === "bestSeller") sortOption = { totalSold: -1, totalReviews: -1 };
+    else if (filterType === "discount") sortOption = { comparePrice: -1 };
+    else if (filterType === "latest" || filterType === "newArrival") sortOption = { createdAt: -1 };
+    else if (filterType === "featured") sortOption = { createdAt: -1 };
 
     if (sort === "price_low") sortOption = { price: 1 };
     if (sort === "price_high") sortOption = { price: -1 };
@@ -402,7 +589,29 @@ const getSingleProduct = async (req, res) => {
 
     await Product.findByIdAndUpdate(product._id, { $inc: { views: 1 } });
 
-    return res.status(200).json({ success: true, data: product });
+    let otherSellers = [];
+    if (product.modelNumber && product.brand) {
+      otherSellers = await Product.find({
+        _id: { $ne: product._id },
+        modelNumber: product.modelNumber,
+        brand: product.brand,
+        status: "approved",
+        isActive: true,
+        isDeleted: { $ne: true },
+        stock: { $gt: 0 },
+      })
+        .select("name price comparePrice slug images vendorStore averageRating totalReviews stock shipping")
+        .populate("vendorStore", "storeName storeLogo")
+        .sort({ price: 1 })
+        .limit(10)
+        .lean();
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: product,
+      otherSellers,
+    });
   } catch (err) {
     console.error("getSingleProduct error:", err);
     return res.status(500).json({ success: false, message: err.message });
@@ -428,6 +637,7 @@ const adminGetAllProducts = async (req, res) => {
         { name: regex },
         { brand: regex },
         { sku: regex },
+        { modelNumber: regex },
         { description: regex },
       ];
     }
@@ -761,6 +971,85 @@ const getRelatedProducts = async (req, res) => {
   }
 };
 
+const checkProductAvailability = async (req, res) => {
+  try {
+    const { name, sku, modelNumber, brand } = req.query;
+
+    if (!name && !sku && !modelNumber) {
+      return res.status(400).json({
+        success: false,
+        message: "Provide name, sku, or modelNumber to check",
+      });
+    }
+
+    const duplicate = await checkDuplicateProduct(req.user.id, { name, sku, modelNumber });
+
+    if (duplicate) {
+      let field = "product";
+      let matchType = "";
+      if (name && duplicate.name.toLowerCase() === name.trim().toLowerCase()) {
+        field = "name";
+        matchType = "name";
+      } else if (sku && duplicate.sku === sku.trim()) {
+        field = "SKU";
+        matchType = "sku";
+      } else if (modelNumber && duplicate.modelNumber === modelNumber.trim()) {
+        field = "model number";
+        matchType = "modelNumber";
+      }
+
+      return res.status(200).json({
+        success: true,
+        available: false,
+        isOwnProduct: true,
+        title: "You already sell this product",
+        message: `You have "${duplicate.name}" with the same ${field}.`,
+        suggestion: "Edit your existing product instead of creating duplicate.",
+        duplicate: {
+          _id: duplicate._id,
+          name: duplicate.name,
+          slug: duplicate.slug,
+          matchedField: field,
+          matchType: matchType,
+        },
+      });
+    }
+
+    let competition = null;
+    if (modelNumber && brand) {
+      const otherSellers = await findSimilarProductsFromOtherVendors(req.user.id, {
+        modelNumber,
+        brand,
+        name,
+      });
+
+      if (otherSellers.length > 0) {
+        const prices = otherSellers.map(p => p.price).filter(p => p > 0);
+        competition = {
+          count: otherSellers.length,
+          priceRange: prices.length > 0 ? {
+            min: Math.min(...prices),
+            max: Math.max(...prices),
+            avg: Math.round(prices.reduce((a, b) => a + b, 0) / prices.length),
+          } : null,
+          sellers: otherSellers.slice(0, 3),
+        };
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      available: true,
+      title: "You can list this product",
+      message: "These details are available for a new product",
+      competition,
+    });
+  } catch (err) {
+    console.error("checkProductAvailability error:", err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 module.exports = {
   createProduct,
   getVendorProducts,
@@ -775,4 +1064,5 @@ module.exports = {
   getVendorStats,
   getProductFilters,
   getRelatedProducts,
+  checkProductAvailability,
 };

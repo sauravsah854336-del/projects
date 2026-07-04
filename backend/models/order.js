@@ -60,6 +60,16 @@ const orderSchema = new mongoose.Schema(
       enum: ["pending", "paid", "failed", "refunded"],
       default: "pending",
     },
+    paymentDetails: {
+  gateway: { type: String, default: "cashfree" },
+  cashfreeOrderId: { type: String, default: "" },
+  paymentSessionId: { type: String, default: "" },
+  cfPaymentId: { type: String, default: "" },
+  paymentTime: { type: Date, default: null },
+  paymentMode: { type: String, default: "" },
+  bankReference: { type: String, default: "" },
+  failureReason: { type: String, default: "" },
+},
     country: {
       code: { type: String, default: "IN", uppercase: true },
       name: { type: String, default: "India" },
@@ -130,5 +140,7 @@ orderSchema.index({ orderNumber: 1 });
 orderSchema.index({ orderStatus: 1 });
 orderSchema.index({ "items.vendor": 1 });
 orderSchema.index({ couponCode: 1 });
+orderSchema.index({ "paymentDetails.cashfreeOrderId": 1 });
+orderSchema.index({ paymentStatus: 1 });
 
 module.exports = mongoose.models.Order || mongoose.model("Order", orderSchema);

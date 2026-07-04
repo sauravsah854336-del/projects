@@ -5,6 +5,8 @@ import { usePlaceOrderMutation } from "../features/order/orderApi";
 import { useSelector } from "react-redux";
 import { useGetProfileQuery } from "../features/customer/customerApi";
 import { PLACEHOLDER_MEDIUM } from "../utils/placeholder";
+import { useInitiatePaymentMutation } from "../features/payment/paymentApi";
+import { openCashfreeCheckout } from "../utils/cashfree";
 import { toast } from "../components/Toast";
 import {
   formatPrice,
@@ -14,26 +16,24 @@ import {
 } from "../utils/priceHelper";
 
 const PAYMENT_METHODS_CONFIG = {
+  online: {
+    label: "Online Payment",
+    sub: "UPI, Cards, Netbanking, Wallets · Powered by Cashfree",
+    icon: "⚡",
+    badge: "RECOMMENDED",
+    badgeColor: "bg-green-100 text-green-700 border-green-200",
+    features: ["Instant", "Secure", "100+ options"],
+    available: true,
+  },
   cod: {
     label: "Cash on Delivery",
-    sub: "Pay when your order arrives",
+    sub: "Currently unavailable — coming soon",
     icon: "💵",
+    badge: "COMING SOON",
+    badgeColor: "bg-gray-100 text-gray-500 border-gray-200",
+    features: [],
+    available: false,
   },
-  card: {
-    label: "Credit/Debit Card",
-    sub: "Visa, Mastercard, Amex",
-    icon: "💳",
-  },
-  upi: { label: "UPI", sub: "Google Pay, PhonePe, Paytm", icon: "📱" },
-  netbanking: {
-    label: "Net Banking",
-    sub: "All major banks supported",
-    icon: "🏦",
-  },
-  wallet: { label: "Wallet", sub: "Paytm, MobiKwik, Amazon Pay", icon: "👛" },
-  paypal: { label: "PayPal", sub: "Pay with your PayPal account", icon: "🅿️" },
-  applepay: { label: "Apple Pay", sub: "Quick & secure", icon: "🍎" },
-  googlepay: { label: "Google Pay", sub: "Pay with Google", icon: "🔵" },
 };
 
 const RadioDot = ({ selected }) => (
@@ -53,6 +53,7 @@ const CheckoutPage = () => {
   const { data: cartData } = useGetCartQuery();
   const { data: profileData } = useGetProfileQuery();
   const [placeOrder, { isLoading }] = usePlaceOrderMutation();
+  const [initiatePayment] = useInitiatePaymentMutation();
 
   const cart = cartData?.data;
   const items = cart?.items || [];
@@ -60,11 +61,8 @@ const CheckoutPage = () => {
   const defaultAddress =
     savedAddresses.find((a) => a.isDefault) || savedAddresses[0];
 
-  const availablePaymentMethods = currentCountry?.paymentMethods || [
-    "cod",
-    "card",
-  ];
-  const defaultPaymentMethod = availablePaymentMethods[0] || "cod";
+  const availablePaymentMethods = ["online", "cod"];
+  const defaultPaymentMethod = "online";
 
   const userDialCode = user?.dialCode || currentCountry?.dialCode || "+91";
 
@@ -89,7 +87,6 @@ const CheckoutPage = () => {
   const couponCode = couponData.code || "";
   const couponDiscountINR = couponData.discount || 0;
   const isFreeShippingCoupon = couponData.freeShipping || false;
-  const couponType = couponData.discountType || "";
   const couponDescription = couponData.description || "";
   const subtotalAfterCouponINR = subtotalINR - couponDiscountINR;
 
@@ -97,7 +94,7 @@ const CheckoutPage = () => {
     ? 0
     : calculateTax(
         convertPrice(subtotalAfterCouponINR, currentCountry),
-        currentCountry,
+        currentCountry
       );
 
   const shippingInfo = getShippingInfo(subtotalAfterCouponINR, currentCountry);
@@ -146,6 +143,14 @@ const CheckoutPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError("");
+
+    const methodConfig = PAYMENT_METHODS_CONFIG[paymentMethod];
+    if (!methodConfig?.available) {
+      setFormError("Selected payment method is unavailable");
+      toast.error("Please select an available payment method");
+      return;
+    }
+
     const shippingAddress = getSelectedAddress();
 
     if (
@@ -168,6 +173,7 @@ const CheckoutPage = () => {
 
     try {
       setConfirming(true);
+
       const res = await placeOrder({
         shippingAddress,
         paymentMethod,
@@ -181,18 +187,35 @@ const CheckoutPage = () => {
           shipping: currentCountry.shipping,
         },
       }).unwrap();
-      setConfirming(false);
-      setOrderSuccess(res.data);
-      if (couponCode) {
-        toast.success(
-          `🎉 Order placed! You saved ${formatPrice(couponDiscountINR, currentCountry)} with ${couponCode}`,
+
+      const createdOrder = res.data;
+
+      const paymentRes = await initiatePayment({
+        orderId: createdOrder._id,
+      }).unwrap();
+
+      if (!paymentRes.success || !paymentRes.data?.paymentSessionId) {
+        throw new Error(paymentRes.message || "Failed to get payment session");
+      }
+
+      const returnUrl = `${window.location.origin}/payment/status?order_id=${createdOrder._id}`;
+
+      const checkoutResult = await openCashfreeCheckout({
+        paymentSessionId: paymentRes.data.paymentSessionId,
+        returnUrl: returnUrl,
+      });
+
+      if (checkoutResult?.error) {
+        setConfirming(false);
+        toast.error(checkoutResult.error.message || "Payment cancelled");
+        setFormError(
+          checkoutResult.error.message || "Payment was cancelled or failed"
         );
-      } else {
-        toast.success("🎉 Order placed successfully!");
       }
     } catch (err) {
+      console.error("Checkout error:", err);
       setConfirming(false);
-      const msg = err?.data?.message || "Failed to place order";
+      const msg = err?.data?.message || err?.message || "Failed to place order";
       setFormError(msg);
       toast.error(msg);
     }
@@ -254,214 +277,22 @@ const CheckoutPage = () => {
             </div>
 
             <div className="p-5 sm:p-6">
-              <div className="bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 mb-5 flex items-center gap-3">
-                <span className="text-2xl">{currentCountry.flag}</span>
-                <div className="flex-1">
-                  <p className="text-xs font-bold text-indigo-800 m-0">
-                    Shipping to {currentCountry.name}
-                  </p>
-                  <p className="text-[11px] text-indigo-600 m-0 mt-0.5">
-                    Payment in {currentCountry.currency.code} (
-                    {currentCountry.currency.symbol})
-                  </p>
-                </div>
-              </div>
-
-              {orderSuccess.couponCode && (
-                <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border-2 border-orange-200 rounded-xl px-4 py-3 mb-5">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center text-xl shrink-0">
-                      🎟️
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-extrabold text-orange-800 m-0">
-                          Coupon Applied: {orderSuccess.couponCode}
-                        </p>
-                        <span className="bg-green-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">
-                          SAVED
-                        </span>
-                      </div>
-                      <p className="text-xs text-orange-600 m-0 mt-0.5">
-                        You saved{" "}
-                        {formatPrice(
-                          orderSuccess.discount || 0,
-                          currentCountry,
-                        )}{" "}
-                        on this order!
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="mb-5">
-                <h3 className="text-sm font-extrabold text-gray-900 mb-3">
-                  What happens next?
-                </h3>
-                <div className="flex flex-col gap-3">
-                  {[
-                    {
-                      icon: "✅",
-                      title: "Order Confirmed",
-                      desc: "Your order has been received",
-                      done: true,
-                    },
-                    {
-                      icon: "⚙️",
-                      title: "Vendor Processing",
-                      desc: "Vendor will prepare your items",
-                      done: false,
-                    },
-                    {
-                      icon: "🚚",
-                      title: "Shipped",
-                      desc: `Estimated ${currentCountry.shipping?.estimatedDays?.standard || 5} days`,
-                      done: false,
-                    },
-                    {
-                      icon: "📦",
-                      title: "Delivered",
-                      desc: "Delivered to your address",
-                      done: false,
-                    },
-                  ].map((step, i) => (
-                    <div key={i} className="flex items-start gap-3">
-                      <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0 ${step.done ? "bg-green-100" : "bg-gray-100"}`}
-                      >
-                        {step.icon}
-                      </div>
-                      <div className="flex-1">
-                        <p
-                          className={`text-sm font-bold m-0 ${step.done ? "text-green-700" : "text-gray-500"}`}
-                        >
-                          {step.title}
-                        </p>
-                        <p
-                          className={`text-xs m-0 ${step.done ? "text-green-600" : "text-gray-400"}`}
-                        >
-                          {step.desc}
-                        </p>
-                      </div>
-                      {step.done && (
-                        <svg
-                          className="w-4 h-4 text-green-500 shrink-0 mt-0.5"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth={2.5}
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            d="M5 13l4 4L19 7"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
               <div className="border-t border-gray-100 pt-4 mb-5 space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500">Payment Method</span>
                   <span className="text-sm font-bold text-gray-900">
                     {PAYMENT_METHODS_CONFIG[orderSuccess.paymentMethod]?.icon ||
-                      "💳"}{" "}
+                      "⚡"}{" "}
                     {PAYMENT_METHODS_CONFIG[orderSuccess.paymentMethod]
                       ?.label || "Online"}
                   </span>
                 </div>
-                {orderSuccess.discount > 0 && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-green-600 font-semibold">
-                      Discount Applied
-                    </span>
-                    <span className="text-sm font-bold text-green-600">
-                      − {formatPrice(orderSuccess.discount, currentCountry)}
-                    </span>
-                  </div>
-                )}
                 <div className="flex justify-between items-center pt-2 border-t border-gray-100">
                   <span className="text-sm text-gray-500">Order Total</span>
-                  <div className="text-right">
-                    <span className="text-lg font-extrabold text-[#B12704]">
-                      {formatPrice(orderSuccess.total, currentCountry)}
-                    </span>
-                    {currentCountry.code !== "IN" && (
-                      <p className="text-[10px] text-gray-400 m-0">
-                        ≈ ₹
-                        {Math.round(orderSuccess.total).toLocaleString("en-IN")}
-                      </p>
-                    )}
-                  </div>
+                  <span className="text-lg font-extrabold text-[#B12704]">
+                    {formatPrice(orderSuccess.total, currentCountry)}
+                  </span>
                 </div>
-              </div>
-
-              {orderSuccess.items?.length > 0 && (
-                <div className="border-t border-gray-100 pt-4">
-                  <p className="text-xs font-extrabold text-gray-500 uppercase tracking-wide mb-3">
-                    Items Ordered
-                  </p>
-                  <div className="flex flex-col gap-2">
-                    {orderSuccess.items.slice(0, 3).map((item, i) => (
-                      <div key={i} className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gray-50 rounded-lg border border-gray-100 flex items-center justify-center overflow-hidden shrink-0">
-                          <img
-                            src={item.image || PLACEHOLDER_MEDIUM}
-                            alt={item.name}
-                            className="w-full h-full object-contain p-0.5"
-                            onError={(e) => {
-                              e.target.src = PLACEHOLDER_MEDIUM;
-                            }}
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-gray-900 m-0 truncate">
-                            {item.name}
-                          </p>
-                          <p className="text-[11px] text-gray-400 m-0">
-                            Qty: {item.quantity}
-                          </p>
-                        </div>
-                        <span className="text-xs font-bold text-gray-700 shrink-0">
-                          {formatPrice(
-                            item.price * item.quantity,
-                            currentCountry,
-                          )}
-                        </span>
-                      </div>
-                    ))}
-                    {orderSuccess.items.length > 3 && (
-                      <p className="text-xs text-gray-400 text-center">
-                        +{orderSuccess.items.length - 3} more items
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-blue-50 border border-blue-100 rounded-2xl px-5 py-4 mb-5">
-            <div className="flex items-start gap-3">
-              <span className="text-xl">📍</span>
-              <div>
-                <p className="text-sm font-bold text-blue-800 m-0">
-                  Delivering to
-                </p>
-                <p className="text-xs text-blue-600 mt-0.5 m-0">
-                  {orderSuccess.shippingAddress?.fullName},{" "}
-                  {orderSuccess.shippingAddress?.street},{" "}
-                  {orderSuccess.shippingAddress?.city},{" "}
-                  {orderSuccess.shippingAddress?.state} -{" "}
-                  {orderSuccess.shippingAddress?.postalCode}
-                </p>
-                <p className="text-xs text-blue-500 mt-1 m-0 font-medium">
-                  📱 {orderSuccess.shippingAddress?.phone}
-                </p>
               </div>
             </div>
           </div>
@@ -469,7 +300,7 @@ const CheckoutPage = () => {
           <div className="flex flex-col sm:flex-row gap-3">
             <button
               onClick={() => navigate(`/orders/${orderSuccess._id}`)}
-              className="flex-1 bg-gray-900 text-white font-bold text-sm py-3.5 rounded-xl border-none cursor-pointer hover:bg-gray-800 transition font-[inherit]"
+              className="flex-1 bg-gradient-to-r from-[#0F172A] to-[#1E3A8A] hover:brightness-110 text-white font-bold text-sm py-3.5 rounded-xl border-none cursor-pointer transition font-[inherit]"
             >
               Track Order
             </button>
@@ -490,17 +321,17 @@ const CheckoutPage = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="text-center">
           <div className="w-20 h-20 mx-auto mb-6 relative">
-            <div className="w-20 h-20 border-4 border-gray-200 rounded-full"></div>
-            <div className="w-20 h-20 border-4 border-green-500 border-t-transparent rounded-full animate-spin absolute inset-0"></div>
+            <div className="w-20 h-20 border-4 border-blue-100 rounded-full"></div>
+            <div className="w-20 h-20 border-4 border-blue-500 border-t-transparent rounded-full animate-spin absolute inset-0"></div>
             <div className="absolute inset-0 flex items-center justify-center text-2xl">
-              🛍️
+              ⚡
             </div>
           </div>
           <h2 className="text-xl font-extrabold text-gray-900 mb-2">
-            Confirming your order...
+            Setting up secure payment...
           </h2>
           <p className="text-gray-500 text-sm">
-            Please wait while we process your order
+            Redirecting you to Cashfree — please wait
           </p>
         </div>
       </div>
@@ -517,7 +348,7 @@ const CheckoutPage = () => {
           </h2>
           <button
             onClick={() => navigate("/products")}
-            className="bg-gradient-to-b from-yellow-300 to-yellow-400 text-gray-900 font-bold text-sm px-7 py-3 rounded-xl border border-yellow-400 cursor-pointer hover:brightness-95 transition font-[inherit]"
+            className="bg-gradient-to-r from-[#0F172A] to-[#1E3A8A] hover:brightness-110 text-white font-bold text-sm px-7 py-3 rounded-xl border-none cursor-pointer transition font-[inherit]"
           >
             Continue Shopping
           </button>
@@ -527,6 +358,8 @@ const CheckoutPage = () => {
   }
 
   const activeAddressId = selectedAddressId || defaultAddress?._id;
+  const isPayDisabled =
+    isLoading || confirming || !PAYMENT_METHODS_CONFIG[paymentMethod]?.available;
 
   return (
     <div className="bg-gray-50 min-h-screen py-5 sm:py-7 px-3 sm:px-4">
@@ -536,7 +369,7 @@ const CheckoutPage = () => {
             <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 m-0">
               Checkout
             </h1>
-            <span className="inline-flex items-center gap-1.5 bg-orange-50 text-[#D85A30] border border-orange-200 px-2.5 py-1 rounded-full text-xs font-bold">
+            <span className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-full text-xs font-bold">
               {currentCountry.flag} {currentCountry.currency.code}
             </span>
             {couponCode && (
@@ -602,8 +435,8 @@ const CheckoutPage = () => {
                           onClick={() => setSelectedAddressId(addr._id)}
                           className={`flex items-start gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all ${
                             isSelected
-                              ? "border-gray-900 bg-gray-50"
-                              : "border-gray-200 hover:border-[#D85A30]"
+                              ? "border-gray-900 bg-blue-50"
+                              : "border-gray-200 hover:border-blue-400"
                           }`}
                         >
                           <RadioDot selected={isSelected} />
@@ -658,32 +491,12 @@ const CheckoutPage = () => {
                 {(addressMode === "new" || savedAddresses.length === 0) && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     {[
-                      {
-                        name: "fullName",
-                        label: "Full Name *",
-                        ph: "John Doe",
-                        col: "sm:col-span-2",
-                      },
-                      {
-                        name: "phone",
-                        label: "Phone *",
-                        ph: "Enter mobile number",
-                        col: "sm:col-span-2",
-                        tel: true,
-                      },
-                      {
-                        name: "street",
-                        label: "Street Address *",
-                        ph: "123 Main Street, Apartment 4B",
-                        col: "sm:col-span-2",
-                      },
+                      { name: "fullName", label: "Full Name *", ph: "John Doe", col: "sm:col-span-2" },
+                      { name: "phone", label: "Phone *", ph: "Enter mobile number", col: "sm:col-span-2", tel: true },
+                      { name: "street", label: "Street Address *", ph: "123 Main Street, Apartment 4B", col: "sm:col-span-2" },
                       { name: "city", label: "City *", ph: "Mumbai" },
                       { name: "state", label: "State *", ph: "Maharashtra" },
-                      {
-                        name: "postalCode",
-                        label: "Postal Code *",
-                        ph: "400001",
-                      },
+                      { name: "postalCode", label: "Postal Code *", ph: "400001" },
                     ].map((f) => (
                       <div key={f.name} className={f.col || ""}>
                         <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
@@ -692,12 +505,8 @@ const CheckoutPage = () => {
                         {f.tel ? (
                           <div className="flex">
                             <div className="flex items-center gap-1.5 border border-r-0 border-gray-200 rounded-l-xl px-3 bg-gray-50 shrink-0">
-                              <span className="text-base">
-                                {currentCountry.flag}
-                              </span>
-                              <span className="text-xs font-bold text-gray-700">
-                                {userDialCode}
-                              </span>
+                              <span className="text-base">{currentCountry.flag}</span>
+                              <span className="text-xs font-bold text-gray-700">{userDialCode}</span>
                               <div className="w-px h-4 bg-gray-300" />
                             </div>
                             <input
@@ -734,62 +543,95 @@ const CheckoutPage = () => {
                     Payment Method
                   </h2>
                 </div>
-                <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                  {availablePaymentMethods.length} options for{" "}
-                  {currentCountry.flag} {currentCountry.code}
+                <span className="text-[10px] font-bold text-green-700 bg-green-50 border border-green-200 px-2 py-1 rounded-full">
+                  🔒 100% Secure
                 </span>
               </div>
+
               <div className="p-5 flex flex-col gap-2.5">
                 {availablePaymentMethods.map((methodKey) => {
                   const opt = PAYMENT_METHODS_CONFIG[methodKey];
                   if (!opt) return null;
+                  const isDisabled = !opt.available;
+                  const isSelected = paymentMethod === methodKey;
 
                   return (
                     <div
                       key={methodKey}
-                      onClick={() => setPaymentMethod(methodKey)}
-                      className={`flex items-center gap-3.5 p-4 rounded-2xl border-2 cursor-pointer transition-all ${
-                        paymentMethod === methodKey
-                          ? "border-gray-900 bg-gray-50"
-                          : "border-gray-200 hover:border-[#D85A30]"
+                      onClick={() => !isDisabled && setPaymentMethod(methodKey)}
+                      className={`relative flex items-start gap-3.5 p-4 rounded-2xl border-2 transition-all ${
+                        isDisabled
+                          ? "border-gray-200 bg-gray-50 cursor-not-allowed opacity-70"
+                          : isSelected
+                            ? "border-gray-900 bg-blue-50 cursor-pointer shadow-md shadow-blue-900/5"
+                            : "border-gray-200 hover:border-blue-400 cursor-pointer bg-white"
                       }`}
                     >
-                      <RadioDot selected={paymentMethod === methodKey} />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-extrabold text-gray-900 m-0">
+                      <div className="mt-0.5">
+                        {isDisabled ? (
+                          <div className="w-[18px] h-[18px] rounded-full border-2 border-gray-300 bg-gray-100 flex items-center justify-center">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="3">
+                              <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
+                            </svg>
+                          </div>
+                        ) : (
+                          <RadioDot selected={isSelected} />
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <p className={`text-sm font-extrabold m-0 ${isDisabled ? "text-gray-400" : "text-gray-900"}`}>
                             {opt.label}
                           </p>
-                          {methodKey === "cod" && (
-                            <span className="text-[9px] bg-green-100 text-green-700 border border-green-200 px-1.5 py-0.5 rounded-full font-bold">
-                              RECOMMENDED
+                          {opt.badge && (
+                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${opt.badgeColor}`}>
+                              {opt.badge}
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-gray-500 mt-0.5">
+                        <p className={`text-xs m-0 ${isDisabled ? "text-gray-400" : "text-gray-500"}`}>
                           {opt.sub}
                         </p>
+
+                        {opt.features?.length > 0 && !isDisabled && (
+                          <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                            {opt.features.map((f) => (
+                              <span
+                                key={f}
+                                className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full"
+                              >
+                                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                  <path d="M5 13l4 4L19 7" strokeLinecap="round" />
+                                </svg>
+                                {f}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                      <span className="text-2xl">{opt.icon}</span>
+
+                      <span className={`text-2xl shrink-0 ${isDisabled ? "grayscale opacity-50" : ""}`}>
+                        {opt.icon}
+                      </span>
                     </div>
                   );
                 })}
 
-                {availablePaymentMethods.length === 0 && (
-                  <div className="text-center py-6">
-                    <p className="text-3xl mb-2">⚠️</p>
-                    <p className="text-sm text-gray-500 m-0">
-                      No payment methods available for {currentCountry.name}
-                    </p>
+                <div className="mt-2 flex items-center gap-2 px-3 py-2.5 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl">
+                  <span className="text-base">🔒</span>
+                  <div className="flex-1">
+                    <p className="text-[11px] font-bold text-blue-800 m-0">100% Secure Payments</p>
+                    <p className="text-[10px] text-blue-600 m-0">PCI-DSS compliant · 256-bit SSL encryption</p>
                   </div>
-                )}
+                </div>
               </div>
             </div>
           </div>
 
           <div className="w-full lg:sticky lg:top-20">
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-orange-50 to-white">
+              <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-white">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">🧾</span>
@@ -814,9 +656,7 @@ const CheckoutPage = () => {
                         src={item.image || PLACEHOLDER_MEDIUM}
                         alt={item.name}
                         className="w-full h-full object-contain p-0.5"
-                        onError={(e) => {
-                          e.target.src = PLACEHOLDER_MEDIUM;
-                        }}
+                        onError={(e) => { e.target.src = PLACEHOLDER_MEDIUM; }}
                       />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -827,10 +667,7 @@ const CheckoutPage = () => {
                         Qty: {item.quantity}
                       </p>
                       <p className="text-xs sm:text-sm font-extrabold text-[#B12704] mt-0.5">
-                        {formatPrice(
-                          item.price * item.quantity,
-                          currentCountry,
-                        )}
+                        {formatPrice(item.price * item.quantity, currentCountry)}
                       </p>
                     </div>
                   </div>
@@ -870,9 +707,7 @@ const CheckoutPage = () => {
                   )}
 
                   <div className="flex justify-between">
-                    <span className="text-xs sm:text-sm text-gray-500">
-                      Shipping
-                    </span>
+                    <span className="text-xs sm:text-sm text-gray-500">Shipping</span>
                     {isFreeShippingCoupon ? (
                       <span className="text-xs sm:text-sm font-bold text-green-600 flex items-center gap-1">
                         🚚 FREE (Coupon)
@@ -893,9 +728,7 @@ const CheckoutPage = () => {
                       <span className="text-xs sm:text-sm text-gray-500">
                         {currentCountry.tax.label} ({currentCountry.tax.rate}%)
                         {currentCountry.tax.includedInPrice && (
-                          <span className="text-[10px] text-green-600 ml-1">
-                            (included)
-                          </span>
+                          <span className="text-[10px] text-green-600 ml-1">(included)</span>
                         )}
                       </span>
                       <span className="text-xs sm:text-sm font-semibold text-gray-900">
@@ -907,17 +740,14 @@ const CheckoutPage = () => {
                   )}
 
                   <div className="border-t-2 border-gray-100 pt-2.5 flex justify-between items-center">
-                    <span className="text-base font-extrabold text-gray-900">
-                      Total
-                    </span>
+                    <span className="text-base font-extrabold text-gray-900">Total</span>
                     <div className="text-right">
                       <span className="text-xl sm:text-2xl font-extrabold text-[#B12704]">
                         {formatPrice(totalINR, currentCountry)}
                       </span>
                       {totalSavings > 0 && (
                         <p className="text-[11px] text-green-600 font-extrabold m-0 mt-0.5">
-                          💰 You save{" "}
-                          {formatPrice(totalSavings, currentCountry)}!
+                          💰 You save {formatPrice(totalSavings, currentCountry)}!
                         </p>
                       )}
                       {currentCountry.code !== "IN" && (
@@ -929,22 +759,6 @@ const CheckoutPage = () => {
                   </div>
                 </div>
 
-                {couponCode && (
-                  <div className="mt-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl px-3 py-2.5 flex items-center gap-2">
-                    <span className="text-base">✅</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-extrabold text-green-800 m-0">
-                        Coupon applied successfully!
-                      </p>
-                      <p className="text-[10px] text-green-600 m-0">
-                        {isFreeShippingCoupon
-                          ? "You got FREE shipping!"
-                          : `You're saving ${formatPrice(couponDiscountINR, currentCountry)}`}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
                 {formError && (
                   <div className="mt-3.5 bg-red-50 border border-red-200 rounded-xl p-3">
                     <p className="text-xs text-red-600 font-semibold m-0">
@@ -955,21 +769,24 @@ const CheckoutPage = () => {
 
                 <button
                   onClick={handleSubmit}
-                  disabled={isLoading || confirming}
-                  className="w-full mt-4 bg-gradient-to-b from-yellow-300 to-yellow-400 text-gray-900 border border-yellow-400 rounded-xl py-4 text-[15px] font-extrabold cursor-pointer hover:brightness-95 transition disabled:opacity-60 disabled:cursor-not-allowed font-[inherit] shadow-md shadow-yellow-400/20"
+                  disabled={isPayDisabled}
+                  className="w-full mt-4 bg-gradient-to-r from-[#0F172A] to-[#1E3A8A] hover:brightness-110 text-white border-none rounded-xl py-4 text-[15px] font-extrabold cursor-pointer transition disabled:opacity-60 disabled:cursor-not-allowed font-[inherit] shadow-lg shadow-blue-900/20"
                 >
                   {isLoading || confirming ? (
                     <span className="flex items-center justify-center gap-2">
-                      <span className="w-4 h-4 border-2 border-gray-700 border-t-transparent rounded-full animate-spin" />
-                      Confirming...
+                      <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                      Redirecting to payment...
                     </span>
                   ) : (
-                    `Place Order • ${formatPrice(totalINR, currentCountry)}`
+                    <span className="flex items-center justify-center gap-2">
+                      <span>🔒</span>
+                      Pay Securely {formatPrice(totalINR, currentCountry)}
+                    </span>
                   )}
                 </button>
 
                 <p className="text-[11px] text-gray-400 text-center mt-3 m-0">
-                  🔒 Secure checkout — By placing order you agree to our terms
+                  🔒 Powered by Cashfree · PCI-DSS Compliant
                 </p>
 
                 <div className="mt-4 pt-4 border-t border-gray-100 flex flex-col gap-2">
@@ -984,9 +801,7 @@ const CheckoutPage = () => {
                   ].map((item) => (
                     <div key={item.text} className="flex items-center gap-2">
                       <span className="text-sm">{item.icon}</span>
-                      <span className="text-[11px] text-gray-400">
-                        {item.text}
-                      </span>
+                      <span className="text-[11px] text-gray-400">{item.text}</span>
                     </div>
                   ))}
                 </div>

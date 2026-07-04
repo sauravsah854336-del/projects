@@ -10,6 +10,7 @@ import ReviewList from "../components/reviews/ReviewList";
 import WishlistButton from "../components/WishlistButton";
 import Price from "../components/Price";
 import ShippingBadge from "../components/ShippingBadge";
+import OtherSellers from "../components/OtherSellers";
 import { toast } from "../components/Toast";
 import {
   formatPrice,
@@ -51,6 +52,7 @@ const ProductDetailPage = () => {
     skip: !data?.data?._id,
   });
   const relatedProducts = relatedData?.data || [];
+  const otherSellers = data?.otherSellers || [];
 
   if (isLoading) {
     return (
@@ -107,6 +109,15 @@ const ProductDetailPage = () => {
     return acc;
   }, {});
 
+  const currentPrice = product.price;
+  const cheapestOtherPrice = otherSellers.length > 0
+    ? Math.min(...otherSellers.map(s => s.price))
+    : null;
+  const isCurrentCheapest = cheapestOtherPrice === null || currentPrice <= cheapestOtherPrice;
+  const savingsIfSwitched = cheapestOtherPrice && !isCurrentCheapest
+    ? currentPrice - cheapestOtherPrice
+    : 0;
+
   const handleAddToCart = async () => {
     if (user && !isCustomer) return;
     setActionType("cart");
@@ -138,7 +149,6 @@ const ProductDetailPage = () => {
   return (
     <div className="bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
-        {/* Breadcrumb */}
         <nav className="flex items-center gap-1.5 text-sm text-gray-400 mb-6 sm:mb-8 flex-wrap">
           <Link to="/" className="hover:text-gray-700 no-underline transition">Home</Link>
           <span>/</span>
@@ -156,7 +166,6 @@ const ProductDetailPage = () => {
         </nav>
 
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
-          {/* Left: Images */}
           <div className="flex flex-col gap-4">
             <div className="relative bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden group">
               <div className="relative w-full" style={{ paddingBottom: "100%" }}>
@@ -180,6 +189,11 @@ const ProductDetailPage = () => {
                   {product.isNewArrival && (
                     <span className="bg-blue-500 text-white text-xs font-extrabold px-3 py-1 rounded-full shadow-md">
                       🆕 New Arrival
+                    </span>
+                  )}
+                  {otherSellers.length > 0 && isCurrentCheapest && (
+                    <span className="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-extrabold px-3 py-1 rounded-full shadow-md flex items-center gap-1">
+                      ⚡ BEST PRICE
                     </span>
                   )}
                 </div>
@@ -216,7 +230,6 @@ const ProductDetailPage = () => {
               </div>
             )}
 
-            {/* Video */}
             {product.videoUrl && (
               <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">🎬 Product Video</p>
@@ -237,7 +250,6 @@ const ProductDetailPage = () => {
               </div>
             )}
 
-            {/* Trust Badges */}
             <div className="hidden sm:grid grid-cols-3 gap-3 mt-2">
               {[
                 { icon: "🚚", label: "Fast Delivery", sub: `${product.shipping?.estimatedDeliveryDays || 5} days` },
@@ -253,9 +265,7 @@ const ProductDetailPage = () => {
             </div>
           </div>
 
-          {/* Right: Product Info */}
           <div className="flex flex-col">
-            {/* Badges */}
             <div className="flex items-center gap-2 mb-3 flex-wrap">
               {product.category?.name && (
                 <Link
@@ -285,10 +295,11 @@ const ProductDetailPage = () => {
             </h1>
 
             {product.modelNumber && (
-  <p>Model: <span>{product.modelNumber}</span></p>
-)}
+              <p className="text-xs text-gray-500 mb-2 m-0">
+                Model: <span className="font-mono font-bold text-gray-700">{product.modelNumber}</span>
+              </p>
+            )}
 
-            {/* Rating */}
             {product.averageRating > 0 && (
               <a href="#reviews" className="flex items-center gap-2.5 mb-4 no-underline group w-fit">
                 <div className="flex bg-green-600 rounded-lg px-2 py-0.5 items-center gap-1">
@@ -304,7 +315,6 @@ const ProductDetailPage = () => {
               </a>
             )}
 
-            {/* Key Features (Amazon Style) */}
             {product.keyFeatures?.length > 0 && (
               <div className="bg-gradient-to-br from-blue-50/50 to-white rounded-2xl border-2 border-blue-100 p-4 mb-4">
                 <p className="text-xs font-extrabold text-blue-700 uppercase tracking-wider m-0 mb-2.5">✨ Key Features</p>
@@ -319,7 +329,6 @@ const ProductDetailPage = () => {
               </div>
             )}
 
-            {/* Price Box */}
             <div className="bg-gradient-to-br from-orange-50 to-white rounded-2xl px-5 py-4 border-2 border-orange-100 mb-4">
               <div className="flex items-baseline gap-3 flex-wrap mb-2">
                 <span className="text-2xl sm:text-3xl font-extrabold text-[#B12704]">
@@ -346,9 +355,22 @@ const ProductDetailPage = () => {
                   + {formatPrice(effectivePrice * (currentCountry.tax.rate / 100), currentCountry)} {currentCountry.tax.label}
                 </p>
               )}
+
+              {otherSellers.length > 0 && savingsIfSwitched > 0 && (
+                <div className="mt-3 pt-3 border-t border-orange-200">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">💡</span>
+                    <p className="text-xs text-orange-700 font-semibold m-0">
+                      Available from <strong className="text-green-600">{formatPrice(cheapestOtherPrice, currentCountry)}</strong> from other sellers
+                      <a href="#other-sellers" className="text-[#D85A30] font-bold no-underline hover:underline ml-1">
+                        (Save {formatPrice(savingsIfSwitched, currentCountry)}) →
+                      </a>
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Bulk Pricing */}
             {product.bulkPricing?.length > 0 && (
               <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 mb-4">
                 <p className="text-xs font-bold text-purple-700 uppercase mb-2">📦 Bulk Discounts</p>
@@ -365,7 +387,6 @@ const ProductDetailPage = () => {
               </div>
             )}
 
-            {/* Colors */}
             {product.colors?.length > 0 && (
               <div className="mb-4">
                 <p className="text-sm font-bold text-gray-700 mb-2">
@@ -389,7 +410,6 @@ const ProductDetailPage = () => {
               </div>
             )}
 
-            {/* Sizes */}
             {product.sizes?.length > 0 && (
               <div className="mb-4">
                 <p className="text-sm font-bold text-gray-700 mb-2">
@@ -417,7 +437,6 @@ const ProductDetailPage = () => {
               </div>
             )}
 
-            {/* Materials */}
             {product.materials?.length > 0 && (
               <div className="mb-4">
                 <p className="text-sm font-bold text-gray-700 mb-2">🪵 Materials:</p>
@@ -431,7 +450,6 @@ const ProductDetailPage = () => {
               </div>
             )}
 
-            {/* Room Types (IKEA) */}
             {product.roomType?.length > 0 && (
               <div className="mb-4">
                 <p className="text-sm font-bold text-gray-700 mb-2">🏠 Perfect for:</p>
@@ -445,19 +463,16 @@ const ProductDetailPage = () => {
               </div>
             )}
 
-            {/* Shipping */}
             <div className="mb-4">
               <ShippingBadge orderAmount={effectivePrice} />
             </div>
 
-            {/* Short Description */}
             {product.shortDescription && (
               <p className="text-gray-600 mb-4 leading-relaxed text-sm sm:text-base">
                 {product.shortDescription}
               </p>
             )}
 
-            {/* Stock Status */}
             <div className="flex items-center gap-2 mb-4 flex-wrap">
               <span className={`inline-flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-full ${
                 product.stock > 0 ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-600 border border-red-200"
@@ -477,12 +492,29 @@ const ProductDetailPage = () => {
               )}
             </div>
 
-            {/* Sold by */}
-            <p className="text-sm text-gray-500 m-0 mb-5">
-              Sold by: <span className="font-bold text-gray-900">{product.vendorStore?.storeName || "Vendor"}</span>
-            </p>
+            <div className="bg-gradient-to-r from-gray-50 to-white border border-gray-200 rounded-xl px-4 py-3 mb-5 flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 bg-gradient-to-br from-[#0F172A] to-[#1E3A8A] rounded-lg flex items-center justify-center text-white font-black text-sm shrink-0">
+                  {product.vendorStore?.storeName?.[0]?.toUpperCase() || "V"}
+                </div>
+                <div>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wide m-0">Sold by</p>
+                  <p className="text-sm font-extrabold text-gray-900 m-0">{product.vendorStore?.storeName || "Verified Vendor"}</p>
+                </div>
+              </div>
+              {otherSellers.length > 0 && (
+                <a
+                  href="#other-sellers"
+                  className="text-xs font-bold text-blue-600 hover:text-blue-800 no-underline flex items-center gap-1"
+                >
+                  +{otherSellers.length} more seller{otherSellers.length > 1 ? "s" : ""}
+                  <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path d="M19 14l-7 7m0 0l-7-7m7 7V3" strokeLinecap="round" />
+                  </svg>
+                </a>
+              )}
+            </div>
 
-            {/* Success message */}
             {addedSuccess && (
               <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-2xl p-4 mb-4">
                 <div className="w-9 h-9 bg-green-100 rounded-xl flex items-center justify-center text-lg shrink-0">✅</div>
@@ -496,7 +528,6 @@ const ProductDetailPage = () => {
               </div>
             )}
 
-            {/* Quantity + Actions */}
             {canShop && product.stock > 0 && (
               <>
                 <div className="flex items-center gap-4 mb-5 flex-wrap">
@@ -558,7 +589,6 @@ const ProductDetailPage = () => {
               </>
             )}
 
-            {/* Warranty */}
             {product.warranty?.type !== "none" && product.warranty?.duration > 0 && (
               <div className="bg-gradient-to-r from-blue-50 to-white border-2 border-blue-100 rounded-2xl p-4 mb-4">
                 <div className="flex items-start gap-3">
@@ -575,7 +605,6 @@ const ProductDetailPage = () => {
               </div>
             )}
 
-            {/* Return Policy */}
             {product.returnPolicy?.returnable && (
               <div className="bg-gradient-to-r from-green-50 to-white border-2 border-green-100 rounded-2xl p-4 mb-4">
                 <div className="flex items-start gap-3">
@@ -592,7 +621,6 @@ const ProductDetailPage = () => {
               </div>
             )}
 
-            {/* Delivery Info */}
             <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 mb-4">
               <p className="text-xs font-bold text-indigo-800 mb-2 m-0">📦 Delivery Information</p>
               <div className="space-y-1 text-xs text-indigo-700">
@@ -611,7 +639,6 @@ const ProductDetailPage = () => {
               </div>
             </div>
 
-            {/* Sign in / Role warnings */}
             {!user && (
               <div className="flex items-center gap-3 bg-blue-50 border border-blue-100 rounded-2xl p-4 mb-4">
                 <span className="text-2xl">🔐</span>
@@ -645,7 +672,16 @@ const ProductDetailPage = () => {
           </div>
         </div>
 
-        {/* Description + Specifications */}
+        {otherSellers.length > 0 && (
+          <div id="other-sellers" className="mt-10 sm:mt-14 scroll-mt-8">
+            <OtherSellers
+              sellers={otherSellers}
+              currency={currentCountry?.currency?.symbol || "₹"}
+              currentSellerName={product.vendorStore?.storeName}
+            />
+          </div>
+        )}
+
         <div className="mt-10 sm:mt-14 grid lg:grid-cols-2 gap-5 sm:gap-6">
           <div className="bg-white rounded-3xl border border-gray-100 p-5 sm:p-6 shadow-sm">
             <h2 className="text-lg font-extrabold text-gray-900 mb-4 flex items-center gap-2">
@@ -657,7 +693,6 @@ const ProductDetailPage = () => {
             </p>
           </div>
 
-          {/* Grouped Specs */}
           {Object.keys(groupedSpecs).length > 0 && (
             <div className="bg-white rounded-3xl border border-gray-100 p-5 sm:p-6 shadow-sm">
               <h2 className="text-lg font-extrabold text-gray-900 mb-4 flex items-center gap-2">
@@ -683,7 +718,6 @@ const ProductDetailPage = () => {
           )}
         </div>
 
-        {/* Weight & Dimensions (IKEA style) */}
         {(product.weight > 0 || product.dimensions?.length > 0) && (
           <div className="mt-6 bg-white rounded-3xl border border-gray-100 p-5 sm:p-6 shadow-sm">
             <h2 className="text-lg font-extrabold text-gray-900 mb-4 flex items-center gap-2">
@@ -723,7 +757,6 @@ const ProductDetailPage = () => {
           </div>
         )}
 
-        {/* FAQs */}
         {product.faqs?.length > 0 && (
           <div className="mt-6 bg-white rounded-3xl border border-gray-100 p-5 sm:p-6 shadow-sm">
             <h2 className="text-lg font-extrabold text-gray-900 mb-4 flex items-center gap-2">
@@ -759,7 +792,6 @@ const ProductDetailPage = () => {
           </div>
         )}
 
-        {/* Tags */}
         {product.tags?.length > 0 && (
           <div className="mt-8">
             <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-3">Tags</p>
@@ -777,7 +809,6 @@ const ProductDetailPage = () => {
           </div>
         )}
 
-        {/* Related Products */}
         {relatedProducts.length > 0 && (
           <div className="mt-12 sm:mt-16">
             <h2 className="text-xl font-extrabold text-gray-900 mb-5 flex items-center gap-2">
@@ -816,7 +847,6 @@ const ProductDetailPage = () => {
           </div>
         )}
 
-        {/* Reviews */}
         <div id="reviews" className="mt-12 sm:mt-16 scroll-mt-8">
           <ReviewList product={product} />
         </div>

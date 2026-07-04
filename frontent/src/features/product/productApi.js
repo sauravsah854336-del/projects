@@ -39,6 +39,15 @@ export const productApi = authApi.injectEndpoints({
       },
       providesTags: ["VendorProducts"],
     }),
+    checkProductAvailability: builder.query({
+      query: (params) => {
+        const q = new URLSearchParams();
+        if (params?.name) q.set("name", params.name);
+        if (params?.sku) q.set("sku", params.sku);
+        if (params?.modelNumber) q.set("modelNumber", params.modelNumber);
+        return `/products/vendor/check-availability?${q.toString()}`;
+      },
+    }),
     createProduct: builder.mutation({
       query: (data) => ({ url: "/products", method: "POST", body: data }),
       invalidatesTags: ["VendorProducts", "Products", "AdminProducts", "VendorStats"],
@@ -86,6 +95,8 @@ export const {
   useGetSingleProductQuery,
   useGetRelatedProductsQuery,
   useGetVendorProductsQuery,
+  useCheckProductAvailabilityQuery,
+  useLazyCheckProductAvailabilityQuery,
   useCreateProductMutation,
   useUpdateProductMutation,
   useDeleteProductMutation,

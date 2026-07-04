@@ -261,35 +261,10 @@ const CategorySidebar = () => {
               <SbName>All Categories</SbName>
             </SbItem>
 
-            <SbSep />
-            <SbTitle>Customer Service</SbTitle>
-            <SbItem onClick={() => go("/help")}>
-              <SbIcon>💬</SbIcon>
-              <SbName>Help Center</SbName>
-            </SbItem>
-            <SbItem onClick={() => go("/contact")}>
-              <SbIcon>📬</SbIcon>
-              <SbName>Contact Us</SbName>
-            </SbItem>
-            <SbItem onClick={() => go("/policy/returns")}>
-              <SbIcon>🔄</SbIcon>
-              <SbName>Returns & Refunds</SbName>
-            </SbItem>
-            <SbItem onClick={() => go("/policy/shipping-info")}>
-              <SbIcon>🚚</SbIcon>
-              <SbName>Shipping Information</SbName>
-            </SbItem>
+            
 
             <SbSep />
-            <div className="px-4 py-3">
-              <button
-                onClick={handleLogout}
-                className="w-full py-2.5 bg-gradient-to-r from-red-50 to-red-50/50 text-red-600 border-2 border-red-200 rounded-xl text-sm font-bold cursor-pointer hover:from-red-100 hover:to-red-100/50 hover:border-red-300 transition font-[inherit] flex items-center justify-center gap-2 shadow-sm"
-              >
-                <span>🚪</span>
-                <span>Sign Out</span>
-              </button>
-            </div>
+            
           </>
         )}
 
@@ -344,31 +319,8 @@ const CategorySidebar = () => {
               <SoonBadge />
             </SbItem>
 
-            <SbSep />
-            <SbTitle>Resources</SbTitle>
-            <SbItem theme="indigo" onClick={() => go("/policy/seller-guidelines")}>
-              <SbIcon theme="indigo">📋</SbIcon>
-              <SbName>Seller Guidelines</SbName>
-            </SbItem>
-            <SbItem theme="indigo" onClick={() => go("/policy/commission-policy")}>
-              <SbIcon theme="indigo">💵</SbIcon>
-              <SbName>Commission Policy</SbName>
-            </SbItem>
-            <SbItem theme="indigo" onClick={() => go("/help")}>
-              <SbIcon theme="indigo">💬</SbIcon>
-              <SbName>Vendor Support</SbName>
-            </SbItem>
-
-            <SbSep />
-            <div className="px-4 py-3">
-              <button
-                onClick={handleLogout}
-                className="w-full py-2.5 bg-gradient-to-r from-red-50 to-red-50/50 text-red-600 border-2 border-red-200 rounded-xl text-sm font-bold cursor-pointer hover:from-red-100 hover:to-red-100/50 hover:border-red-300 transition font-[inherit] flex items-center justify-center gap-2 shadow-sm"
-              >
-                <span>🚪</span>
-                <span>Sign Out</span>
-              </button>
-            </div>
+           
+            
           </>
         )}
 
@@ -456,15 +408,7 @@ const CategorySidebar = () => {
             </SbItem>
 
             <SbSep />
-            <div className="px-4 py-3">
-              <button
-                onClick={handleLogout}
-                className="w-full py-2.5 bg-gradient-to-r from-red-50 to-red-50/50 text-red-600 border-2 border-red-200 rounded-xl text-sm font-bold cursor-pointer hover:from-red-100 hover:to-red-100/50 hover:border-red-300 transition font-[inherit] flex items-center justify-center gap-2 shadow-sm"
-              >
-                <span>🚪</span>
-                <span>Sign Out</span>
-              </button>
-            </div>
+            
           </>
         )}
 
@@ -504,21 +448,7 @@ const CategorySidebar = () => {
               <SbName>Seller Login</SbName>
             </SbItem>
 
-            <SbSep />
-            <SbTitle>Help & Information</SbTitle>
-            <SbItem onClick={() => go("/help")}>
-              <SbIcon>💬</SbIcon>
-              <SbName>Customer Service</SbName>
-            </SbItem>
-            <SbItem onClick={() => go("/contact")}>
-              <SbIcon>📬</SbIcon>
-              <SbName>Contact Us</SbName>
-            </SbItem>
-            <SbItem onClick={() => go("/about")}>
-              <SbIcon>ℹ️</SbIcon>
-              <SbName>About Us</SbName>
-            </SbItem>
-
+           
             <div className="px-4 pt-5 pb-4">
               <div className="relative bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 rounded-2xl p-4 overflow-hidden shadow-lg shadow-blue-200">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full blur-2xl pointer-events-none" />
