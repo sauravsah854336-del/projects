@@ -5,6 +5,7 @@ const morgan = require("morgan");
 const helmet = require("helmet");
 const path = require("path");
 const { startRateUpdateCron } = require("./utils/rateUpdateCron");
+const { startPaymentCleanupCron } = require("./utils/paymentCleanupCron");
 
 const connectDB = require("./config/db");
 const authRouter = require("./routes/auth");
@@ -29,6 +30,7 @@ const app = express();
 
 connectDB();
 startRateUpdateCron();
+startPaymentCleanupCron();
 
 app.use(
   helmet({

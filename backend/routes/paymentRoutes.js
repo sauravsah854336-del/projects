@@ -3,6 +3,7 @@ const protect = require("../middlewares/authMiddleware");
 const authorized = require("../middlewares/roleMiddleware");
 const {
   initiatePayment,
+  retryPayment,
   verifyPayment,
   handleWebhook,
   getPaymentStatus,
@@ -13,6 +14,7 @@ const {
 const router = express.Router();
 
 router.post("/initiate", protect, authorized("customer"), initiatePayment);
+router.post("/retry", protect, authorized("customer"), retryPayment);
 router.post("/verify", protect, authorized("customer"), verifyPayment);
 router.get("/status/:orderId", protect, authorized("customer"), getPaymentStatus);
 router.get("/my", protect, authorized("customer"), getMyPayments);

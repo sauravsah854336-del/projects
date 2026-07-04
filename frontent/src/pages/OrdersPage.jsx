@@ -7,6 +7,7 @@ import {
 } from "../features/order/orderApi";
 import { PLACEHOLDER_MEDIUM } from "../utils/placeholder";
 import { formatPrice } from "../utils/priceHelper";
+import PaymentRetryBanner from "../components/PaymentRetryBanner";
 
 const formatDate = (date) =>
   new Date(date).toLocaleDateString("en-IN", {
@@ -17,6 +18,7 @@ const formatDate = (date) =>
 
 const getStatusStyle = (status) => {
   const map = {
+    payment_pending: { bg: "#FFEDD5", text: "#9A3412", border: "#FDBA74" },
     confirmed: { bg: "#DCFCE7", text: "#166534", border: "#86EFAC" },
     processing: { bg: "#DBEAFE", text: "#1E40AF", border: "#93C5FD" },
     shipped: { bg: "#EDE9FE", text: "#5B21B6", border: "#C4B5FD" },
@@ -31,6 +33,7 @@ const getStatusStyle = (status) => {
 
 const getStatusLabel = (status) => {
   const labels = {
+    payment_pending: "Payment Pending",
     confirmed: "Order Confirmed",
     processing: "Processing",
     shipped: "Shipped",
@@ -45,6 +48,7 @@ const getStatusLabel = (status) => {
 
 const getStatusIcon = (status) => {
   const icons = {
+    payment_pending: "💳",
     confirmed: "✅",
     processing: "⚙️",
     shipped: "🚚",
@@ -57,10 +61,23 @@ const getStatusIcon = (status) => {
   return icons[status] || "📦";
 };
 
+const needsPaymentRetry = (order) => {
+  return (
+    order.paymentMethod === "online" &&
+    order.paymentStatus !== "paid" &&
+    order.paymentStatus !== "refunded" &&
+    order.orderStatus !== "cancelled" &&
+    order.orderStatus !== "delivered" &&
+    order.orderStatus !== "returned" &&
+    order.orderStatus !== "refunded"
+  );
+};
+
 const OrdersPage = () => {
   const { currentCountry, isUserCountry } = useSelector((state) => state.country);
   const [page, setPage] = useState(1);
   const [filterCoupons, setFilterCoupons] = useState(false);
+  const [filterPaymentPending, setFilterPaymentPending] = useState(false);
   const { data, isLoading } = useGetMyOrdersQuery({ page, limit: 10 });
   const [cancelOrder] = useCancelOrderMutation();
   const [cancellingId, setCancellingId] = useState(null);
@@ -69,9 +86,11 @@ const OrdersPage = () => {
   const [cancelLoading, setCancelLoading] = useState(false);
 
   const allOrders = data?.data || [];
-  const orders = filterCoupons
-    ? allOrders.filter((o) => o.couponCode)
-    : allOrders;
+
+  let orders = allOrders;
+  if (filterCoupons) orders = orders.filter((o) => o.couponCode);
+  if (filterPaymentPending) orders = orders.filter(needsPaymentRetry);
+
   const pagination = data?.pagination;
 
   const totalCouponSavings = allOrders.reduce(
@@ -79,6 +98,7 @@ const OrdersPage = () => {
     0
   );
   const couponOrdersCount = allOrders.filter((o) => o.couponCode).length;
+  const paymentPendingCount = allOrders.filter(needsPaymentRetry).length;
 
   const getOrderCountry = (order) => {
     if (order.country?.currency) return order.country;
@@ -163,6 +183,34 @@ const OrdersPage = () => {
           </Link>
         </div>
 
+        {paymentPendingCount > 0 && (
+          <div className="bg-gradient-to-r from-orange-50 to-red-50 border-2 border-orange-300 rounded-2xl px-5 py-4 mb-4">
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center text-2xl shrink-0 shadow-md animate-pulse">
+                ⏰
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-extrabold text-orange-900 m-0">
+                  {paymentPendingCount} order{paymentPendingCount > 1 ? "s" : ""} awaiting payment
+                </p>
+                <p className="text-[11px] text-orange-700 m-0 mt-0.5 leading-relaxed">
+                  Complete payment within 24 hours to secure your order{paymentPendingCount > 1 ? "s" : ""}, otherwise they will be auto-cancelled.
+                </p>
+              </div>
+              <button
+                onClick={() => setFilterPaymentPending(!filterPaymentPending)}
+                className={`text-xs font-bold px-4 py-2 rounded-xl border-2 cursor-pointer transition font-[inherit] whitespace-nowrap ${
+                  filterPaymentPending
+                    ? "bg-orange-600 text-white border-orange-600 hover:bg-orange-700"
+                    : "bg-white text-orange-700 border-orange-300 hover:bg-orange-100"
+                }`}
+              >
+                {filterPaymentPending ? "✕ Show All" : "💳 Show Pending Only"}
+              </button>
+            </div>
+          </div>
+        )}
+
         {totalCouponSavings > 0 && (
           <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-2xl px-5 py-4 mb-5">
             <div className="flex items-center gap-4 flex-wrap">
@@ -194,11 +242,17 @@ const OrdersPage = () => {
           </div>
         )}
 
-        {filterCoupons && orders.length === 0 && (
+        {(filterCoupons || filterPaymentPending) && orders.length === 0 && (
           <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center">
-            <p className="text-4xl mb-3">🎟️</p>
-            <p className="text-sm font-bold text-gray-900 m-0">No coupon orders found</p>
-            <p className="text-xs text-gray-500 mt-1 m-0">Try applying coupons at checkout to save money!</p>
+            <p className="text-4xl mb-3">{filterPaymentPending ? "🎉" : "🎟️"}</p>
+            <p className="text-sm font-bold text-gray-900 m-0">
+              {filterPaymentPending ? "No pending payments!" : "No coupon orders found"}
+            </p>
+            <p className="text-xs text-gray-500 mt-1 m-0">
+              {filterPaymentPending
+                ? "All your orders are paid or completed."
+                : "Try applying coupons at checkout to save money!"}
+            </p>
           </div>
         )}
 
@@ -208,14 +262,25 @@ const OrdersPage = () => {
           const orderCountry = getOrderCountry(order);
           const hasCoupon = !!order.couponCode;
           const savings = order.discount || 0;
+          const showRetryBanner = needsPaymentRetry(order);
 
           return (
             <div
               key={order._id}
               className={`bg-white rounded-2xl border shadow-sm overflow-hidden mb-4 ${
-                hasCoupon ? "border-green-200" : "border-gray-100"
+                showRetryBanner
+                  ? "border-orange-200"
+                  : hasCoupon
+                    ? "border-green-200"
+                    : "border-gray-100"
               }`}
             >
+              {showRetryBanner && (
+                <div className="p-4 sm:p-5 border-b border-orange-100 bg-gradient-to-br from-orange-50/50 to-red-50/50">
+                  <PaymentRetryBanner order={order} />
+                </div>
+              )}
+
               <div className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -349,17 +414,29 @@ const OrdersPage = () => {
                       order.paymentStatus === "paid"
                         ? "text-green-600"
                         : order.paymentStatus === "refunded"
-                        ? "text-pink-600"
-                        : "text-yellow-600"
+                          ? "text-pink-600"
+                          : order.paymentStatus === "expired"
+                            ? "text-orange-600"
+                            : order.paymentStatus === "failed"
+                              ? "text-red-600"
+                              : "text-yellow-600"
                     }`}
                   >
                     {order.paymentStatus.charAt(0).toUpperCase() +
                       order.paymentStatus.slice(1)}
                   </span>
+                  {order.paymentAttempts > 0 && (
+                    <>
+                      <span className="text-gray-200">·</span>
+                      <span className="text-[10px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full font-semibold">
+                        {order.paymentAttempts} attempt{order.paymentAttempts > 1 ? "s" : ""}
+                      </span>
+                    </>
+                  )}
                 </div>
 
                 <div className="flex gap-2">
-                  {["confirmed", "processing"].includes(order.orderStatus) && (
+                  {["confirmed", "processing", "payment_pending"].includes(order.orderStatus) && (
                     <button
                       onClick={() => {
                         setCancellingId(isCancelOpen ? null : order._id);

@@ -27,10 +27,10 @@ const AboutPage = () => {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
           {[
-            { icon: "🏪", value: "1,200+", label: "Verified Sellers" },
-            { icon: "📦", value: "80,000+", label: "Products Listed" },
-            { icon: "😊", value: "50,000+", label: "Happy Customers" },
-            { icon: "🌍", value: "25,000+", label: "PIN Codes Served" },
+            { icon: "🏪", value: "25+", label: "Verified Sellers" },
+            { icon: "📦", value: "260+", label: "Products Listed" },
+            { icon: "😊", value: "120+", label: "Happy Customers" },
+            { icon: "🌍", value: "60+", label: "PIN Codes Served" },
           ].map((stat) => (
             <div
               key={stat.label}

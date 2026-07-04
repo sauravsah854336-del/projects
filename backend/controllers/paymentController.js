@@ -8,6 +8,126 @@ const {
   verifyWebhookSignature,
 } = require("../services/cashfreeService");
 
+const retryPayment = async (req, res) => {
+  try {
+    const { orderId } = req.body;
+
+    if (!orderId) {
+      return res.status(400).json({ success: false, message: "Order ID required" });
+    }
+
+    const order = await Order.findById(orderId).populate("user", "firstName lastName email phone");
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+
+    if (order.user._id.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: "Not authorized" });
+    }
+
+    if (order.paymentStatus === "paid") {
+      return res.status(400).json({ success: false, message: "This order is already paid" });
+    }
+
+    if (order.orderStatus === "cancelled") {
+      return res.status(400).json({ success: false, message: "Cannot retry payment for cancelled order" });
+    }
+
+    if (order.paymentMethod === "cod") {
+      return res.status(400).json({ success: false, message: "COD orders do not need payment retry" });
+    }
+
+    if (order.paymentAttempts >= 5) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Maximum retry attempts reached. Please contact support or place a new order." 
+      });
+    }
+
+    const cashfreeOrderId = `CF_${order.orderNumber.replace(/-/g, "_")}_R${order.paymentAttempts + 1}_${Date.now()}`;
+
+    const customer = {
+      id: `USER_${order.user._id.toString().slice(-10)}`,
+      name: `${order.user.firstName} ${order.user.lastName || ""}`.trim(),
+      email: order.user.email,
+      phone: order.shippingAddress.phone.replace(/\D/g, "").slice(-10),
+    };
+
+    const returnUrl = `${process.env.FRONTEND_URL}/payment/status`;
+
+    const cfResult = await createCashfreeOrder({
+      orderId: cashfreeOrderId,
+      amount: order.total,
+      customer,
+      returnUrl,
+    });
+
+    if (!cfResult.success) {
+      return res.status(500).json({ success: false, message: cfResult.message });
+    }
+
+    const payment = await Payment.create({
+      order: order._id,
+      user: order.user._id,
+      orderNumber: order.orderNumber,
+      amount: order.total,
+      currency: "INR",
+      gateway: "cashfree",
+      gatewayOrderId: cashfreeOrderId,
+      paymentSessionId: cfResult.paymentSessionId,
+      status: "initiated",
+      customerDetails: {
+        name: customer.name,
+        email: customer.email,
+        phone: customer.phone,
+      },
+      attempts: [
+        {
+          attemptedAt: new Date(),
+          status: "initiated",
+        },
+      ],
+      metadata: {
+        isRetry: true,
+        retryNumber: order.paymentAttempts + 1,
+      },
+      rawGatewayResponse: cfResult,
+    });
+
+    order.paymentAttempts = (order.paymentAttempts || 0) + 1;
+    order.lastPaymentAttemptAt = new Date();
+    order.paymentStatus = "pending";
+    order.orderStatus = "payment_pending";
+    order.paymentExpiresAt = null;
+    order.paymentDetails = {
+      ...order.paymentDetails,
+      gateway: "cashfree",
+      cashfreeOrderId: cashfreeOrderId,
+      paymentSessionId: cfResult.paymentSessionId,
+    };
+    await order.save();
+
+    return res.status(200).json({
+      success: true,
+      message: `Retry payment initiated (attempt ${order.paymentAttempts})`,
+      data: {
+        paymentId: payment._id,
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        cashfreeOrderId: cashfreeOrderId,
+        paymentSessionId: cfResult.paymentSessionId,
+        amount: order.total,
+        currency: "INR",
+        retryNumber: order.paymentAttempts,
+      },
+    });
+  } catch (err) {
+    console.error("retryPayment error:", err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 const initiatePayment = async (req, res) => {
   try {
     const { orderId } = req.body;
@@ -498,6 +618,7 @@ const adminGetAllPayments = async (req, res) => {
 
 module.exports = {
   initiatePayment,
+  retryPayment,
   verifyPayment,
   handleWebhook,
   getPaymentStatus,

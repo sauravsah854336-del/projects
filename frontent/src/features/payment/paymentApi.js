@@ -10,6 +10,14 @@ const paymentApi = authApi.injectEndpoints({
       }),
       invalidatesTags: ["Payment"],
     }),
+    retryPayment: builder.mutation({
+      query: (data) => ({
+        url: "/payment/retry",
+        method: "POST",
+        body: data,
+      }),
+      invalidatesTags: ["Payment", "Orders"],
+    }),
     verifyPayment: builder.mutation({
       query: (data) => ({
         url: "/payment/verify",
@@ -47,6 +55,7 @@ const paymentApi = authApi.injectEndpoints({
 
 export const {
   useInitiatePaymentMutation,
+  useRetryPaymentMutation,
   useVerifyPaymentMutation,
   useGetPaymentStatusQuery,
   useGetMyPaymentsQuery,

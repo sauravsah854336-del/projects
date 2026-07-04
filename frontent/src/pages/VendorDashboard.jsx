@@ -35,6 +35,13 @@ const formatDate = (d) =>
   });
 
 const orderStatusConfig = {
+   payment_pending: {
+    bg: "bg-orange-100",
+    text: "text-orange-800",
+    label: "Payment Pending",
+    dot: "bg-orange-500",
+    icon: "💳",
+  },
   confirmed: {
     bg: "bg-emerald-100",
     text: "text-emerald-800",

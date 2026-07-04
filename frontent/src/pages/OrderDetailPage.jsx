@@ -7,6 +7,7 @@ import {
 } from "../features/order/orderApi";
 import { PLACEHOLDER_MEDIUM } from "../utils/placeholder";
 import { formatPrice } from "../utils/priceHelper";
+import PaymentRetryBanner from "../components/PaymentRetryBanner";
 import jsPDF from "jspdf";
 
 const formatDate = (date) =>
@@ -33,6 +34,14 @@ const STATUS_STEPS = [
   { key: "delivered", label: "Delivered", icon: "📦" },
 ];
 
+const PAYMENT_PENDING_STEPS = [
+  { key: "payment_pending", label: "Awaiting Payment", icon: "💳" },
+  { key: "confirmed", label: "Order Confirmed", icon: "✅" },
+  { key: "processing", label: "Processing", icon: "⚙️" },
+  { key: "shipped", label: "Shipped", icon: "🚚" },
+  { key: "delivered", label: "Delivered", icon: "📦" },
+];
+
 const RETURNED_STEPS = [
   { key: "pending", label: "Order Placed", icon: "📋" },
   { key: "processing", label: "Processing", icon: "⚙️" },
@@ -52,6 +61,7 @@ const REFUNDED_STEPS = [
 const getStatusSteps = (status) => {
   if (status === "returned") return RETURNED_STEPS;
   if (status === "refunded") return REFUNDED_STEPS;
+  if (status === "payment_pending") return PAYMENT_PENDING_STEPS;
   return STATUS_STEPS;
 };
 
@@ -60,6 +70,7 @@ const getStatusIndex = (steps, currentStatus) =>
 
 const getStatusColor = (status) => {
   const map = {
+    payment_pending: { bg: "#FFEDD5", text: "#9A3412", border: "#FDBA74" },
     confirmed: { bg: "#DCFCE7", text: "#166534", border: "#86EFAC" },
     processing: { bg: "#DBEAFE", text: "#1E40AF", border: "#93C5FD" },
     shipped: { bg: "#EDE9FE", text: "#5B21B6", border: "#C4B5FD" },
@@ -74,6 +85,7 @@ const getStatusColor = (status) => {
 
 const getStatusLabel = (status) => {
   const labels = {
+    payment_pending: "Payment Pending",
     confirmed: "Order Confirmed",
     processing: "Processing",
     shipped: "Shipped",
@@ -84,6 +96,18 @@ const getStatusLabel = (status) => {
     refunded: "Refunded",
   };
   return labels[status] || status;
+};
+
+const needsPaymentRetry = (order) => {
+  return (
+    order.paymentMethod === "online" &&
+    order.paymentStatus !== "paid" &&
+    order.paymentStatus !== "refunded" &&
+    order.orderStatus !== "cancelled" &&
+    order.orderStatus !== "delivered" &&
+    order.orderStatus !== "returned" &&
+    order.orderStatus !== "refunded"
+  );
 };
 
 const downloadInvoice = (order, country) => {
@@ -346,9 +370,11 @@ const OrderDetailPage = () => {
   const statusColor = getStatusColor(order.orderStatus);
   const steps = getStatusSteps(order.orderStatus);
   const currentStepIndex = getStatusIndex(steps, order.orderStatus);
-  const canCancel = ["confirmed", "processing"].includes(order.orderStatus);
+  const canCancel = ["confirmed", "processing", "payment_pending"].includes(order.orderStatus);
   const hasCoupon = !!order.couponCode;
   const savings = order.discount || 0;
+  const showRetryBanner = needsPaymentRetry(order);
+  const canDownloadInvoice = order.paymentStatus === "paid" || order.paymentMethod === "cod";
 
   const handleCancel = async () => {
     setCancelError("");
@@ -386,6 +412,12 @@ const OrderDetailPage = () => {
           <span className="text-gray-500 text-[13px] font-semibold">{order.orderNumber}</span>
         </div>
 
+        {showRetryBanner && (
+          <div className="mb-6">
+            <PaymentRetryBanner order={order} />
+          </div>
+        )}
+
         <div className="flex items-start justify-between flex-wrap gap-4 mb-6">
           <div>
             <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -398,6 +430,11 @@ const OrderDetailPage = () => {
               {hasCoupon && (
                 <span className="text-[10px] bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 border border-green-200 px-2.5 py-1 rounded-full font-extrabold">
                   🎟️ {order.couponCode}
+                </span>
+              )}
+              {order.paymentAttempts > 0 && (
+                <span className="text-[10px] bg-gray-100 text-gray-700 border border-gray-200 px-2.5 py-1 rounded-full font-bold">
+                  {order.paymentAttempts} payment attempt{order.paymentAttempts > 1 ? "s" : ""}
                 </span>
               )}
               {isUserCountry && order.country?.code === currentCountry.code && (
@@ -434,13 +471,15 @@ const OrderDetailPage = () => {
                 </span>
               )}
             </div>
-            <button
-              onClick={handleDownloadInvoice}
-              disabled={downloading}
-              className="bg-gradient-to-br from-gray-800 to-gray-900 text-white border-none rounded-xl px-4 py-2.5 text-[13px] font-bold cursor-pointer flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:brightness-110 transition font-[inherit]"
-            >
-              {downloading ? "Generating..." : "📥 Download Invoice"}
-            </button>
+            {canDownloadInvoice && (
+              <button
+                onClick={handleDownloadInvoice}
+                disabled={downloading}
+                className="bg-gradient-to-br from-gray-800 to-gray-900 text-white border-none rounded-xl px-4 py-2.5 text-[13px] font-bold cursor-pointer flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:brightness-110 transition font-[inherit]"
+              >
+                {downloading ? "Generating..." : "📥 Download Invoice"}
+              </button>
+            )}
           </div>
         </div>
 
@@ -494,6 +533,9 @@ const OrderDetailPage = () => {
                     {order.cancelledAt && (
                       <p className="text-[11px] text-red-500 mt-1 m-0">Cancelled on {formatDateShort(order.cancelledAt)}</p>
                     )}
+                    {order.autoCancelledAt && (
+                      <p className="text-[11px] text-orange-600 mt-1 m-0 font-semibold">⏰ Auto-cancelled due to unpaid payment</p>
+                    )}
                   </div>
                 )}
               </div>
@@ -546,6 +588,15 @@ const OrderDetailPage = () => {
                     <div>
                       <p className="text-[13px] font-bold text-green-800 m-0">Order Delivered!</p>
                       <p className="text-[11px] text-green-600 m-0">Delivered on {formatDateShort(order.deliveredAt)}</p>
+                    </div>
+                  </div>
+                )}
+                {order.orderStatus === "payment_pending" && (
+                  <div className="mt-4 bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-center gap-3">
+                    <span className="text-xl">⏰</span>
+                    <div>
+                      <p className="text-[13px] font-bold text-orange-800 m-0">Waiting for payment</p>
+                      <p className="text-[11px] text-orange-600 m-0">Complete payment above to move forward</p>
                     </div>
                   </div>
                 )}
@@ -677,13 +728,49 @@ const OrderDetailPage = () => {
                     order.paymentStatus === "paid"
                       ? "bg-green-100 text-green-800"
                       : order.paymentStatus === "refunded"
-                      ? "bg-pink-100 text-pink-800"
-                      : "bg-yellow-100 text-yellow-800"
+                        ? "bg-pink-100 text-pink-800"
+                        : order.paymentStatus === "expired"
+                          ? "bg-orange-100 text-orange-800"
+                          : order.paymentStatus === "failed"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-yellow-100 text-yellow-800"
                   }`}
                 >
                   {order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)}
                 </span>
               </div>
+              {order.paymentAttempts > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-[13px] text-gray-500">Payment Attempts</span>
+                  <span className="text-[13px] font-bold text-gray-700">
+                    {order.paymentAttempts} / 5
+                  </span>
+                </div>
+              )}
+              {order.lastPaymentAttemptAt && (
+                <div className="flex justify-between">
+                  <span className="text-[13px] text-gray-500">Last Attempt</span>
+                  <span className="text-[13px] font-semibold text-gray-900">
+                    {formatDateShort(order.lastPaymentAttemptAt)}
+                  </span>
+                </div>
+              )}
+              {order.paymentDetails?.paymentMode && (
+                <div className="flex justify-between">
+                  <span className="text-[13px] text-gray-500">Payment Mode</span>
+                  <span className="text-[13px] font-bold text-gray-900 uppercase">
+                    {order.paymentDetails.paymentMode}
+                  </span>
+                </div>
+              )}
+              {order.paymentDetails?.cfPaymentId && (
+                <div className="flex justify-between">
+                  <span className="text-[13px] text-gray-500">Transaction ID</span>
+                  <span className="text-[11px] font-mono font-bold text-gray-900">
+                    {order.paymentDetails.cfPaymentId}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-[13px] text-gray-500">Order Date</span>
                 <span className="text-[13px] font-semibold text-gray-900">{formatDateShort(order.createdAt)}</span>
@@ -803,13 +890,15 @@ const OrderDetailPage = () => {
           >
             ← Back to Orders
           </Link>
-          <button
-            onClick={handleDownloadInvoice}
-            disabled={downloading}
-            className="bg-gradient-to-br from-gray-800 to-gray-900 text-white border-none rounded-xl px-5 py-3 text-[13px] font-bold cursor-pointer flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:brightness-110 transition font-[inherit]"
-          >
-            📥 {downloading ? "Generating..." : "Download Invoice"}
-          </button>
+          {canDownloadInvoice && (
+            <button
+              onClick={handleDownloadInvoice}
+              disabled={downloading}
+              className="bg-gradient-to-br from-gray-800 to-gray-900 text-white border-none rounded-xl px-5 py-3 text-[13px] font-bold cursor-pointer flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:brightness-110 transition font-[inherit]"
+            >
+              📥 {downloading ? "Generating..." : "Download Invoice"}
+            </button>
+          )}
           <Link
             to="/products"
             className="bg-gradient-to-b from-yellow-300 to-yellow-400 text-gray-900 border border-yellow-400 rounded-xl px-5 py-3 text-[13px] font-bold no-underline hover:brightness-95 transition"

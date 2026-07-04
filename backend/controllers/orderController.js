@@ -160,21 +160,25 @@ const placeOrder = async (req, res) => {
     const totalLocal = totalINR * exchangeRate;
 
     const order = await Order.create({
-      orderNumber: generateOrderNumber(),
-      user: req.user.id,
-      items: orderItems,
-      shippingAddress,
-      paymentMethod,
-      paymentStatus: "pending",
-      orderStatus: "confirmed",
-      confirmedAt: null,
-      subtotal: subtotalINR,
-      discount: discountINR,
-      couponCode: couponCode,
-      shippingCharge: shippingCostINR,
-      total: totalINR,
-      notes,
-      country: {
+  orderNumber: generateOrderNumber(),
+  user: req.user.id,
+  items: orderItems,
+  shippingAddress,
+  paymentMethod,
+  paymentStatus: "pending",
+  orderStatus: paymentMethod === "online" ? "payment_pending" : "confirmed",
+  confirmedAt: paymentMethod === "cod" ? new Date() : null,
+  paymentAttempts: 0,
+  lastPaymentAttemptAt: null,
+  paymentExpiresAt: null,
+  subtotal: subtotalINR,
+  discount: discountINR,
+  couponCode: couponCode,
+  shippingCharge: shippingCostINR,
+  total: totalINR,
+  notes,
+  country: {
+
         code: countryInfo.code || "IN",
         name: countryInfo.name || "India",
         flag: countryInfo.flag || "🇮🇳",
@@ -307,7 +311,7 @@ const cancelOrder = async (req, res) => {
         .json({ success: false, message: "Not authorized" });
     }
 
-    if (!["confirmed", "processing"].includes(order.orderStatus)) {
+    if (!["confirmed", "processing", "payment_pending"].includes(order.orderStatus)) {
       return res.status(400).json({
         success: false,
         message: "Order cannot be cancelled at this stage. Contact support.",

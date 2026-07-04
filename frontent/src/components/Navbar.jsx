@@ -239,7 +239,7 @@ const Navbar = () => {
     dispatch(authApi.util.resetApiState());
     dispatch(logout());
     dispatch(resetCountry());
-    setTimeout(() => navigate("/login", { replace: true }), 100);
+    setTimeout(() => navigate("/", { replace: true }), 100);
   };
 
   const handleSelectCountry = (country) => {
