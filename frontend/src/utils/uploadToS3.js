@@ -2,7 +2,7 @@ import { API_URL } from "./apiConfig";
 
 const BASE_URL = `${API_URL}/upload`;
 
-export const uploadToLocal = async (files = []) => {
+export const uploadToS3 = async (files = []) => {
   const token = localStorage.getItem("token");
   const uploadedUrls = [];
 

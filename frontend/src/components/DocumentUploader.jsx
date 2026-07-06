@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { uploadDocumentPublic } from "../utils/uploadToLocal";
+import { uploadDocumentPublic } from "../utils/uploadToS3";
 
 const ACCEPTED_TYPES = ["image/jpeg", "image/jpg", "image/png", "application/pdf"];
 const MAX_SIZE_MB = 5;

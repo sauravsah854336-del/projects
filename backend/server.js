@@ -4,6 +4,7 @@ const cors = require("cors");
 const morgan = require("morgan");
 const helmet = require("helmet");
 const path = require("path");
+const fs = require("fs");
 const { startRateUpdateCron } = require("./utils/rateUpdateCron");
 const { startPaymentCleanupCron } = require("./utils/paymentCleanupCron");
 
@@ -34,12 +35,23 @@ connectDB();
 startRateUpdateCron();
 startPaymentCleanupCron();
 
+const s3Configured = !!(
+  process.env.AWS_ACCESS_KEY_ID &&
+  process.env.AWS_SECRET_ACCESS_KEY &&
+  process.env.S3_BUCKET_NAME
+);
+
 console.log("═══════════════════════════════════════════════");
 console.log(`🚀 Backend Configuration:`);
 console.log(`   Environment:  ${IS_PRODUCTION ? "🔴 PRODUCTION" : "🟢 DEVELOPMENT"}`);
 console.log(`   Port:         ${PORT}`);
 console.log(`   Frontend URL: ${process.env.FRONTEND_URL || "http://localhost:5173"}`);
 console.log(`   CORS Origin:  ${process.env.CORS_ORIGIN || "http://localhost:5173"}`);
+console.log(`   Storage:      ${s3Configured ? "☁️  AWS S3" : "💾 Local Disk"}`);
+if (s3Configured) {
+  console.log(`   S3 Bucket:    ${process.env.S3_BUCKET_NAME}`);
+  console.log(`   S3 Region:    ${process.env.AWS_REGION || "ap-south-1"}`);
+}
 console.log("═══════════════════════════════════════════════");
 
 app.use(
@@ -79,13 +91,18 @@ app.use("/api/payment/webhook", express.raw({ type: "application/json" }));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+const uploadsPath = path.join(__dirname, "uploads");
+if (!IS_PRODUCTION && fs.existsSync(uploadsPath)) {
+  app.use("/uploads", express.static(uploadsPath));
+  console.log(`📁 Serving legacy local uploads from: /uploads`);
+}
 
 app.get("/", (req, res) => {
   res.status(200).json({
     success: true,
     message: "Server is running ✅",
     environment: NODE_ENV,
+    storage: s3Configured ? "s3" : "local",
     timestamp: new Date().toISOString(),
   });
 });
@@ -94,6 +111,7 @@ app.get("/health", (req, res) => {
   res.status(200).json({
     status: "healthy",
     uptime: process.uptime(),
+    storage: s3Configured ? "s3" : "local",
     timestamp: new Date().toISOString(),
   });
 });
@@ -124,6 +142,21 @@ app.use((req, res) => {
 
 app.use((err, req, res, next) => {
   console.error("❌ Server Error:", err.stack);
+
+  if (err.code === "LIMIT_FILE_SIZE") {
+    return res.status(400).json({
+      success: false,
+      message: "File too large. Maximum size is 5MB",
+    });
+  }
+
+  if (err.message?.includes("CORS")) {
+    return res.status(403).json({
+      success: false,
+      message: "CORS: Origin not allowed",
+    });
+  }
+
   res.status(err.statusCode || 500).json({
     success: false,
     message: err.message || "Something went wrong",

@@ -29,10 +29,10 @@ const uploadApi = authApi.injectEndpoints({
     }),
 
     deleteImage: builder.mutation({
-      query: (key) => ({
+      query: (filename) => ({
         url: "/upload/delete",
         method: "DELETE",
-        body: { key },
+        body: { filename },
       }),
     }),
   }),

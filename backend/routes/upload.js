@@ -1,7 +1,7 @@
 const express = require("express");
 const protect = require("../middlewares/authMiddleware");
 const authorized = require("../middlewares/roleMiddleware");
-const { upload, uploadDocument } = require("../middlewares/upload");
+const { upload, uploadAvatar, uploadDocument, uploadReview } = require("../middlewares/upload");
 const {
   uploadSingleImage,
   uploadMultipleImages,
@@ -29,7 +29,7 @@ router.post(
 router.post(
   "/avatar",
   protect,
-  upload.single("image"),
+  uploadAvatar.single("image"),
   uploadSingleImage
 );
 
@@ -37,6 +37,14 @@ router.post(
   "/document",
   uploadDocument.single("image"),
   uploadSingleImage
+);
+
+router.post(
+  "/review",
+  protect,
+  authorized("customer"),
+  uploadReview.array("images", 5),
+  uploadMultipleImages
 );
 
 router.delete(
