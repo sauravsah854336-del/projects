@@ -1,3 +1,5 @@
+import { CASHFREE_MODE } from "./apiConfig";
+
 let cashfreePromise = null;
 
 export const loadCashfreeSDK = () => {
@@ -49,7 +51,7 @@ export const openCashfreeCheckout = async ({ paymentSessionId, returnUrl }) => {
     console.log("🔵 Loading Cashfree SDK...");
     const Cashfree = await loadCashfreeSDK();
 
-    const mode = import.meta.env.VITE_CASHFREE_MODE === "production" ? "production" : "sandbox";
+    const mode = CASHFREE_MODE === "production" ? "production" : "sandbox";
     console.log(`🔵 Cashfree mode: ${mode}`);
     console.log(`🔵 Payment Session ID: ${paymentSessionId}`);
     console.log(`🔵 Return URL: ${returnUrl}`);

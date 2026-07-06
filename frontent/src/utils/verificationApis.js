@@ -1,3 +1,5 @@
+import { API_URL } from "./apiConfig";
+
 export const verifyIFSC = async (ifscCode) => {
   try {
     const res = await fetch(`https://ifsc.razorpay.com/${ifscCode.trim().toUpperCase()}`);
@@ -49,7 +51,7 @@ export const verifyPinCode = async (pincode) => {
 export const checkStoreName = async (name) => {
   try {
     const res = await fetch(
-      `http://localhost:5005/api/vendor/check-store-name?name=${encodeURIComponent(name.trim())}`
+      `${API_URL}/vendor/check-store-name?name=${encodeURIComponent(name.trim())}`
     );
     const data = await res.json();
 

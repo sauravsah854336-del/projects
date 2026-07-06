@@ -25,6 +25,8 @@ const couponRoutes = require("./routes/couponRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
 
 const PORT = process.env.PORT || 5005;
+const NODE_ENV = process.env.NODE_ENV || "development";
+const IS_PRODUCTION = NODE_ENV === "production";
 
 const app = express();
 
@@ -32,27 +34,50 @@ connectDB();
 startRateUpdateCron();
 startPaymentCleanupCron();
 
+console.log("═══════════════════════════════════════════════");
+console.log(`🚀 Backend Configuration:`);
+console.log(`   Environment:  ${IS_PRODUCTION ? "🔴 PRODUCTION" : "🟢 DEVELOPMENT"}`);
+console.log(`   Port:         ${PORT}`);
+console.log(`   Frontend URL: ${process.env.FRONTEND_URL || "http://localhost:5173"}`);
+console.log(`   CORS Origin:  ${process.env.CORS_ORIGIN || "http://localhost:5173"}`);
+console.log("═══════════════════════════════════════════════");
+
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: IS_PRODUCTION ? undefined : false,
   })
 );
+
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(",").map((o) => o.trim())
+  : ["http://localhost:5173"];
 
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "https://recliner-defiance-varied.ngrok-free.dev",
-    ],
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      if (!IS_PRODUCTION && origin.includes("localhost")) {
+        return callback(null, true);
+      }
+      console.warn(`⚠️  CORS blocked origin: ${origin}`);
+      callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
-app.use(morgan("dev"));
+app.use(morgan(IS_PRODUCTION ? "combined" : "dev"));
 
 app.use("/api/payment/webhook", express.raw({ type: "application/json" }));
 
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
@@ -60,6 +85,16 @@ app.get("/", (req, res) => {
   res.status(200).json({
     success: true,
     message: "Server is running ✅",
+    environment: NODE_ENV,
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "healthy",
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
   });
 });
 
@@ -83,17 +118,29 @@ app.use((req, res) => {
   res.status(404).json({
     success: false,
     message: "API not found",
+    path: req.path,
   });
 });
 
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  console.error("❌ Server Error:", err.stack);
   res.status(err.statusCode || 500).json({
     success: false,
     message: err.message || "Something went wrong",
+    ...(IS_PRODUCTION ? {} : { stack: err.stack }),
   });
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
+  console.log(`✅ Server running at http://localhost:${PORT}`);
+  console.log(`✅ Ready to accept connections\n`);
+});
+
+process.on("unhandledRejection", (err) => {
+  console.error("❌ Unhandled Rejection:", err);
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("❌ Uncaught Exception:", err);
+  process.exit(1);
 });

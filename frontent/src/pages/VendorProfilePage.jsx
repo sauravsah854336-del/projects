@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { setVerifiedUser } from "../features/auth/authSlice";
 import { useNavigate, Link } from "react-router-dom";
+import { API_URL } from "../utils/apiConfig";
 import {
   useGetVendorProfileQuery,
   useUpdateVendorProfileMutation,
@@ -107,7 +108,8 @@ const VendorProfilePage = () => {
     const token = localStorage.getItem("token");
     const formData = new FormData();
     formData.append("image", file);
-    const res = await fetch("http://localhost:5005/api/upload/avatar", {
+    const res = await fetch(`${API_URL}/upload/avatar`, {
+
       method: "POST", headers: { authorization: `Bearer ${token}` }, body: formData,
     });
     return await res.json();

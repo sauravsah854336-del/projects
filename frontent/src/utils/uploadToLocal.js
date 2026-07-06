@@ -1,4 +1,6 @@
-const BASE_URL = "http://localhost:5005/api/upload";
+import { API_URL } from "./apiConfig";
+
+const BASE_URL = `${API_URL}/upload`;
 
 export const uploadToLocal = async (files = []) => {
   const token = localStorage.getItem("token");

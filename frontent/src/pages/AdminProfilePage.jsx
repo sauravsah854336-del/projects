@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { setVerifiedUser } from "../features/auth/authSlice";
+import { API_URL } from "../utils/apiConfig";
 import { Link } from "react-router-dom";
 import {
   useGetAdminProfileQuery,
@@ -86,7 +87,8 @@ const AdminProfilePage = () => {
       const token = localStorage.getItem("token");
       const formData = new FormData();
       formData.append("image", file);
-      const res = await fetch("http://localhost:5005/api/upload/avatar", {
+      const res = await fetch(`${API_URL}/upload/avatar`, {
+
         method: "POST", headers: { authorization: `Bearer ${token}` }, body: formData,
       });
       const data = await res.json();
