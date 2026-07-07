@@ -298,7 +298,6 @@ const Signup = () => {
             <div className="flex flex-col gap-2.5">
               {[
                 { icon: "🚚", text: "Free delivery on orders above ₹499" },
-                { icon: "🔄", text: "Easy 10-day returns" },
                 { icon: "🛡️", text: "100% secure payments" },
                 { icon: "✅", text: "Verified design sellers only" },
               ].map((item) => (
