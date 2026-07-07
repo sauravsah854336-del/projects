@@ -1,94 +1,19 @@
-const Product = require("../models/product");
-const Vendor = require("../models/vendors");
-const Order = require("../models/order");
-const Category = require("../models/category");
-
-const generateUniqueSlug = async (name, vendorStoreName, excludeId = null) => {
-  const baseSlug = name
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-
-  let slug = baseSlug;
-  const query = { slug };
-  if (excludeId) query._id = { $ne: excludeId };
-
-  const existSlug = await Product.findOne(query);
-  if (!existSlug) return slug;
-
-  const vendorPart = vendorStoreName
-    ? vendorStoreName.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 20)
-    : "";
-
-  if (vendorPart) {
-    slug = `${baseSlug}-${vendorPart}`;
-    const query2 = { slug };
-    if (excludeId) query2._id = { $ne: excludeId };
-    const exists2 = await Product.findOne(query2);
-    if (!exists2) return slug;
-  }
-
-  slug = `${baseSlug}-${Date.now()}`;
-  return slug;
-};
-
-const checkDuplicateProduct = async (vendorId, { name, sku, modelNumber }, excludeProductId = null) => {
-  const orConditions = [];
-
-  if (name) {
-    orConditions.push({
-      name: { $regex: `^${name.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" },
-    });
-  }
-
-  if (sku && sku.trim()) {
-    orConditions.push({ sku: sku.trim() });
-  }
-
-  if (modelNumber && modelNumber.trim()) {
-    orConditions.push({ modelNumber: modelNumber.trim() });
-  }
-
-  if (orConditions.length === 0) return null;
-
-  const query = {
-    vendor: vendorId,
-    isDeleted: { $ne: true },
-    $or: orConditions,
-  };
-
-  if (excludeProductId) {
-    query._id = { $ne: excludeProductId };
-  }
-
-  return await Product.findOne(query).select("name sku modelNumber slug");
-};
-
-const findSimilarProductsFromOtherVendors = async (vendorId, { modelNumber, brand, name }) => {
-  const orConditions = [];
-
-  if (modelNumber && modelNumber.trim() && brand && brand.trim()) {
-    orConditions.push({
-      modelNumber: modelNumber.trim(),
-      brand: brand.trim(),
-    });
-  }
-
-  if (orConditions.length === 0) return [];
-
-  return await Product.find({
-    vendor: { $ne: vendorId },
-    status: "approved",
-    isActive: true,
-    isDeleted: { $ne: true },
-    $or: orConditions,
-  })
-    .select("name price slug images vendorStore averageRating totalReviews stock")
-    .populate("vendorStore", "storeName")
-    .limit(5)
-    .lean();
-};
+const {
+  createProduct: createProductInDB,
+  getProductById,
+  getProductBySlug,
+  getProductsByVendor,
+  getAllProducts: getAllProductsFromDB,
+  updateProduct: updateProductInDB,
+  incrementProductField,
+  checkDuplicateProduct,
+  findSimilarProducts,
+  generateUniqueSlug,
+  getProductFilters: getProductFiltersFromDB,
+  countProductsByVendor,
+} = require("../models/dynamodb/productModel");
+const { getVendorByUserId } = require("../models/dynamodb/vendorModel");
+const { getCategoryById, getCategoriesByParent } = require("../models/dynamodb/categoryModel");
 
 const createProduct = async (req, res) => {
   try {
@@ -113,12 +38,16 @@ const createProduct = async (req, res) => {
       });
     }
 
-    const categoryExists = await Category.findById(category);
-    if (!categoryExists) {
+    let categoryData = null;
+    try {
+      categoryData = await getCategoryById(category);
+    } catch (e) {}
+
+    if (!categoryData) {
       return res.status(404).json({ success: false, message: "Category not found" });
     }
 
-    const vendor = await Vendor.findOne({ userId: req.user.id });
+    const vendor = await getVendorByUserId(req.user.id);
     if (!vendor) {
       return res.status(404).json({ success: false, message: "Vendor profile not found" });
     }
@@ -130,56 +59,52 @@ const createProduct = async (req, res) => {
     const duplicate = await checkDuplicateProduct(req.user.id, { name, sku, modelNumber });
 
     if (duplicate) {
-  let field = "product";
-  let value = "";
-  let matchType = "";
+      let field = "product";
+      let value = "";
+      let matchType = "";
 
-  if (duplicate.name.toLowerCase() === name.trim().toLowerCase()) {
-    field = "name";
-    value = duplicate.name;
-    matchType = "name";
-  } else if (sku && duplicate.sku === sku.trim()) {
-    field = "SKU";
-    value = duplicate.sku;
-    matchType = "sku";
-  } else if (modelNumber && duplicate.modelNumber === modelNumber.trim()) {
-    field = "model number";
-    value = duplicate.modelNumber;
-    matchType = "modelNumber";
-  }
+      if (duplicate.name.toLowerCase() === name.trim().toLowerCase()) {
+        field = "name";
+        value = duplicate.name;
+        matchType = "name";
+      } else if (sku && duplicate.sku === sku.trim()) {
+        field = "SKU";
+        value = duplicate.sku;
+        matchType = "sku";
+      } else if (modelNumber && duplicate.modelNumber === modelNumber.trim()) {
+        field = "model number";
+        value = duplicate.modelNumber;
+        matchType = "modelNumber";
+      }
 
-  return res.status(400).json({
-    success: false,
-    isDuplicate: true,
-    duplicateType: "own_product",
-    title: "You already sell this product",
-    message: `You have "${duplicate.name}" in your inventory with the same ${field}.`,
-    suggestion: "Update your existing product to change price, stock, or other details instead of creating a duplicate.",
-    duplicate: {
-      _id: duplicate._id,
-      name: duplicate.name,
-      slug: duplicate.slug,
-      sku: duplicate.sku,
-      modelNumber: duplicate.modelNumber,
-      matchedField: field,
-      matchType: matchType,
-    },
-    actions: {
-      editUrl: `/vendor/products/edit/${duplicate._id}`,
-      viewUrl: `/products/single/${duplicate.slug}`,
-    },
-  });
-}
+      return res.status(400).json({
+        success: false,
+        isDuplicate: true,
+        duplicateType: "own_product",
+        title: "You already sell this product",
+        message: `You have "${duplicate.name}" in your inventory with the same ${field}.`,
+        suggestion: "Update your existing product instead of creating a duplicate.",
+        duplicate: {
+          _id: duplicate._id,
+          name: duplicate.name,
+          slug: duplicate.slug,
+          sku: duplicate.sku,
+          modelNumber: duplicate.modelNumber,
+          matchedField: field,
+          matchType: matchType,
+        },
+        actions: {
+          editUrl: `/vendor/products/edit/${duplicate._id}`,
+          viewUrl: `/products/single/${duplicate.slug}`,
+        },
+      });
+    }
 
-    const similarProducts = await findSimilarProductsFromOtherVendors(req.user.id, {
-      modelNumber,
-      brand,
-      name,
-    });
+    const similarProducts = await findSimilarProducts(req.user.id, { modelNumber, brand });
 
     const slug = await generateUniqueSlug(name, vendor.storeName);
 
-    const product = await Product.create({
+    const product = await createProductInDB({
       name: name.trim(),
       slug,
       description: description.trim(),
@@ -221,41 +146,41 @@ const createProduct = async (req, res) => {
       availableCountries: availableCountries || [],
       restrictedCountries: restrictedCountries || [],
       shippingCountries: shippingCountries || [],
-      vendor: req.user.id,
-      vendorStore: vendor._id,
+      vendorId: req.user.id,
+      vendorStoreId: vendor._id,
       status: "approved",
       isActive: true,
     });
 
     let priceRange = null;
-if (similarProducts.length > 0) {
-  const prices = similarProducts.map(p => p.price).filter(p => p > 0);
-  if (prices.length > 0) {
-    priceRange = {
-      min: Math.min(...prices),
-      max: Math.max(...prices),
-      avg: Math.round(prices.reduce((a, b) => a + b, 0) / prices.length),
-    };
-  }
-}
+    if (similarProducts.length > 0) {
+      const prices = similarProducts.map((p) => p.price).filter((p) => p > 0);
+      if (prices.length > 0) {
+        priceRange = {
+          min: Math.min(...prices),
+          max: Math.max(...prices),
+          avg: Math.round(prices.reduce((a, b) => a + b, 0) / prices.length),
+        };
+      }
+    }
 
-return res.status(201).json({
-  success: true,
-  message: "Product listed successfully!",
-  data: product,
-  competition: similarProducts.length > 0 ? {
-    hasSimilar: true,
-    count: similarProducts.length,
-    priceRange,
-    tips: [
-      "Set competitive pricing to attract customers",
-      "Upload high-quality product photos",
-      "Offer fast shipping options",
-      "Provide detailed product descriptions",
-    ],
-    sellers: similarProducts,
-  } : null,
-});
+    return res.status(201).json({
+      success: true,
+      message: "Product listed successfully!",
+      data: product,
+      competition: similarProducts.length > 0 ? {
+        hasSimilar: true,
+        count: similarProducts.length,
+        priceRange,
+        tips: [
+          "Set competitive pricing to attract customers",
+          "Upload high-quality product photos",
+          "Offer fast shipping options",
+          "Provide detailed product descriptions",
+        ],
+        sellers: similarProducts,
+      } : null,
+    });
   } catch (err) {
     console.error("createProduct error:", err);
     return res.status(500).json({ success: false, message: err.message });
@@ -266,23 +191,17 @@ const getVendorProducts = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
     const status = req.query.status;
 
-    const filter = { vendor: req.user.id, isDeleted: { $ne: true } };
-    if (status) filter.status = status;
+    const result = await getProductsByVendor(req.user.id, { status, limit: 100 });
 
-    const products = await Product.find(filter)
-      .populate("category", "name slug")
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
-
-    const total = await Product.countDocuments(filter);
+    const total = result.items.length;
+    const skip = (page - 1) * limit;
+    const paginated = result.items.slice(skip, skip + limit);
 
     return res.status(200).json({
       success: true,
-      data: products,
+      data: paginated,
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     });
   } catch (err) {
@@ -294,13 +213,13 @@ const getVendorProducts = async (req, res) => {
 const updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const product = await Product.findById(id);
+    const product = await getProductById(id);
 
     if (!product) {
       return res.status(404).json({ success: false, message: "Product not found" });
     }
 
-    if (product.vendor.toString() !== req.user.id) {
+    if (product.vendorId !== req.user.id) {
       return res.status(403).json({ success: false, message: "Not authorized" });
     }
 
@@ -383,7 +302,7 @@ const updateProduct = async (req, res) => {
 
     if (updateData.name) {
       updateData.name = updateData.name.trim();
-      const vendor = await Vendor.findOne({ userId: req.user.id });
+      const vendor = await getVendorByUserId(req.user.id);
       updateData.slug = await generateUniqueSlug(updateData.name, vendor?.storeName, id);
     }
 
@@ -394,7 +313,10 @@ const updateProduct = async (req, res) => {
     if (updateData.barcode) updateData.barcode = updateData.barcode.trim();
 
     if (updateData.category) {
-      const catExists = await Category.findById(updateData.category);
+      let catExists = null;
+      try {
+        catExists = await getCategoryById(updateData.category);
+      } catch (e) {}
       if (!catExists) return res.status(404).json({ success: false, message: "Category not found" });
     }
 
@@ -402,8 +324,7 @@ const updateProduct = async (req, res) => {
       updateData.basePrice = updateData.price;
     }
 
-    const updated = await Product.findByIdAndUpdate(id, updateData, { new: true })
-      .populate("category", "name slug");
+    const updated = await updateProductInDB(id, updateData);
 
     return res.status(200).json({
       success: true,
@@ -419,14 +340,14 @@ const updateProduct = async (req, res) => {
 const deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const product = await Product.findById(id);
+    const product = await getProductById(id);
 
     if (!product) return res.status(404).json({ success: false, message: "Product not found" });
-    if (product.vendor.toString() !== req.user.id) {
+    if (product.vendorId !== req.user.id) {
       return res.status(403).json({ success: false, message: "Not authorized" });
     }
 
-    await Product.findByIdAndUpdate(id, { isDeleted: true, isActive: false });
+    await updateProductInDB(id, { isDeleted: true, isActive: false });
 
     return res.status(200).json({ success: true, message: "Product deleted successfully" });
   } catch (err) {
@@ -439,7 +360,6 @@ const getAllProducts = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 12;
-    const skip = (page - 1) * limit;
 
     const {
       category, brand, brands, minPrice, maxPrice,
@@ -449,125 +369,56 @@ const getAllProducts = async (req, res) => {
       sort, search, filterType,
     } = req.query;
 
-    const filter = { status: "approved", isActive: true, isDeleted: { $ne: true } };
+    const filters = {
+      status: "approved",
+      isActive: true,
+      page,
+      limit,
+      sort: sort || "newest",
+      search,
+      brand,
+      brands,
+      minPrice,
+      maxPrice,
+      colors,
+      sizes,
+      materials,
+      roomType,
+      minRating,
+      inStock: inStock === "true",
+      hasDiscount: hasDiscount === "true",
+      freeShipping: freeShipping === "true",
+    };
+
+    if (isFeatured === "true") filters.isFeatured = true;
+
+    if (filterType === "featured") filters.isFeatured = true;
+    if (filterType === "topRated") { filters.minRating = 4; filters.sort = "rating"; }
+    if (filterType === "bestSeller") filters.sort = "popular";
+    if (filterType === "discount") { filters.hasDiscount = true; filters.sort = "discount"; }
+    if (filterType === "newArrival" || filterType === "latest") filters.sort = "newest";
 
     if (category) {
-      const subcategories = await Category.find({ parent: category }).select("_id");
-      const categoryIds = [category, ...subcategories.map((s) => s._id)];
-      filter.category = { $in: categoryIds };
-    }
-
-    if (brand) filter.brand = brand;
-    if (brands) {
-      const brandArr = brands.split(",").filter(Boolean);
-      if (brandArr.length) filter.brand = { $in: brandArr };
-    }
-
-    if (minPrice || maxPrice) {
-      filter.price = {};
-      if (minPrice) filter.price.$gte = Number(minPrice);
-      if (maxPrice) filter.price.$lte = Number(maxPrice);
-    }
-
-    if (colors) {
-      const colorArr = colors.split(",").filter(Boolean);
-      if (colorArr.length) filter["colors.name"] = { $in: colorArr };
-    }
-
-    if (sizes) {
-      const sizeArr = sizes.split(",").filter(Boolean);
-      if (sizeArr.length) filter["sizes.name"] = { $in: sizeArr };
-    }
-
-    if (materials) {
-      const matArr = materials.split(",").filter(Boolean);
-      if (matArr.length) filter.materials = { $in: matArr };
-    }
-
-    if (roomType) {
-      const roomArr = roomType.split(",").filter(Boolean);
-      if (roomArr.length) filter.roomType = { $in: roomArr };
-    }
-
-    if (minRating) filter.averageRating = { $gte: Number(minRating) };
-    if (inStock === "true") filter.stock = { $gt: 0 };
-    if (hasDiscount === "true") filter.$expr = { $gt: ["$comparePrice", "$price"] };
-    if (isFeatured === "true") filter.isFeatured = true;
-    if (isNewArrival === "true") filter.isNewArrival = true;
-    if (assemblyRequired === "false") filter.assemblyRequired = false;
-    if (freeShipping === "true") filter["shipping.isFreeShipping"] = true;
-
-    if (filterType === "featured") filter.isFeatured = true;
-    if (filterType === "topRated") filter.averageRating = { $gte: 4 };
-    if (filterType === "bestSeller") filter.totalReviews = { $gte: 10 };
-    if (filterType === "discount") filter.$expr = { $gt: ["$comparePrice", "$price"] };
-    if (filterType === "newArrival") filter.isNewArrival = true;
-
-    if (search) {
-      const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const regex = new RegExp(escaped, "i");
-
-      const matchingCategories = await Category.find({ name: regex }).select("_id");
-      const matchingVendors = await Vendor.find({
-        storeName: regex,
-        approvalStatus: "approved",
-        isDeleted: { $ne: true },
-      }).select("userId");
-
-      const searchOr = [
-        { name: regex },
-        { description: regex },
-        { shortDescription: regex },
-        { brand: regex },
-        { modelNumber: regex },
-        { tags: regex },
-        { keyFeatures: regex },
-        { "colors.name": regex },
-        { "sizes.name": regex },
-        { materials: regex },
-      ];
-
-      if (matchingCategories.length > 0) {
-        searchOr.push({ category: { $in: matchingCategories.map((c) => c._id) } });
+      try {
+        const subcategories = await getCategoriesByParent(category);
+        const categoryIds = [category, ...subcategories.map((s) => s._id)];
+        filters.categoryIds = categoryIds;
+      } catch (e) {
+        filters.category = category;
       }
-      if (matchingVendors.length > 0) {
-        searchOr.push({ vendor: { $in: matchingVendors.map((v) => v.userId) } });
-      }
-
-      filter.$and = filter.$and || [];
-      filter.$and.push({ $or: searchOr });
     }
 
-    let sortOption = { createdAt: -1 };
-
-    if (filterType === "topRated") sortOption = { averageRating: -1, totalReviews: -1 };
-    else if (filterType === "bestSeller") sortOption = { totalSold: -1, totalReviews: -1 };
-    else if (filterType === "discount") sortOption = { comparePrice: -1 };
-    else if (filterType === "latest" || filterType === "newArrival") sortOption = { createdAt: -1 };
-    else if (filterType === "featured") sortOption = { createdAt: -1 };
-
-    if (sort === "price_low") sortOption = { price: 1 };
-    if (sort === "price_high") sortOption = { price: -1 };
-    if (sort === "rating") sortOption = { averageRating: -1, totalReviews: -1 };
-    if (sort === "popular") sortOption = { totalSold: -1 };
-    if (sort === "newest") sortOption = { createdAt: -1 };
-    if (sort === "discount") sortOption = { comparePrice: -1 };
-
-    const [products, total] = await Promise.all([
-      Product.find(filter)
-        .populate("category", "name slug")
-        .populate("vendor", "firstName")
-        .populate("vendorStore", "storeName")
-        .sort(sortOption)
-        .skip(skip)
-        .limit(limit),
-      Product.countDocuments(filter),
-    ]);
+    const result = await getAllProductsFromDB(filters);
 
     return res.status(200).json({
       success: true,
-      data: products,
-      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+      data: result.items,
+      pagination: {
+        page: result.page,
+        limit: result.limit,
+        total: result.total,
+        pages: result.pages,
+      },
     });
   } catch (err) {
     console.error("getAllProducts error:", err);
@@ -578,33 +429,51 @@ const getAllProducts = async (req, res) => {
 const getSingleProduct = async (req, res) => {
   try {
     const { slug } = req.params;
-    const product = await Product.findOne({ slug, isDeleted: { $ne: true } })
-      .populate("category", "name slug")
-      .populate("vendor", "firstName")
-      .populate("vendorStore", "storeName storeLogo");
+    const product = await getProductBySlug(slug);
 
-    if (!product) {
+    if (!product || product.isDeleted) {
       return res.status(404).json({ success: false, message: "Product not found" });
     }
 
-    await Product.findByIdAndUpdate(product._id, { $inc: { views: 1 } });
+    await incrementProductField(product._id, "views", 1);
 
     let otherSellers = [];
     if (product.modelNumber && product.brand) {
-      otherSellers = await Product.find({
-        _id: { $ne: product._id },
+      otherSellers = await findSimilarProducts("_none_", {
         modelNumber: product.modelNumber,
         brand: product.brand,
-        status: "approved",
-        isActive: true,
-        isDeleted: { $ne: true },
-        stock: { $gt: 0 },
-      })
-        .select("name price comparePrice slug images vendorStore averageRating totalReviews stock shipping")
-        .populate("vendorStore", "storeName storeLogo")
-        .sort({ price: 1 })
-        .limit(10)
-        .lean();
+      });
+
+      otherSellers = otherSellers.filter(
+        (s) => s._id !== product._id && s.stock > 0
+      );
+    }
+
+    let vendorData = null;
+    try {
+      const { getVendorById } = require("../models/dynamodb/vendorModel");
+      vendorData = await getVendorById(product.vendorStoreId);
+    } catch (e) {}
+
+    if (vendorData) {
+      product.vendorStore = {
+        _id: vendorData._id,
+        storeName: vendorData.storeName,
+        storeLogo: vendorData.storeLogo,
+      };
+    }
+
+    let categoryData = null;
+    try {
+      categoryData = await getCategoryById(product.category?._id || product.category);
+    } catch (e) {}
+
+    if (categoryData) {
+      product.category = {
+        _id: categoryData._id,
+        name: categoryData.name,
+        slug: categoryData.slug,
+      };
     }
 
     return res.status(200).json({
@@ -622,40 +491,24 @@ const adminGetAllProducts = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
-    const skip = (page - 1) * limit;
     const { status, search, vendor } = req.query;
 
-    const filter = { isDeleted: { $ne: true } };
+    const filters = { page, limit, search };
 
-    if (status) filter.status = status;
-    if (vendor) filter.vendor = vendor;
+    if (status) filters.status = status;
+    if (vendor) filters.vendorId = vendor;
 
-    if (search) {
-      const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const regex = new RegExp(escaped, "i");
-      filter.$or = [
-        { name: regex },
-        { brand: regex },
-        { sku: regex },
-        { modelNumber: regex },
-        { description: regex },
-      ];
-    }
-
-    const products = await Product.find(filter)
-      .populate("category", "name slug")
-      .populate("vendor", "firstName lastName email")
-      .populate("vendorStore", "storeName")
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
-
-    const total = await Product.countDocuments(filter);
+    const result = await getAllProductsFromDB(filters);
 
     return res.status(200).json({
       success: true,
-      data: products,
-      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+      data: result.items,
+      pagination: {
+        page: result.page,
+        limit: result.limit,
+        total: result.total,
+        pages: result.pages,
+      },
     });
   } catch (err) {
     console.error("adminGetAllProducts error:", err);
@@ -666,10 +519,10 @@ const adminGetAllProducts = async (req, res) => {
 const featureProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const product = await Product.findById(id);
+    const product = await getProductById(id);
     if (!product) return res.status(404).json({ success: false, message: "Product not found" });
 
-    await Product.findByIdAndUpdate(id, { isFeatured: !product.isFeatured });
+    await updateProductInDB(id, { isFeatured: !product.isFeatured });
 
     return res.status(200).json({
       success: true,
@@ -685,10 +538,10 @@ const delistProduct = async (req, res) => {
   try {
     const { id } = req.params;
     const { reason } = req.body;
-    const product = await Product.findById(id);
+    const product = await getProductById(id);
     if (!product) return res.status(404).json({ success: false, message: "Product not found" });
 
-    await Product.findByIdAndUpdate(id, {
+    await updateProductInDB(id, {
       status: "delisted",
       isActive: false,
       delistReason: reason || "Violated platform policies",
@@ -704,10 +557,10 @@ const delistProduct = async (req, res) => {
 const relistProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const product = await Product.findById(id);
+    const product = await getProductById(id);
     if (!product) return res.status(404).json({ success: false, message: "Product not found" });
 
-    await Product.findByIdAndUpdate(id, {
+    await updateProductInDB(id, {
       status: "approved",
       isActive: true,
       delistReason: "",
@@ -724,22 +577,29 @@ const getVendorStats = async (req, res) => {
   try {
     const vendorId = req.user.id;
 
-    const [totalProducts, approvedProducts, outOfStockProducts] = await Promise.all([
-      Product.countDocuments({ vendor: vendorId, isDeleted: { $ne: true } }),
-      Product.countDocuments({ vendor: vendorId, isDeleted: { $ne: true }, status: "approved" }),
-      Product.countDocuments({ vendor: vendorId, isDeleted: { $ne: true }, status: "approved", stock: 0 }),
-    ]);
+    const allProducts = await getProductsByVendor(vendorId, { limit: 1000 });
+    const products = allProducts.items;
 
-    const activeProducts = await Product.find({
-      vendor: vendorId,
-      isDeleted: { $ne: true },
-      status: "approved",
-      stock: { $gt: 0 },
-    }).select("stock lowStockThreshold");
-
-    const lowStockProducts = activeProducts.filter(
-      (p) => p.stock <= (p.lowStockThreshold || 5)
+    const totalProducts = products.length;
+    const approvedProducts = products.filter((p) => p.status === "approved").length;
+    const outOfStockProducts = products.filter((p) => p.status === "approved" && p.stock === 0).length;
+    const lowStockProducts = products.filter(
+      (p) => p.status === "approved" && p.stock > 0 && p.stock <= (p.lowStockThreshold || 5)
     ).length;
+
+    const { ScanCommand } = require("@aws-sdk/lib-dynamodb");
+    const { docClient, getTableName } = require("../config/dynamodb");
+
+    const orderResult = await docClient.send(new ScanCommand({
+      TableName: getTableName("orders"),
+      FilterExpression: "contains(#items, :vid)",
+      ExpressionAttributeNames: { "#items": "items" },
+      ExpressionAttributeValues: { ":vid": vendorId },
+    }));
+
+    const allVendorOrders = (orderResult.Items || []).filter((order) =>
+      (order.items || []).some((item) => item.vendor === vendorId)
+    );
 
     const now = new Date();
     const last7Days = new Date(now - 7 * 24 * 60 * 60 * 1000);
@@ -748,36 +608,30 @@ const getVendorStats = async (req, res) => {
     const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
 
-    const allVendorOrders = await Order.find({ "items.vendor": vendorId }).lean();
-
     const orderCounts = {
       total: allVendorOrders.length,
-      confirmed: 0,
-      processing: 0,
-      shipped: 0,
-      out_for_delivery: 0,
-      delivered: 0,
-      cancelled: 0,
-      last7Days: 0,
-      last30Days: 0,
+      confirmed: 0, processing: 0, shipped: 0,
+      out_for_delivery: 0, delivered: 0, cancelled: 0,
+      last7Days: 0, last30Days: 0,
     };
 
     allVendorOrders.forEach((order) => {
-      if (order.orderStatus in orderCounts) {
-        orderCounts[order.orderStatus]++;
-      }
+      const status = order.orderStatus || order.status;
+      if (status in orderCounts) orderCounts[status]++;
       const createdAt = new Date(order.createdAt);
       if (createdAt >= last7Days) orderCounts.last7Days++;
       if (createdAt >= last30Days) orderCounts.last30Days++;
     });
 
     const getVendorRevenue = (order) => {
-      return order.items
-        .filter((item) => item.vendor?.toString() === vendorId.toString())
-        .reduce((sum, item) => sum + item.price * item.quantity, 0);
+      return (order.items || [])
+        .filter((item) => item.vendor === vendorId)
+        .reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0);
     };
 
-    const deliveredOrders = allVendorOrders.filter((o) => o.orderStatus === "delivered");
+    const deliveredOrders = allVendorOrders.filter((o) =>
+      (o.orderStatus || o.status) === "delivered"
+    );
 
     const totalRevenue = deliveredOrders.reduce((sum, order) => sum + getVendorRevenue(order), 0);
 
@@ -792,12 +646,9 @@ const getVendorStats = async (req, res) => {
       })
       .reduce((sum, order) => sum + getVendorRevenue(order), 0);
 
-    const monthlyGrowth =
-      lastMonthRevenue > 0
-        ? Math.round(((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100)
-        : thisMonthRevenue > 0
-        ? 100
-        : 0;
+    const monthlyGrowth = lastMonthRevenue > 0
+      ? Math.round(((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100)
+      : thisMonthRevenue > 0 ? 100 : 0;
 
     const dailyRevenue = {};
     for (let i = 6; i >= 0; i--) {
@@ -814,20 +665,20 @@ const getVendorStats = async (req, res) => {
       }
     });
 
-    const topProducts = await Product.find({
-      vendor: vendorId,
-      isDeleted: { $ne: true },
-      status: "approved",
-      totalSold: { $gt: 0 },
-    })
-      .sort({ totalSold: -1 })
-      .limit(5)
-      .select("name price images averageRating totalSold")
-      .lean();
+    const topProducts = products
+      .filter((p) => p.status === "approved" && p.totalSold > 0)
+      .sort((a, b) => b.totalSold - a.totalSold)
+      .slice(0, 5)
+      .map((p) => ({
+        _id: p._id,
+        name: p.name,
+        price: p.price,
+        images: p.images,
+        averageRating: p.averageRating,
+        totalSold: p.totalSold,
+      }));
 
-    const vendorProfile = await Vendor.findOne({ userId: vendorId })
-      .select("storeName commission")
-      .lean();
+    const vendorProfile = await getVendorByUserId(vendorId);
 
     return res.status(200).json({
       success: true,
@@ -836,7 +687,7 @@ const getVendorStats = async (req, res) => {
           total: totalRevenue,
           thisMonth: thisMonthRevenue,
           lastMonth: lastMonthRevenue,
-          monthlyGrowth: monthlyGrowth,
+          monthlyGrowth,
           daily: dailyRevenue,
         },
         orders: orderCounts,
@@ -863,80 +714,11 @@ const getProductFilters = async (req, res) => {
   try {
     const { category, search } = req.query;
 
-    const baseFilter = { status: "approved", isActive: true, isDeleted: { $ne: true } };
-
-    if (category) {
-      const subcategories = await Category.find({ parent: category }).select("_id");
-      const categoryIds = [category, ...subcategories.map((s) => s._id)];
-      baseFilter.category = { $in: categoryIds };
-    }
-
-    if (search) {
-      const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const regex = new RegExp(escaped, "i");
-      baseFilter.$or = [
-        { name: regex }, { description: regex }, { brand: regex }, { tags: regex },
-      ];
-    }
-
-    const [brands, colors, materials, roomTypes, priceRange, ratingCounts] = await Promise.all([
-      Product.distinct("brand", { ...baseFilter, brand: { $ne: "" } }),
-      Product.aggregate([
-        { $match: baseFilter },
-        { $unwind: "$colors" },
-        { $group: { _id: "$colors.name", hex: { $first: "$colors.hex" }, count: { $sum: 1 } } },
-        { $match: { _id: { $ne: null, $ne: "" } } },
-        { $sort: { count: -1 } },
-      ]),
-      Product.aggregate([
-        { $match: baseFilter },
-        { $unwind: "$materials" },
-        { $group: { _id: "$materials", count: { $sum: 1 } } },
-        { $match: { _id: { $ne: null, $ne: "" } } },
-        { $sort: { count: -1 } },
-      ]),
-      Product.aggregate([
-        { $match: baseFilter },
-        { $unwind: "$roomType" },
-        { $group: { _id: "$roomType", count: { $sum: 1 } } },
-        { $sort: { count: -1 } },
-      ]),
-      Product.aggregate([
-        { $match: baseFilter },
-        {
-          $group: {
-            _id: null,
-            min: { $min: "$price" },
-            max: { $max: "$price" },
-            avg: { $avg: "$price" },
-          },
-        },
-      ]),
-      Product.aggregate([
-        { $match: baseFilter },
-        {
-          $group: {
-            _id: null,
-            "5plus": { $sum: { $cond: [{ $gte: ["$averageRating", 5] }, 1, 0] } },
-            "4plus": { $sum: { $cond: [{ $gte: ["$averageRating", 4] }, 1, 0] } },
-            "3plus": { $sum: { $cond: [{ $gte: ["$averageRating", 3] }, 1, 0] } },
-            "2plus": { $sum: { $cond: [{ $gte: ["$averageRating", 2] }, 1, 0] } },
-            "1plus": { $sum: { $cond: [{ $gte: ["$averageRating", 1] }, 1, 0] } },
-          },
-        },
-      ]),
-    ]);
+    const filters = await getProductFiltersFromDB({ category, search });
 
     return res.status(200).json({
       success: true,
-      data: {
-        brands: brands.filter(Boolean).sort(),
-        colors: colors.map((c) => ({ name: c._id, hex: c.hex || "", count: c.count })),
-        materials: materials.map((m) => ({ name: m._id, count: m.count })),
-        roomTypes: roomTypes.map((r) => ({ name: r._id, count: r.count })),
-        priceRange: priceRange[0] || { min: 0, max: 10000, avg: 500 },
-        ratings: ratingCounts[0] || { "5plus": 0, "4plus": 0, "3plus": 0, "2plus": 0, "1plus": 0 },
-      },
+      data: filters,
     });
   } catch (err) {
     console.error("getProductFilters error:", err);
@@ -947,22 +729,25 @@ const getProductFilters = async (req, res) => {
 const getRelatedProducts = async (req, res) => {
   try {
     const { id } = req.params;
-    const product = await Product.findById(id);
+    const product = await getProductById(id);
     if (!product) {
       return res.status(404).json({ success: false, message: "Product not found" });
     }
 
-    const related = await Product.find({
-      _id: { $ne: id },
-      category: product.category,
+    const categoryId = product.category?._id || product.category;
+
+    const result = await getAllProductsFromDB({
       status: "approved",
       isActive: true,
-      isDeleted: { $ne: true },
-    })
-      .populate("category", "name slug")
-      .populate("vendorStore", "storeName")
-      .sort({ averageRating: -1, totalSold: -1 })
-      .limit(8);
+      category: categoryId,
+      limit: 100,
+      page: 1,
+      sort: "rating",
+    });
+
+    const related = result.items
+      .filter((p) => p._id !== id)
+      .slice(0, 8);
 
     return res.status(200).json({ success: true, data: related });
   } catch (err) {
@@ -1017,14 +802,10 @@ const checkProductAvailability = async (req, res) => {
 
     let competition = null;
     if (modelNumber && brand) {
-      const otherSellers = await findSimilarProductsFromOtherVendors(req.user.id, {
-        modelNumber,
-        brand,
-        name,
-      });
+      const otherSellers = await findSimilarProducts(req.user.id, { modelNumber, brand });
 
       if (otherSellers.length > 0) {
-        const prices = otherSellers.map(p => p.price).filter(p => p > 0);
+        const prices = otherSellers.map((p) => p.price).filter((p) => p > 0);
         competition = {
           count: otherSellers.length,
           priceRange: prices.length > 0 ? {

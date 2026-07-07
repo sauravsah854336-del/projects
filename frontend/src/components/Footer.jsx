@@ -123,7 +123,7 @@ const Footer = () => {
               <ul className="space-y-2.5 list-none p-0 m-0">
                 <li><Link to="/help" className="text-blue-200/70 text-[13px] no-underline hover:text-white hover:underline transition-colors">Help Center</Link></li>
                 <li><Link to="/policy/shipping-info" className="text-blue-200/70 text-[13px] no-underline hover:text-white hover:underline transition-colors">Shipping Info</Link></li>
-                <li><Link to="/policy/returns" className="text-blue-200/70 text-[13px] no-underline hover:text-white hover:underline transition-colors">Returns & Refunds</Link></li>
+                <li><Link to="/policy/no-returns" className="text-blue-200/70 text-[13px] no-underline hover:text-white hover:underline transition-colors">No Returns Policy</Link></li>
                 <li><Link to="/policy/payment-pricing" className="text-blue-200/70 text-[13px] no-underline hover:text-white hover:underline transition-colors">Payment Info</Link></li>
                 <li><Link to="/policy/grievance" className="text-blue-200/70 text-[13px] no-underline hover:text-white hover:underline transition-colors">Grievance Redressal</Link></li>
               </ul>
@@ -189,7 +189,7 @@ const Footer = () => {
                   <span className="text-[10px] text-blue-200/50 font-bold uppercase tracking-wider">We Accept</span>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  {["💳 Cards", "📱 UPI", "🏦 NetBanking", "💵 COD", "👛 Wallets"].map((method) => (
+                  {["💳 Cards", "📱 UPI", "🏦 NetBanking", "👛 Wallets"].map((method) => (
                     <span
                       key={method}
                       className="text-[10px] font-bold text-blue-200/60 bg-white/5 border border-white/10 px-2.5 py-1 rounded-md"
@@ -218,7 +218,7 @@ const Footer = () => {
                 { to: "/policy/terms", label: "Terms" },
                 { to: "/policy/privacy", label: "Privacy" },
                 { to: "/policy/cookies", label: "Cookies" },
-                { to: "/policy/accessibility", label: "Accessibility" },
+                { to: "/policy/no-returns", label: "No Returns" },
                 { to: "/policy/grievance", label: "Grievance" },
               ].map((item) => (
                 <Link

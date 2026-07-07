@@ -8,7 +8,6 @@ const fs = require("fs");
 const { startRateUpdateCron } = require("./utils/rateUpdateCron");
 const { startPaymentCleanupCron } = require("./utils/paymentCleanupCron");
 
-const connectDB = require("./config/db");
 const authRouter = require("./routes/auth");
 const customerRouter = require("./routes/customer");
 const setupRouter = require("./routes/setup");
@@ -31,14 +30,16 @@ const IS_PRODUCTION = NODE_ENV === "production";
 
 const app = express();
 
-connectDB();
-startRateUpdateCron();
-startPaymentCleanupCron();
-
 const s3Configured = !!(
   process.env.AWS_ACCESS_KEY_ID &&
   process.env.AWS_SECRET_ACCESS_KEY &&
   process.env.S3_BUCKET_NAME
+);
+
+const dynamoConfigured = !!(
+  process.env.AWS_ACCESS_KEY_ID &&
+  process.env.AWS_SECRET_ACCESS_KEY &&
+  process.env.DYNAMODB_TABLE_PREFIX
 );
 
 console.log("═══════════════════════════════════════════════");
@@ -47,12 +48,21 @@ console.log(`   Environment:  ${IS_PRODUCTION ? "🔴 PRODUCTION" : "🟢 DEVELO
 console.log(`   Port:         ${PORT}`);
 console.log(`   Frontend URL: ${process.env.FRONTEND_URL || "http://localhost:5173"}`);
 console.log(`   CORS Origin:  ${process.env.CORS_ORIGIN || "http://localhost:5173"}`);
+console.log(`   Database:     ${dynamoConfigured ? "☁️  AWS DynamoDB" : "⚠️  DynamoDB not configured"}`);
+if (dynamoConfigured) {
+  console.log(`   DB Prefix:    ${process.env.DYNAMODB_TABLE_PREFIX}`);
+  console.log(`   DB Region:    ${process.env.AWS_REGION || "ap-south-1"}`);
+  console.log(`   DB Endpoint:  ${process.env.DYNAMODB_ENDPOINT || "AWS Cloud"}`);
+}
 console.log(`   Storage:      ${s3Configured ? "☁️  AWS S3" : "💾 Local Disk"}`);
 if (s3Configured) {
   console.log(`   S3 Bucket:    ${process.env.S3_BUCKET_NAME}`);
   console.log(`   S3 Region:    ${process.env.AWS_REGION || "ap-south-1"}`);
 }
 console.log("═══════════════════════════════════════════════");
+
+startRateUpdateCron();
+startPaymentCleanupCron();
 
 app.use(
   helmet({
@@ -102,6 +112,7 @@ app.get("/", (req, res) => {
     success: true,
     message: "Server is running ✅",
     environment: NODE_ENV,
+    database: dynamoConfigured ? "dynamodb" : "none",
     storage: s3Configured ? "s3" : "local",
     timestamp: new Date().toISOString(),
   });
@@ -111,6 +122,7 @@ app.get("/health", (req, res) => {
   res.status(200).json({
     status: "healthy",
     uptime: process.uptime(),
+    database: dynamoConfigured ? "dynamodb" : "none",
     storage: s3Configured ? "s3" : "local",
     timestamp: new Date().toISOString(),
   });

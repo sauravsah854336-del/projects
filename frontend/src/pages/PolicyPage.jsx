@@ -8,19 +8,21 @@ const policies = {
       { heading: "Delivery Time", content: "Standard delivery takes 3-7 business days. Metro cities (Mumbai, Delhi, Bangalore, Chennai, Kolkata, Hyderabad) typically receive orders within 3-4 business days. Other cities and towns may take 5-7 business days." },
       { heading: "Shipping Charges", content: "Free shipping on all orders above ₹499. Orders below ₹499 will have a flat shipping charge of ₹49. Some remote areas may have additional delivery charges." },
       { heading: "Delivery Partners", content: "We work with trusted delivery partners to ensure your orders reach you safely and on time. You will receive tracking information once your order is shipped." },
-      { heading: "Order Tracking", content: "Once your order is shipped, you can track it from your Orders page. You will also receive email and SMS notifications for order status updates." },
+      { heading: "Order Tracking", content: "Once your order is shipped, you can track it from your Orders page. Order status updates are available in real-time on your dashboard." },
       { heading: "International Shipping", content: "Currently we only deliver within India. International shipping will be available soon." },
     ],
   },
-  returns: {
-    title: "Returns & Refunds",
-    icon: "🔄",
+  "no-returns": {
+    title: "No Returns Policy",
+    icon: "🚫",
     sections: [
-      { heading: "Return Policy", content: "We offer a 10-day return policy on most products. Items must be returned in their original condition, unused, and in original packaging. Some categories like innerwear, personal care, and customized products are non-returnable." },
-      { heading: "How to Return", content: "Go to My Orders → Select the order → Click Request Return → Provide reason → Our team will arrange pickup within 2-3 business days." },
-      { heading: "Refund Process", content: "Once we receive and verify the returned product, refund will be initiated within 5-7 business days. Refunds are processed to the original payment method. Cash on Delivery orders will be refunded to your bank account." },
-      { heading: "Exchange", content: "Currently we don't offer direct exchanges. You can return the product and place a new order for the desired item." },
-      { heading: "Damaged or Defective Products", content: "If you receive a damaged or defective product, please contact us within 48 hours with photos. We will arrange a free return and full refund or replacement." },
+      { heading: "All Sales Are Final", content: "Please note that all sales on our platform are final. We do not offer returns, refunds, or exchanges on any products purchased through our marketplace. We encourage all customers to carefully review product details, specifications, images, and vendor information before placing an order." },
+      { heading: "Why No Returns?", content: "As a curated multi-vendor marketplace, we work directly with independent sellers who handle their inventory individually. To keep prices competitive and support our vendors, we have adopted a no-returns policy. This helps us maintain fair pricing and quick order fulfillment across all product categories." },
+      { heading: "Before You Order", content: "To ensure you're completely satisfied with your purchase, please: (1) Read the full product description carefully, (2) Check all product images and videos, (3) Review product specifications, dimensions, and materials, (4) Read customer reviews and ratings, (5) Contact the vendor for any clarifications before purchasing." },
+      { heading: "Damaged or Wrong Products", content: "If you receive a product that is significantly damaged during shipping or completely different from what was ordered, please contact our support team at info@quleep.in within 24 hours of delivery with clear photos and your order number. Such cases will be reviewed individually and addressed on a case-by-case basis at the platform's discretion." },
+      { heading: "Order Cancellation", content: "You can cancel your order before it is shipped. Once an order has been dispatched, cancellation is not possible. To cancel, go to My Orders → Select Order → Click Cancel Order. Cancelled orders (before payment processing) will not be charged." },
+      { heading: "Product Warranty", content: "Some products may come with a manufacturer's warranty. Warranty claims should be directed to the manufacturer directly using the details provided in the product package. E-Commerce is not responsible for handling warranty claims." },
+      { heading: "Contact Support", content: "For any queries related to your order or product, please contact our support team at info@quleep.in or +91 98830 19518. We're here to help you make informed purchase decisions." },
     ],
   },
   privacy: {
@@ -41,10 +43,11 @@ const policies = {
     sections: [
       { heading: "Acceptance of Terms", content: "By accessing and using E-Commerce, you agree to be bound by these Terms of Service. If you do not agree, please do not use our platform." },
       { heading: "User Accounts", content: "You must provide accurate information when creating an account. You are responsible for maintaining the security of your account credentials. You must be at least 13 years old to use our platform." },
-      { heading: "Buying", content: "When you place an order, you are making an offer to purchase. We reserve the right to cancel orders due to pricing errors, stock issues, or suspected fraud. Prices are in Indian Rupees and include applicable taxes." },
-      { heading: "Selling", content: "Vendors must provide accurate product information. Listing counterfeit, illegal, or prohibited items will result in immediate account termination. Vendors are responsible for product quality and timely fulfillment." },
+      { heading: "Buying", content: "When you place an order, you are making an offer to purchase. We reserve the right to cancel orders due to pricing errors, stock issues, or suspected fraud. Prices are in Indian Rupees and include applicable taxes. All sales are final — please review our No Returns Policy before purchasing." },
+      { heading: "Selling", content: "Vendors must provide accurate product information. Listing counterfeit, illegal, or prohibited items will result in immediate account termination. Vendors are responsible for product quality, accurate descriptions, and timely fulfillment." },
+      { heading: "No Returns Policy", content: "All sales on E-Commerce are final. We do not offer returns or refunds on purchased products. Please review product details carefully before placing your order. Cancellations are only allowed before order dispatch." },
       { heading: "Intellectual Property", content: "All content on E-Commerce including logos, designs, text, and software is our intellectual property. Product images and descriptions belong to respective vendors. You may not copy or reproduce any content without permission." },
-      { heading: "Limitation of Liability", content: "E-Commerce acts as a marketplace platform. We are not liable for product quality, delivery delays caused by logistics partners, or disputes between buyers and sellers. We will however mediate disputes in good faith." },
+      { heading: "Limitation of Liability", content: "E-Commerce acts as a marketplace platform. We are not liable for product quality, delivery delays caused by logistics partners, or disputes between buyers and sellers. We will however mediate disputes in good faith on a case-by-case basis." },
       { heading: "Modifications", content: "We reserve the right to modify these terms at any time. Changes will be effective immediately upon posting. Continued use of the platform after changes constitutes acceptance of new terms." },
     ],
   },
@@ -53,13 +56,13 @@ const policies = {
     icon: "🏪",
     sections: [
       { heading: "Getting Started", content: "Register as a vendor with your business details including store name, GST number, and PAN. Your application will be reviewed by our team within 24-48 hours. Once approved, you can start listing products immediately." },
-      { heading: "Product Listings", content: "All product listings must have accurate titles, descriptions, images, pricing, and stock information. Use high-quality images showing the actual product. Misleading listings will be rejected or removed without notice." },
+      { heading: "Product Listings", content: "All product listings must have accurate titles, descriptions, images, pricing, and stock information. Use high-quality images showing the actual product. Since we have a no-returns policy, listings must be extremely accurate to prevent customer disputes." },
       { heading: "Pricing", content: "Set competitive prices for your products. You can set a compare price (MRP) and selling price. Prices must include all applicable taxes. Frequent unreasonable price changes may affect your visibility on the platform." },
       { heading: "Order Fulfillment", content: "Process orders within 24 hours of receiving them. Pack products securely to prevent damage during shipping. Provide tracking information once shipped. Delayed fulfillment consistently may affect your seller rating and visibility." },
-      { heading: "Product Quality", content: "Maintain high product quality standards. Products must match their listing descriptions exactly. High return rates due to quality issues may result in product delisting or account suspension." },
+      { heading: "Product Quality", content: "Maintain high product quality standards. Products must match their listing descriptions exactly. Since we operate a no-returns policy, quality mismatches will result in customer complaints and may lead to product delisting or account suspension." },
       { heading: "Prohibited Items", content: "You cannot sell counterfeit products, illegal items, weapons, drugs, adult content, or any items that violate Indian law. Listing prohibited items will result in immediate permanent account termination." },
-      { heading: "Communication", content: "Respond to customer queries and complaints promptly. Maintain professional communication at all times. Do not share personal contact information or attempt to redirect customers off-platform." },
-      { heading: "Performance Standards", content: "Maintain an order fulfillment rate above 95%, a return rate below 10%, and a customer rating above 3.5 stars. Consistently poor performance will result in account review and possible suspension." },
+      { heading: "Communication", content: "Respond to customer queries promptly, especially pre-purchase questions. Since customers cannot return products, they may ask detailed questions before buying. Maintain professional communication at all times." },
+      { heading: "Performance Standards", content: "Maintain an order fulfillment rate above 95%, a complaint rate below 5%, and a customer rating above 3.5 stars. Consistently poor performance will result in account review and possible suspension." },
     ],
   },
   "commission-policy": {
@@ -69,7 +72,7 @@ const policies = {
       { heading: "Commission Structure", content: "E-Commerce charges a commission on each successful sale. The default commission rate is 10% of the product selling price. Commission rates may vary by product category and seller tier." },
       { heading: "Category-wise Commission", content: "Electronics: 8% | Fashion & Apparel: 12% | Furniture & Home: 10% | Books & Stationery: 6% | Beauty & Personal Care: 15% | Sports & Fitness: 10% | Kitchen & Dining: 10% | Home Decor: 12% | Toys & Games: 10%. Rates subject to change with 30 days prior notice." },
       { heading: "Payment Settlement", content: "Vendor earnings (product price minus commission) are settled every 7 days to the registered bank account. Settlements for orders marked as delivered are processed in the next settlement cycle. Minimum settlement amount is ₹100." },
-      { heading: "Deductions", content: "Commission is calculated on the selling price excluding shipping charges. Returns and refunds will result in full commission reversal. Any payment gateway charges for online payments are borne by the platform." },
+      { heading: "Deductions", content: "Commission is calculated on the selling price excluding shipping charges. Any payment gateway charges for online payments are borne by the platform. Since we have a no-returns policy, there are no commission reversals due to returns." },
       { heading: "TDS Deduction", content: "TDS (Tax Deducted at Source) at 1% will be deducted from vendor settlements as per Income Tax Act Section 194-O. TDS certificates will be provided quarterly. Vendors with valid PAN can claim TDS credit in their ITR." },
       { heading: "Promotional Support", content: "Featured product placement and promotional campaigns are available at additional charges. Sponsored listings start from ₹99 per day. Contact our vendor support team for custom promotional packages." },
     ],
@@ -82,10 +85,10 @@ const policies = {
       { heading: "Vendor Eligibility", content: "To become a vendor you must be at least 18 years old, be a legal resident or registered business in India, possess a valid PAN card, have an active bank account in your name or business name, and provide accurate KYC documents during registration." },
       { heading: "Account Verification", content: "All vendor accounts require document verification before approval. You must provide PAN card, cancelled cheque or bank passbook, and any applicable business registration documents. False documents will result in permanent ban and possible legal action." },
       { heading: "Platform Rights", content: "E-Commerce reserves the right to approve or reject any vendor application without explanation. We may suspend or terminate vendor accounts that violate our policies, receive excessive complaints, maintain poor performance metrics, or are found to engage in fraudulent activity." },
-      { heading: "Vendor Obligations", content: "As a vendor you must maintain accurate product listings, fulfill orders within specified timeframes, maintain stock accuracy, respond to customer queries within 24 hours, handle returns according to our return policy, and comply with all applicable Indian laws and regulations." },
+      { heading: "Vendor Obligations", content: "As a vendor you must maintain accurate product listings, fulfill orders within specified timeframes, maintain stock accuracy, respond to customer queries within 24 hours, ensure product quality matches descriptions exactly (since we have a no-returns policy), and comply with all applicable Indian laws and regulations." },
       { heading: "Intellectual Property", content: "You warrant that all product images, descriptions, and content you upload are either owned by you or you have the right to use them. You grant E-Commerce a non-exclusive license to display your product content for the purpose of selling on our platform." },
       { heading: "Indemnification", content: "You agree to indemnify E-Commerce against any claims, damages, or expenses arising from your products, product defects, IP violations, or breach of this agreement. This includes legal fees and third-party claims." },
-      { heading: "Dispute Resolution", content: "Disputes between vendors and customers will be mediated by E-Commerce support. Our decision in customer disputes is final. Vendor-platform disputes will be resolved under Indian law in the jurisdiction of Maharashtra." },
+      { heading: "Dispute Resolution", content: "Since we operate a no-returns policy, product-related disputes will be reviewed by E-Commerce support on a case-by-case basis. Our decision is final and binding. Vendor-platform disputes will be resolved under Indian law in the jurisdiction of Maharashtra." },
       { heading: "Termination", content: "Either party may terminate this agreement with 30 days written notice. Immediate termination may occur in cases of fraud, policy violations, or legal violations. Upon termination, pending settlements will be processed within 30 days after deducting any dues." },
     ],
   },
@@ -109,7 +112,7 @@ const policies = {
     sections: [
       { heading: "What Are Cookies", content: "Cookies are small text files stored on your device when you visit our website. They help us remember your preferences, maintain your session, and provide a personalized shopping experience. Cookies do not contain personal information like your name or payment details." },
       { heading: "Types of Cookies We Use", content: "Essential Cookies: Required for the website to function properly, including login sessions, shopping cart, and security features. These cannot be disabled. Performance Cookies: Help us understand how visitors use our website, which pages are most popular, and identify technical issues. Functional Cookies: Remember your preferences like language, currency, country, and display settings. Marketing Cookies: Used to show relevant advertisements and measure the effectiveness of our marketing campaigns." },
-      { heading: "Third-Party Cookies", content: "We use third-party services that may place cookies on your device. These include Google Analytics for website traffic analysis, payment processors (Razorpay, PayPal) for secure transactions, social media plugins (Facebook, Instagram, Twitter) for sharing features, and advertising networks for personalized ads. Each third party has their own cookie and privacy policies." },
+      { heading: "Third-Party Cookies", content: "We use third-party services that may place cookies on your device. These include Google Analytics for website traffic analysis, payment processors (Cashfree) for secure transactions, social media plugins (Facebook, Instagram, Twitter) for sharing features, and advertising networks for personalized ads. Each third party has their own cookie and privacy policies." },
       { heading: "Cookie Duration", content: "Session Cookies: Temporary cookies that are deleted when you close your browser. Used for maintaining your login session and shopping cart. Persistent Cookies: Remain on your device for a set period (typically 1-12 months). Used for remembering your preferences and providing personalized recommendations." },
       { heading: "Managing Cookies", content: "You can manage cookies through your browser settings. Most browsers allow you to block or delete cookies. However, disabling essential cookies may prevent you from using certain features like the shopping cart and checkout. You can also use browser extensions to manage cookie preferences more granularly." },
       { heading: "Cookie Consent", content: "By continuing to use our website, you consent to our use of cookies as described in this policy. You can withdraw your consent at any time by clearing your browser cookies and adjusting your browser settings. We will display a cookie consent banner on your first visit to inform you about our cookie usage." },
@@ -123,8 +126,8 @@ const policies = {
       { heading: "Grievance Redressal Mechanism", content: "In accordance with the Information Technology Act, 2000 and the Consumer Protection Act, 2019, E-Commerce has established a grievance redressal mechanism for resolving user complaints related to products, services, orders, payments, and privacy concerns." },
       { heading: "Grievance Officer", content: "Name: Quleep Support Team. Email: grievance@quleep.in. Phone: +91 98830 19518. Address: Bhutani Alphathum, 1432 B-Wing, Sector 90, Noida – 201305, Uttar Pradesh, India. Working Hours: Monday to Saturday, 9:00 AM to 6:00 PM IST." },
       { heading: "How to File a Grievance", content: "Step 1: Contact our customer support via email at grievance@quleep.in with your order number, account details, and a clear description of your complaint. Step 2: You will receive an acknowledgment within 24 hours with a unique grievance ID. Step 3: Our team will investigate and provide a resolution within 15 business days." },
-      { heading: "Types of Grievances", content: "We handle grievances related to: Order-related issues, Payment disputes, Account issues, Product quality complaints, Vendor-related complaints, Privacy and data protection concerns, and Platform-related technical issues." },
-      { heading: "Resolution Timeframes", content: "Acknowledgment: Within 24 hours. Initial Response: Within 48 hours. Final Resolution: Within 15 business days for standard grievances, 30 business days for complex cases. Refund Processing: 5-7 business days after resolution approval." },
+      { heading: "Types of Grievances", content: "We handle grievances related to: Order-related issues, Payment disputes, Account issues, Damaged or wrong product deliveries, Vendor-related complaints, Privacy and data protection concerns, and Platform-related technical issues." },
+      { heading: "Resolution Timeframes", content: "Acknowledgment: Within 24 hours. Initial Response: Within 48 hours. Final Resolution: Within 15 business days for standard grievances, 30 business days for complex cases." },
       { heading: "Escalation Process", content: "Level 1: Customer Support Team. Level 2: Senior Support Manager. Level 3: Grievance Officer. Level 4: Consumer Forum or National Consumer Helpline at 1800-11-4000." },
     ],
   },
@@ -132,12 +135,12 @@ const policies = {
     title: "Payment & Pricing Policy",
     icon: "💳",
     sections: [
-      { heading: "Accepted Payment Methods", content: "We accept: Cash on Delivery (COD) for orders up to ₹25,000, Credit and Debit Cards (Visa, Mastercard, RuPay, American Express), UPI payments (Google Pay, PhonePe, Paytm, BHIM), Net Banking from all major Indian banks, Digital Wallets, and EMI options on select cards for orders above ₹3,000." },
+      { heading: "Accepted Payment Methods", content: "We accept: Credit and Debit Cards (Visa, Mastercard, RuPay, American Express), UPI payments (Google Pay, PhonePe, Paytm, BHIM), Net Banking from all major Indian banks, Digital Wallets, and EMI options on select cards for orders above ₹3,000. All payments are processed securely through Cashfree." },
       { heading: "Pricing", content: "All prices are in Indian Rupees (₹) and include applicable GST unless otherwise stated. Prices are set by individual vendors and may vary. We display both selling price and MRP where applicable." },
       { heading: "Payment Security", content: "All transactions are processed through PCI-DSS compliant gateways. We use 256-bit SSL encryption. We never store complete card details. Two-factor authentication is enabled for all online payments." },
       { heading: "Taxes", content: "GST is applicable on all products as per Indian tax laws. The GST rate varies by product category (5%, 12%, 18%, or 28%). GST amount is included in the displayed price for B2C transactions." },
-      { heading: "Failed Payments", content: "If your payment fails, the amount will be refunded within 5-7 business days. If the amount is debited but the order is not confirmed, please wait 24 hours for automatic reversal." },
-      { heading: "Refund Policy", content: "Refunds are processed within 5-7 business days after receiving the returned item. Refunds are credited to the original payment method. COD orders are refunded via bank transfer." },
+      { heading: "Failed Payments", content: "If your payment fails, the amount (if debited) will be refunded within 5-7 business days directly by your bank. If the amount is debited but the order is not confirmed, please wait 24 hours for automatic reversal or contact your bank." },
+      { heading: "All Sales Final", content: "Please note: Once payment is successful and order is confirmed, all sales are final. We do not offer refunds on purchased products. Please review our No Returns Policy before completing your purchase." },
     ],
   },
   "intellectual-property": {
@@ -160,7 +163,7 @@ const policies = {
       { heading: "Types of Fraud We Monitor", content: "Payment fraud, Account takeover, Seller fraud, Buyer fraud, Identity theft, Phishing attempts, and Manipulation of promotions and coupons." },
       { heading: "Prevention Measures", content: "Real-time transaction monitoring, Two-factor authentication, Device fingerprinting, Behavioral analytics, Address verification, and Manual review of suspicious transactions." },
       { heading: "Reporting Fraud", content: "Report suspicious activity to fraud@quleep.in or call +91 98830 19518. Include order number, description of suspicious activity, and screenshots if available." },
-      { heading: "Buyer Protection", content: "Full refund for products not received, Full refund for products significantly different from listing, Protection against unauthorized transactions." },
+      { heading: "Buyer Protection", content: "Protection against unauthorized transactions, Secure payment processing, and Verified vendor listings. Please note: This does not include a general returns policy — all sales are final." },
       { heading: "Consequences", content: "Immediate account suspension, Forfeiture of pending payments, Permanent ban, Reporting to law enforcement, and Civil legal action." },
     ],
   },
@@ -202,7 +205,7 @@ const PolicyPage = () => {
     { label: "Privacy", slug: "privacy" },
     { label: "Cookies", slug: "cookies" },
     { label: "Shipping", slug: "shipping-info" },
-    { label: "Returns", slug: "returns" },
+    { label: "No Returns", slug: "no-returns" },
     { label: "Payment", slug: "payment-pricing" },
     { label: "Seller Guide", slug: "seller-guidelines" },
     { label: "Commission", slug: "commission-policy" },
@@ -238,6 +241,11 @@ const PolicyPage = () => {
                     Vendor Policy
                   </span>
                 )}
+                {slug === "no-returns" && (
+                  <span className="ml-2 inline-flex items-center bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    Important
+                  </span>
+                )}
               </p>
             </div>
           </div>
@@ -245,6 +253,18 @@ const PolicyPage = () => {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+
+        {slug === "no-returns" && (
+          <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 mb-6 flex items-start gap-3">
+            <span className="text-2xl shrink-0">⚠️</span>
+            <div>
+              <p className="text-sm font-extrabold text-red-900 m-0 mb-1">All Sales Are Final</p>
+              <p className="text-xs text-red-800 m-0 leading-relaxed">
+                We do not accept returns or refunds. Please read this policy carefully before making a purchase.
+              </p>
+            </div>
+          </div>
+        )}
 
         {isVendorPolicy && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 flex items-start gap-3">

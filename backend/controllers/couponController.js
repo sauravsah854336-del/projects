@@ -1,72 +1,59 @@
-const Coupon = require("../models/coupon");
-const Order = require("../models/order");
+const {
+  createCoupon: createCouponInDB,
+  getCouponByCode,
+  getCouponById,
+  getAllCoupons: getAllCouponsFromDB,
+  getPublicCoupons: getPublicCouponsFromDB,
+  updateCoupon: updateCouponInDB,
+  saveCoupon,
+  deleteCouponById,
+  isValid,
+  canBeUsedBy,
+  calculateDiscount,
+} = require("../models/dynamodb/couponModel");
+const { getAllOrders } = require("../models/dynamodb/orderModel");
 
 const adminCreateCoupon = async (req, res) => {
   try {
     const {
-      code,
-      description,
-      discountType,
-      discountValue,
-      maxDiscountAmount,
-      minOrderAmount,
-      startDate,
-      expiryDate,
-      usageLimit,
-      usageLimitPerUser,
-      applicableCategories,
-      applicableProducts,
-      applicableCountries,
-      firstTimeUserOnly,
-      isPublic,
+      code, description, discountType, discountValue,
+      maxDiscountAmount, minOrderAmount, startDate, expiryDate,
+      usageLimit, usageLimitPerUser,
+      applicableCategories, applicableProducts, applicableCountries,
+      firstTimeUserOnly, isPublic,
     } = req.body;
 
     if (!code || !description || !discountType || !expiryDate) {
-      return res.status(400).json({
-        success: false,
-        message: "Code, description, discount type, and expiry date are required",
-      });
+      return res.status(400).json({ success: false, message: "Code, description, discount type, and expiry date are required" });
     }
 
     if (discountType !== "free_shipping" && !discountValue) {
-      return res.status(400).json({
-        success: false,
-        message: "Discount value is required",
-      });
+      return res.status(400).json({ success: false, message: "Discount value is required" });
     }
 
     if (discountType === "percentage" && discountValue > 100) {
-      return res.status(400).json({
-        success: false,
-        message: "Percentage discount cannot exceed 100%",
-      });
+      return res.status(400).json({ success: false, message: "Percentage discount cannot exceed 100%" });
     }
 
     const normalizedCode = code.toUpperCase().trim();
 
-    const existing = await Coupon.findOne({ code: normalizedCode });
+    const existing = await getCouponByCode(normalizedCode);
     if (existing) {
-      return res.status(409).json({
-        success: false,
-        message: "Coupon code already exists",
-      });
+      return res.status(409).json({ success: false, message: "Coupon code already exists" });
     }
 
     if (new Date(expiryDate) <= new Date()) {
-      return res.status(400).json({
-        success: false,
-        message: "Expiry date must be in the future",
-      });
+      return res.status(400).json({ success: false, message: "Expiry date must be in the future" });
     }
 
-    const coupon = await Coupon.create({
+    const coupon = await createCouponInDB({
       code: normalizedCode,
       description: description.trim(),
       discountType,
       discountValue: discountType === "free_shipping" ? 0 : discountValue,
       maxDiscountAmount: maxDiscountAmount || null,
       minOrderAmount: minOrderAmount || 0,
-      startDate: startDate || Date.now(),
+      startDate: startDate || new Date().toISOString(),
       expiryDate,
       usageLimit: usageLimit || null,
       usageLimitPerUser: usageLimitPerUser || 1,
@@ -78,11 +65,7 @@ const adminCreateCoupon = async (req, res) => {
       createdBy: req.user.id,
     });
 
-    return res.status(201).json({
-      success: true,
-      message: "Coupon created successfully",
-      data: coupon,
-    });
+    return res.status(201).json({ success: true, message: "Coupon created successfully", data: coupon });
   } catch (err) {
     console.error("createCoupon error:", err);
     return res.status(500).json({ success: false, message: err.message });
@@ -93,64 +76,15 @@ const adminGetAllCoupons = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
-    const skip = (page - 1) * limit;
     const { status, search, type } = req.query;
 
-    const filter = {};
-
-    if (status === "active") {
-      filter.isActive = true;
-      filter.expiryDate = { $gt: new Date() };
-    } else if (status === "expired") {
-      filter.expiryDate = { $lte: new Date() };
-    } else if (status === "inactive") {
-      filter.isActive = false;
-    }
-
-    if (type) filter.discountType = type;
-
-    if (search) {
-      const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      filter.$or = [
-        { code: { $regex: escaped, $options: "i" } },
-        { description: { $regex: escaped, $options: "i" } },
-      ];
-    }
-
-    const coupons = await Coupon.find(filter)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .populate("createdBy", "firstName lastName")
-      .populate("applicableCategories", "name")
-      .lean();
-
-    const total = await Coupon.countDocuments(filter);
-
-    const stats = await Coupon.aggregate([
-      {
-        $group: {
-          _id: null,
-          totalCoupons: { $sum: 1 },
-          activeCoupons: {
-            $sum: {
-              $cond: [
-                { $and: [{ $eq: ["$isActive", true] }, { $gt: ["$expiryDate", new Date()] }] },
-                1,
-                0,
-              ],
-            },
-          },
-          totalUsage: { $sum: "$usedCount" },
-        },
-      },
-    ]);
+    const result = await getAllCouponsFromDB({ status, search, type, page, limit });
 
     return res.status(200).json({
       success: true,
-      data: coupons,
-      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
-      stats: stats[0] || { totalCoupons: 0, activeCoupons: 0, totalUsage: 0 },
+      data: result.items,
+      pagination: { page: result.page, limit: result.limit, total: result.total, pages: result.pages },
+      stats: result.stats,
     });
   } catch (err) {
     console.error("getAllCoupons error:", err);
@@ -161,11 +95,7 @@ const adminGetAllCoupons = async (req, res) => {
 const adminGetCouponById = async (req, res) => {
   try {
     const { id } = req.params;
-    const coupon = await Coupon.findById(id)
-      .populate("createdBy", "firstName lastName email")
-      .populate("applicableCategories", "name slug")
-      .populate("applicableProducts", "name slug")
-      .populate("usedBy.user", "firstName lastName email");
+    const coupon = await getCouponById(id);
 
     if (!coupon) {
       return res.status(404).json({ success: false, message: "Coupon not found" });
@@ -183,41 +113,28 @@ const adminUpdateCoupon = async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
 
-    if (updates.code) {
-      updates.code = updates.code.toUpperCase().trim();
-      const existing = await Coupon.findOne({
-        code: updates.code,
-        _id: { $ne: id },
-      });
-      if (existing) {
-        return res.status(409).json({
-          success: false,
-          message: "Coupon code already exists",
-        });
-      }
-    }
-
-    if (updates.discountType === "percentage" && updates.discountValue > 100) {
-      return res.status(400).json({
-        success: false,
-        message: "Percentage discount cannot exceed 100%",
-      });
-    }
-
-    const coupon = await Coupon.findByIdAndUpdate(id, updates, {
-      new: true,
-      runValidators: true,
-    });
-
+    const coupon = await getCouponById(id);
     if (!coupon) {
       return res.status(404).json({ success: false, message: "Coupon not found" });
     }
 
-    return res.status(200).json({
-      success: true,
-      message: "Coupon updated successfully",
-      data: coupon,
-    });
+    if (updates.code && updates.code.toUpperCase().trim() !== coupon.code) {
+      const existing = await getCouponByCode(updates.code.toUpperCase().trim());
+      if (existing) {
+        return res.status(409).json({ success: false, message: "Coupon code already exists" });
+      }
+    }
+
+    if (updates.discountType === "percentage" && updates.discountValue > 100) {
+      return res.status(400).json({ success: false, message: "Percentage discount cannot exceed 100%" });
+    }
+
+    if (updates.startDate) updates.startDate = new Date(updates.startDate).toISOString();
+    if (updates.expiryDate) updates.expiryDate = new Date(updates.expiryDate).toISOString();
+
+    const updated = await updateCouponInDB(coupon.code, updates);
+
+    return res.status(200).json({ success: true, message: "Coupon updated successfully", data: updated });
   } catch (err) {
     console.error("updateCoupon error:", err);
     return res.status(500).json({ success: false, message: err.message });
@@ -227,16 +144,13 @@ const adminUpdateCoupon = async (req, res) => {
 const adminDeleteCoupon = async (req, res) => {
   try {
     const { id } = req.params;
-    const coupon = await Coupon.findByIdAndDelete(id);
+    const deleted = await deleteCouponById(id);
 
-    if (!coupon) {
+    if (!deleted) {
       return res.status(404).json({ success: false, message: "Coupon not found" });
     }
 
-    return res.status(200).json({
-      success: true,
-      message: "Coupon deleted successfully",
-    });
+    return res.status(200).json({ success: true, message: "Coupon deleted successfully" });
   } catch (err) {
     console.error("deleteCoupon error:", err);
     return res.status(500).json({ success: false, message: err.message });
@@ -246,19 +160,18 @@ const adminDeleteCoupon = async (req, res) => {
 const adminToggleCouponStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const coupon = await Coupon.findById(id);
+    const coupon = await getCouponById(id);
 
     if (!coupon) {
       return res.status(404).json({ success: false, message: "Coupon not found" });
     }
 
-    coupon.isActive = !coupon.isActive;
-    await coupon.save();
+    const updated = await updateCouponInDB(coupon.code, { isActive: !coupon.isActive });
 
     return res.status(200).json({
       success: true,
-      message: `Coupon ${coupon.isActive ? "activated" : "deactivated"}`,
-      data: coupon,
+      message: `Coupon ${updated.isActive ? "activated" : "deactivated"}`,
+      data: updated,
     });
   } catch (err) {
     console.error("toggleCouponStatus error:", err);
@@ -269,34 +182,9 @@ const adminToggleCouponStatus = async (req, res) => {
 const getPublicCoupons = async (req, res) => {
   try {
     const { countryCode } = req.query;
-    const now = new Date();
+    const coupons = await getPublicCouponsFromDB(countryCode);
 
-    const filter = {
-      isActive: true,
-      isPublic: true,
-      startDate: { $lte: now },
-      expiryDate: { $gt: now },
-    };
-
-    if (countryCode) {
-      filter.$or = [
-        { applicableCountries: { $size: 0 } },
-        { applicableCountries: countryCode.toUpperCase() },
-      ];
-    }
-
-    const coupons = await Coupon.find(filter)
-      .select(
-        "code description discountType discountValue maxDiscountAmount minOrderAmount expiryDate firstTimeUserOnly"
-      )
-      .sort({ createdAt: -1 })
-      .limit(20)
-      .lean();
-
-    return res.status(200).json({
-      success: true,
-      data: coupons,
-    });
+    return res.status(200).json({ success: true, data: coupons });
   } catch (err) {
     console.error("getPublicCoupons error:", err);
     return res.status(500).json({ success: false, message: err.message });
@@ -309,37 +197,22 @@ const validateCoupon = async (req, res) => {
     const userId = req.user.id;
 
     if (!code || subtotal === undefined) {
-      return res.status(400).json({
-        success: false,
-        message: "Code and subtotal are required",
-      });
+      return res.status(400).json({ success: false, message: "Code and subtotal are required" });
     }
 
-    const coupon = await Coupon.findOne({
-      code: code.toUpperCase().trim(),
-    });
-
+    const coupon = await getCouponByCode(code.toUpperCase().trim());
     if (!coupon) {
-      return res.status(404).json({
-        success: false,
-        message: "Invalid coupon code",
-      });
+      return res.status(404).json({ success: false, message: "Invalid coupon code" });
     }
 
-    const validity = coupon.isValid();
+    const validity = isValid(coupon);
     if (!validity.valid) {
-      return res.status(400).json({
-        success: false,
-        message: validity.reason,
-      });
+      return res.status(400).json({ success: false, message: validity.reason });
     }
 
-    const userCheck = coupon.canBeUsedBy(userId);
+    const userCheck = canBeUsedBy(coupon, userId);
     if (!userCheck.canUse) {
-      return res.status(400).json({
-        success: false,
-        message: userCheck.reason,
-      });
+      return res.status(400).json({ success: false, message: userCheck.reason });
     }
 
     if (subtotal < coupon.minOrderAmount) {
@@ -350,57 +223,22 @@ const validateCoupon = async (req, res) => {
       });
     }
 
-    if (
-      coupon.applicableCountries?.length > 0 &&
-      countryCode &&
-      !coupon.applicableCountries.includes(countryCode.toUpperCase())
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "This coupon is not valid in your country",
-      });
+    if (coupon.applicableCountries?.length > 0 && countryCode &&
+        !coupon.applicableCountries.includes(countryCode.toUpperCase())) {
+      return res.status(400).json({ success: false, message: "This coupon is not valid in your country" });
     }
 
     if (coupon.firstTimeUserOnly) {
-      const previousOrders = await Order.countDocuments({
-        user: userId,
-        orderStatus: { $nin: ["cancelled"] },
-      });
-      if (previousOrders > 0) {
-        return res.status(400).json({
-          success: false,
-          message: "This coupon is only for first-time buyers",
-        });
-      }
-    }
-
-    if (coupon.applicableCategories?.length > 0 && cartItems?.length > 0) {
-      const categoryIds = coupon.applicableCategories.map((c) => c.toString());
-      const hasApplicableItem = cartItems.some((item) =>
-        categoryIds.includes(item.categoryId?.toString())
+      const ordersResult = await getAllOrders({ page: 1, limit: 1 });
+      const userOrders = ordersResult.items.filter(
+        (o) => o.userId === userId && o.orderStatus !== "cancelled"
       );
-      if (!hasApplicableItem) {
-        return res.status(400).json({
-          success: false,
-          message: "Coupon not applicable to items in your cart",
-        });
+      if (userOrders.length > 0) {
+        return res.status(400).json({ success: false, message: "This coupon is only for first-time buyers" });
       }
     }
 
-    if (coupon.applicableProducts?.length > 0 && cartItems?.length > 0) {
-      const productIds = coupon.applicableProducts.map((p) => p.toString());
-      const hasApplicableItem = cartItems.some((item) =>
-        productIds.includes(item.productId?.toString())
-      );
-      if (!hasApplicableItem) {
-        return res.status(400).json({
-          success: false,
-          message: "Coupon not applicable to items in your cart",
-        });
-      }
-    }
-
-    const discount = coupon.calculateDiscount(subtotal);
+    const discount = calculateDiscount(coupon, subtotal);
 
     return res.status(200).json({
       success: true,
@@ -427,27 +265,25 @@ const validateCoupon = async (req, res) => {
 
 const applyCouponUsage = async (couponCode, userId) => {
   try {
-    const coupon = await Coupon.findOne({ code: couponCode.toUpperCase() });
+    const coupon = await getCouponByCode(couponCode.toUpperCase());
     if (!coupon) return null;
 
-    coupon.usedCount += 1;
+    const usedBy = coupon.usedBy || [];
+    const userIndex = usedBy.findIndex((u) => (u.user || u) === userId);
 
-    const userUsageIndex = coupon.usedBy.findIndex(
-      (u) => u.user?.toString() === userId.toString()
-    );
-
-    if (userUsageIndex >= 0) {
-      coupon.usedBy[userUsageIndex].usedCount += 1;
-      coupon.usedBy[userUsageIndex].lastUsedAt = new Date();
+    if (userIndex >= 0) {
+      usedBy[userIndex].usedCount = (usedBy[userIndex].usedCount || 1) + 1;
+      usedBy[userIndex].lastUsedAt = new Date().toISOString();
     } else {
-      coupon.usedBy.push({
-        user: userId,
-        usedCount: 1,
-        lastUsedAt: new Date(),
-      });
+      usedBy.push({ user: userId, usedCount: 1, lastUsedAt: new Date().toISOString() });
     }
 
-    await coupon.save();
+    await saveCoupon({
+      ...coupon,
+      usedCount: (coupon.usedCount || 0) + 1,
+      usedBy,
+    });
+
     return coupon;
   } catch (err) {
     console.error("applyCouponUsage error:", err);

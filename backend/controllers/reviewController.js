@@ -1,7 +1,19 @@
-const Review = require("../models/Review");
-const Order = require("../models/Order");
-const Product = require("../models/Product");
-const mongoose = require("mongoose");
+const {
+  createReview: createReviewInDB,
+  getReviewByReviewId,
+  getProductReviews: getProductReviewsFromDB,
+  getUserReviews,
+  getExistingReview,
+  getAllReviews,
+  getVendorProductReviews,
+  updateReview: updateReviewInDB,
+  saveReview,
+  recalcProductRating,
+} = require("../models/dynamodb/reviewModel");
+const { getProductById } = require("../models/dynamodb/productModel");
+const { getOrderById } = require("../models/dynamodb/orderModel");
+const { getUserById } = require("../models/dynamodb/userModel");
+const { getProductsByVendor } = require("../models/dynamodb/productModel");
 
 const createReview = async (req, res) => {
   try {
@@ -9,53 +21,35 @@ const createReview = async (req, res) => {
     const userId = req.user.id;
 
     if (!rating || rating < 1 || rating > 5) {
-      return res.status(400).json({
-        success: false,
-        message: "Rating must be between 1 and 5",
-      });
+      return res.status(400).json({ success: false, message: "Rating must be between 1 and 5" });
     }
 
-    const product = await Product.findById(productId);
+    const product = await getProductById(productId);
     if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: "Product not found",
-      });
+      return res.status(404).json({ success: false, message: "Product not found" });
     }
 
-    const order = await Order.findOne({
-      _id: orderId,
-      user: userId,
-      orderStatus: "delivered",
-      "items.product": productId,
-    });
-
-    if (!order) {
-      return res.status(403).json({
-        success: false,
-        message: "You can only review products from delivered orders",
-      });
+    const order = await getOrderById(orderId);
+    if (!order || order.userId !== userId || order.orderStatus !== "delivered") {
+      return res.status(403).json({ success: false, message: "You can only review products from delivered orders" });
     }
 
-    const existingReview = await Review.findOne({
-      product: productId,
-      user: userId,
-      isDeleted: false,
-    });
+    const hasProduct = order.items.some((item) => item.product === productId);
+    if (!hasProduct) {
+      return res.status(403).json({ success: false, message: "This product is not in this order" });
+    }
 
-    if (existingReview) {
-      return res.status(400).json({
-        success: false,
-        message: "You have already reviewed this product",
-      });
+    const existing = await getExistingReview(productId, userId);
+    if (existing) {
+      return res.status(400).json({ success: false, message: "You have already reviewed this product" });
     }
 
     const images = req.body.images || [];
 
-    const review = await Review.create({
-      product: productId,
-      user: userId,
-      order: orderId,
+    const review = await createReviewInDB({
+      productId,
+      userId,
+      orderId,
       rating,
       title: title || "",
       body: body || "",
@@ -63,29 +57,15 @@ const createReview = async (req, res) => {
       isVerifiedPurchase: true,
     });
 
-    await Review.recalcProductRating(productId);
+    await recalcProductRating(productId);
 
-    const populated = await Review.findById(review._id).populate(
-      "user",
-      "firstName lastName avatar"
-    );
+    const user = await getUserById(userId);
+    review.user = user ? { _id: user._id, firstName: user.firstName, lastName: user.lastName, avatar: user.avatar } : { _id: userId };
 
-    return res.status(201).json({
-      success: true,
-      message: "Review submitted successfully",
-      data: populated,
-    });
+    return res.status(201).json({ success: true, message: "Review submitted successfully", data: review });
   } catch (err) {
-    if (err.code === 11000) {
-      return res.status(400).json({
-        success: false,
-        message: "You have already reviewed this product",
-      });
-    }
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    console.error("createReview error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -94,71 +74,34 @@ const getProductReviews = async (req, res) => {
     const { productId } = req.params;
     const { sort = "newest", rating, page = 1, limit = 10 } = req.query;
 
-    const filter = {
-      product: productId,
-      isDeleted: false,
-    };
-
-    if (rating) {
-      filter.rating = Number(rating);
-    }
-
-    let sortOption = {};
-    if (sort === "newest") sortOption = { createdAt: -1 };
-    else if (sort === "oldest") sortOption = { createdAt: 1 };
-    else if (sort === "highest") sortOption = { rating: -1 };
-    else if (sort === "lowest") sortOption = { rating: 1 };
-    else if (sort === "helpful") sortOption = { helpfulVotes: -1 };
-
-    const skip = (Number(page) - 1) * Number(limit);
-
-    const [reviews, total] = await Promise.all([
-      Review.find(filter)
-        .populate("user", "firstName lastName avatar")
-        .sort(sortOption)
-        .skip(skip)
-        .limit(Number(limit)),
-      Review.countDocuments(filter),
-    ]);
-
-    const breakdown = await Review.aggregate([
-      {
-        $match: {
-          product: new mongoose.Types.ObjectId(productId),
-          isDeleted: false,
-        },
-      },
-      {
-        $group: {
-          _id: "$rating",
-          count: { $sum: 1 },
-        },
-      },
-    ]);
-
-    const ratingBreakdown = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-    breakdown.forEach((b) => {
-      ratingBreakdown[b._id] = b.count;
+    const result = await getProductReviewsFromDB(productId, {
+      sort,
+      rating,
+      page: Number(page),
+      limit: Number(limit),
     });
+
+    const enrichedReviews = await Promise.all(
+      result.reviews.map(async (review) => {
+        const user = await getUserById(review.userId);
+        return {
+          ...review,
+          user: user ? { _id: user._id, firstName: user.firstName, lastName: user.lastName, avatar: user.avatar } : { _id: review.userId },
+        };
+      })
+    );
 
     return res.status(200).json({
       success: true,
       data: {
-        reviews,
-        ratingBreakdown,
-        pagination: {
-          total,
-          page: Number(page),
-          pages: Math.ceil(total / Number(limit)),
-          limit: Number(limit),
-        },
+        reviews: enrichedReviews,
+        ratingBreakdown: result.ratingBreakdown,
+        pagination: { total: result.total, page: result.page, pages: result.pages, limit: result.limit },
       },
     });
   } catch (err) {
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    console.error("getProductReviews error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -168,51 +111,32 @@ const updateReview = async (req, res) => {
     const userId = req.user.id;
     const { rating, title, body, images } = req.body;
 
-    const review = await Review.findOne({
-      _id: reviewId,
-      user: userId,
-      isDeleted: false,
-    });
-
-    if (!review) {
-      return res.status(404).json({
-        success: false,
-        message: "Review not found or not authorized",
-      });
+    const review = await getReviewByReviewId(reviewId);
+    if (!review || review.userId !== userId || review.isDeleted) {
+      return res.status(404).json({ success: false, message: "Review not found or not authorized" });
     }
 
-    if (rating) {
-      if (rating < 1 || rating > 5) {
-        return res.status(400).json({
-          success: false,
-          message: "Rating must be between 1 and 5",
-        });
-      }
-      review.rating = rating;
+    if (rating && (rating < 1 || rating > 5)) {
+      return res.status(400).json({ success: false, message: "Rating must be between 1 and 5" });
     }
 
-    if (title !== undefined) review.title = title;
-    if (body !== undefined) review.body = body;
-    if (images !== undefined) review.images = images;
+    const updates = {};
+    if (rating) updates.rating = rating;
+    if (title !== undefined) updates.title = title;
+    if (body !== undefined) updates.body = body;
+    if (images !== undefined) updates.images = images;
 
-    await review.save();
-    await Review.recalcProductRating(review.product);
+    const updated = await updateReviewInDB(review.productId, review.reviewId, updates);
 
-    const populated = await Review.findById(review._id).populate(
-      "user",
-      "firstName lastName avatar"
-    );
+    await recalcProductRating(review.productId);
 
-    return res.status(200).json({
-      success: true,
-      message: "Review updated successfully",
-      data: populated,
-    });
+    const user = await getUserById(userId);
+    updated.user = user ? { _id: user._id, firstName: user.firstName, lastName: user.lastName, avatar: user.avatar } : { _id: userId };
+
+    return res.status(200).json({ success: true, message: "Review updated successfully", data: updated });
   } catch (err) {
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    console.error("updateReview error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -222,42 +146,27 @@ const deleteReview = async (req, res) => {
     const userId = req.user.id;
     const userRole = req.user.role;
 
-    let review;
+    const review = await getReviewByReviewId(reviewId);
 
-    if (userRole === "admin") {
-      review = await Review.findOne({
-        _id: reviewId,
-        isDeleted: false,
-      });
-    } else {
-      review = await Review.findOne({
-        _id: reviewId,
-        user: userId,
-        isDeleted: false,
-      });
+    if (!review || review.isDeleted) {
+      return res.status(404).json({ success: false, message: "Review not found" });
     }
 
-    if (!review) {
-      return res.status(404).json({
-        success: false,
-        message: "Review not found or not authorized",
-      });
+    if (userRole !== "admin" && review.userId !== userId) {
+      return res.status(404).json({ success: false, message: "Not authorized" });
     }
 
-    review.isDeleted = true;
-    review.deletedBy = userRole === "admin" ? "admin" : "user";
-    await review.save();
-    await Review.recalcProductRating(review.product);
-
-    return res.status(200).json({
-      success: true,
-      message: "Review deleted successfully",
+    await updateReviewInDB(review.productId, review.reviewId, {
+      isDeleted: true,
+      deletedBy: userRole === "admin" ? "admin" : "user",
     });
+
+    await recalcProductRating(review.productId);
+
+    return res.status(200).json({ success: true, message: "Review deleted successfully" });
   } catch (err) {
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    console.error("deleteReview error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -266,50 +175,36 @@ const toggleHelpful = async (req, res) => {
     const { reviewId } = req.params;
     const userId = req.user.id;
 
-    const review = await Review.findOne({
-      _id: reviewId,
-      isDeleted: false,
-    });
+    const review = await getReviewByReviewId(reviewId);
 
-    if (!review) {
-      return res.status(404).json({
-        success: false,
-        message: "Review not found",
-      });
+    if (!review || review.isDeleted) {
+      return res.status(404).json({ success: false, message: "Review not found" });
     }
 
-    if (review.user.toString() === userId) {
-      return res.status(400).json({
-        success: false,
-        message: "You cannot vote on your own review",
-      });
+    if (review.userId === userId) {
+      return res.status(400).json({ success: false, message: "You cannot vote on your own review" });
     }
 
-    const alreadyVoted = review.helpfulVotes.includes(userId);
+    const helpfulVotes = review.helpfulVotes || [];
+    const alreadyVoted = helpfulVotes.includes(userId);
 
+    let updatedVotes;
     if (alreadyVoted) {
-      review.helpfulVotes = review.helpfulVotes.filter(
-        (id) => id.toString() !== userId
-      );
+      updatedVotes = helpfulVotes.filter((id) => id !== userId);
     } else {
-      review.helpfulVotes.push(userId);
+      updatedVotes = [...helpfulVotes, userId];
     }
 
-    await review.save();
+    await updateReviewInDB(review.productId, review.reviewId, { helpfulVotes: updatedVotes });
 
     return res.status(200).json({
       success: true,
       message: alreadyVoted ? "Vote removed" : "Marked as helpful",
-      data: {
-        helpfulCount: review.helpfulVotes.length,
-        hasVoted: !alreadyVoted,
-      },
+      data: { helpfulCount: updatedVotes.length, hasVoted: !alreadyVoted },
     });
   } catch (err) {
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    console.error("toggleHelpful error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -318,77 +213,56 @@ const canReview = async (req, res) => {
     const { productId } = req.params;
     const userId = req.user.id;
 
-    const deliveredOrder = await Order.findOne({
-      user: userId,
-      orderStatus: "delivered",
-      "items.product": productId,
-    }).select("_id orderNumber");
+    const { getAllOrders } = require("../models/dynamodb/orderModel");
+    const ordersResult = await getAllOrders({ status: "delivered", page: 1, limit: 1000 });
+    const deliveredOrder = ordersResult.items.find(
+      (o) => o.userId === userId && o.orderStatus === "delivered" &&
+        o.items.some((item) => item.product === productId)
+    );
 
     if (!deliveredOrder) {
       return res.status(200).json({
         success: true,
-        data: {
-          canReview: false,
-          reason: "no_purchase",
-          message: "Purchase the product to write a review",
-        },
+        data: { canReview: false, reason: "no_purchase", message: "Purchase the product to write a review" },
       });
     }
 
-    const existingReview = await Review.findOne({
-      product: productId,
-      user: userId,
-      isDeleted: false,
-    });
-
-    if (existingReview) {
+    const existing = await getExistingReview(productId, userId);
+    if (existing) {
       return res.status(200).json({
         success: true,
-        data: {
-          canReview: false,
-          reason: "already_reviewed",
-          message: "You have already reviewed this product",
-          existingReview,
-        },
+        data: { canReview: false, reason: "already_reviewed", message: "You have already reviewed this product", existingReview: existing },
       });
     }
 
     return res.status(200).json({
       success: true,
-      data: {
-        canReview: true,
-        orderId: deliveredOrder._id,
-        orderNumber: deliveredOrder.orderNumber,
-      },
+      data: { canReview: true, orderId: deliveredOrder._id, orderNumber: deliveredOrder.orderNumber },
     });
   } catch (err) {
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    console.error("canReview error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
 const getMyReviews = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const reviews = await getUserReviews(req.user.id);
 
-    const reviews = await Review.find({
-      user: userId,
-      isDeleted: false,
-    })
-      .populate("product", "name images slug")
-      .sort({ createdAt: -1 });
+    const enriched = await Promise.all(
+      reviews.map(async (review) => {
+        const product = await getProductById(review.productId);
+        return {
+          ...review,
+          product: product ? { _id: product._id, name: product.name, images: product.images, slug: product.slug } : { _id: review.productId },
+        };
+      })
+    );
 
-    return res.status(200).json({
-      success: true,
-      data: reviews,
-    });
+    return res.status(200).json({ success: true, data: enriched });
   } catch (err) {
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    console.error("getMyReviews error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -396,42 +270,30 @@ const adminGetAllReviews = async (req, res) => {
   try {
     const { rating, page = 1, limit = 10, sort = "newest" } = req.query;
 
-    const filter = { isDeleted: false };
-    if (rating) filter.rating = Number(rating);
+    const result = await getAllReviews({ rating, page: Number(page), limit: Number(limit), sort });
 
-    let sortOption = {};
-    if (sort === "newest") sortOption = { createdAt: -1 };
-    else if (sort === "oldest") sortOption = { createdAt: 1 };
-    else if (sort === "highest") sortOption = { rating: -1 };
-    else if (sort === "lowest") sortOption = { rating: 1 };
-
-    const skip = (Number(page) - 1) * Number(limit);
-
-    const [reviews, total] = await Promise.all([
-      Review.find(filter)
-        .populate("user", "firstName lastName avatar email")
-        .populate("product", "name images slug")
-        .sort(sortOption)
-        .skip(skip)
-        .limit(Number(limit)),
-      Review.countDocuments(filter),
-    ]);
+    const enriched = await Promise.all(
+      result.items.map(async (review) => {
+        const [user, product] = await Promise.all([
+          getUserById(review.userId),
+          getProductById(review.productId),
+        ]);
+        return {
+          ...review,
+          user: user ? { _id: user._id, firstName: user.firstName, lastName: user.lastName, avatar: user.avatar, email: user.email } : { _id: review.userId },
+          product: product ? { _id: product._id, name: product.name, images: product.images, slug: product.slug } : { _id: review.productId },
+        };
+      })
+    );
 
     return res.status(200).json({
       success: true,
-      data: reviews,
-      pagination: {
-        total,
-        page: Number(page),
-        pages: Math.ceil(total / Number(limit)),
-        limit: Number(limit),
-      },
+      data: enriched,
+      pagination: { total: result.total, page: result.page, pages: result.pages, limit: result.limit },
     });
   } catch (err) {
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    console.error("adminGetAllReviews error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -440,74 +302,39 @@ const vendorGetProductReviews = async (req, res) => {
     const vendorId = req.user.id;
     const { rating, page = 1, limit = 10, sort = "newest" } = req.query;
 
-    const vendorProducts = await Product.find({
-      vendor: vendorId,
-      isDeleted: false,
-    }).select("_id");
+    const vendorProducts = await getProductsByVendor(vendorId, { limit: 1000 });
+    const productIds = vendorProducts.items.map((p) => p._id);
 
-    const productIds = vendorProducts.map((p) => p._id);
-
-    const filter = {
-      product: { $in: productIds },
-      isDeleted: false,
-    };
-
-    if (rating) filter.rating = Number(rating);
-
-    let sortOption = {};
-    if (sort === "newest") sortOption = { createdAt: -1 };
-    else if (sort === "oldest") sortOption = { createdAt: 1 };
-    else if (sort === "highest") sortOption = { rating: -1 };
-    else if (sort === "lowest") sortOption = { rating: 1 };
-
-    const skip = (Number(page) - 1) * Number(limit);
-
-    const [reviews, total] = await Promise.all([
-      Review.find(filter)
-        .populate("user", "firstName lastName avatar")
-        .populate("product", "name images slug")
-        .sort(sortOption)
-        .skip(skip)
-        .limit(Number(limit)),
-      Review.countDocuments(filter),
-    ]);
-
-    const breakdown = await Review.aggregate([
-      {
-        $match: {
-          product: { $in: productIds },
-          isDeleted: false,
-        },
-      },
-      {
-        $group: {
-          _id: "$rating",
-          count: { $sum: 1 },
-        },
-      },
-    ]);
-
-    const ratingBreakdown = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-    breakdown.forEach((b) => {
-      ratingBreakdown[b._id] = b.count;
+    const result = await getVendorProductReviews(productIds, {
+      rating,
+      page: Number(page),
+      limit: Number(limit),
+      sort,
     });
+
+    const enriched = await Promise.all(
+      result.items.map(async (review) => {
+        const [user, product] = await Promise.all([
+          getUserById(review.userId),
+          getProductById(review.productId),
+        ]);
+        return {
+          ...review,
+          user: user ? { _id: user._id, firstName: user.firstName, lastName: user.lastName, avatar: user.avatar } : { _id: review.userId },
+          product: product ? { _id: product._id, name: product.name, images: product.images, slug: product.slug } : { _id: review.productId },
+        };
+      })
+    );
 
     return res.status(200).json({
       success: true,
-      data: reviews,
-      ratingBreakdown,
-      pagination: {
-        total,
-        page: Number(page),
-        pages: Math.ceil(total / Number(limit)),
-        limit: Number(limit),
-      },
+      data: enriched,
+      ratingBreakdown: result.ratingBreakdown,
+      pagination: { total: result.total, page: result.page, pages: result.pages, limit: result.limit },
     });
   } catch (err) {
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    console.error("vendorGetProductReviews error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 

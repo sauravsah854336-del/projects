@@ -1,40 +1,43 @@
-const Product = require("../models/product");
-const Category = require("../models/category");
+const {
+  createCategory: createCategoryInDB,
+  getCategoryById,
+  getCategoryBySlug,
+  getCategoriesByParent,
+  getAllCategories: getAllCategoriesFromDB,
+  getRootCategories,
+  updateCategory: updateCategoryInDB,
+  deleteCategory: deleteCategoryFromDB,
+  findCategoryBySlugAndParent,
+  countCategories,
+} = require("../models/dynamodb/categoryModel");
+const { getAllProducts } = require("../models/dynamodb/productModel");
 
 const createCategory = async (req, res) => {
   try {
     const { name, description, parent, image } = req.body;
 
     if (!name || !name.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: "Category name is required",
-      });
+      return res.status(400).json({ success: false, message: "Category name is required" });
     }
 
     const trimmedName = name.trim();
-    const slug = trimmedName
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
+    const slug = trimmedName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 
-    const existCategory = await Category.findOne({
-      slug,
-      parent: parent || null,
-    });
+    const existCategory = await findCategoryBySlugAndParent(slug, parent || "");
 
     if (existCategory) {
       if (existCategory.isActive === false) {
-        existCategory.isActive = true;
-        existCategory.name = trimmedName;
-        existCategory.description = description || existCategory.description;
-        existCategory.image = image || existCategory.image;
-        await existCategory.save();
+        const restored = await updateCategoryInDB(existCategory._id, {
+          isActive: true,
+          name: trimmedName,
+          description: description || existCategory.description,
+          image: image || existCategory.image,
+        });
 
         return res.status(200).json({
           success: true,
           message: "Category restored successfully",
-          data: existCategory,
+          data: restored,
         });
       }
 
@@ -47,95 +50,77 @@ const createCategory = async (req, res) => {
     }
 
     if (parent) {
-      const parentCategory = await Category.findById(parent);
+      const parentCategory = await getCategoryById(parent);
       if (!parentCategory) {
-        return res.status(404).json({
-          success: false,
-          message: "Parent category not found",
-        });
+        return res.status(404).json({ success: false, message: "Parent category not found" });
       }
       if (parentCategory.parent) {
-        return res.status(400).json({
-          success: false,
-          message: "Only 2-level hierarchy allowed (max: category > subcategory)",
-        });
+        return res.status(400).json({ success: false, message: "Only 2-level hierarchy allowed" });
       }
     }
 
-    const category = await Category.create({
+    const category = await createCategoryInDB({
       name: trimmedName,
       slug,
       description: description || "",
       image: image || "",
-      parent: parent || null,
+      parent: parent || "",
       createdBy: req.user.id,
     });
 
     return res.status(201).json({
       success: true,
-      message: parent
-        ? "Subcategory created successfully"
-        : "Category created successfully",
+      message: parent ? "Subcategory created successfully" : "Category created successfully",
       data: category,
     });
   } catch (err) {
     console.error("createCategory error:", err);
-    if (err.code === 11000) {
-      return res.status(409).json({
-        success: false,
-        message: "Category with this name already exists",
-      });
-    }
-    return res.status(500).json({
-      success: false,
-      message: err.message,
-    });
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
 const getAllCategories = async (req, res) => {
   try {
     const { includeInactive } = req.query;
-    const filter = includeInactive === "true" ? {} : { isActive: true };
+    const categories = await getAllCategoriesFromDB(includeInactive === "true");
 
-    const categories = await Category.find(filter)
-      .populate("parent", "name slug")
-      .sort({ createdAt: 1 });
-
-    return res.status(200).json({
-      success: true,
-      data: categories,
+    const populated = categories.map((cat) => {
+      if (cat.parent) {
+        const parentCat = categories.find((c) => c._id === cat.parent);
+        if (parentCat) {
+          return { ...cat, parent: { _id: parentCat._id, name: parentCat.name, slug: parentCat.slug } };
+        }
+      }
+      return cat;
     });
+
+    return res.status(200).json({ success: true, data: populated });
   } catch (err) {
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    console.error("getAllCategories error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
 const getCategoryTree = async (req, res) => {
   try {
-    const categories = await Category.find({
-      isActive: true,
-      parent: null,
-    }).sort({ createdAt: 1 });
-
+    const rootCategories = await getRootCategories();
     const tree = [];
 
-    for (const category of categories) {
-      const children = await Category.find({
-        parent: category._id,
-        isActive: true,
-      }).sort({ createdAt: 1 });
+    for (const category of rootCategories) {
+      const children = await getCategoriesByParent(category._id);
 
-      const productCount = await Product.countDocuments({
-        category: {
-          $in: [category._id, ...children.map((c) => c._id)],
-        },
+      const categoryIds = [category._id, ...children.map((c) => c._id)];
+
+      const productResult = await getAllProducts({
+        status: "approved",
         isActive: true,
-        isDeleted: { $ne: true },
+        page: 1,
+        limit: 10000,
       });
+
+      const productCount = productResult.items.filter(
+        (p) => categoryIds.includes(p.category?._id || p.category)
+      ).length;
 
       tree.push({
         _id: category._id,
@@ -156,48 +141,39 @@ const getCategoryTree = async (req, res) => {
       });
     }
 
-    return res.status(200).json({
-      success: true,
-      data: tree,
-    });
+    return res.status(200).json({ success: true, data: tree });
   } catch (err) {
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    console.error("getCategoryTree error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
 const getSingleCategory = async (req, res) => {
   try {
     const { slug } = req.params;
+    const category = await getCategoryBySlug(slug);
 
-    const category = await Category.findOne({ slug, isActive: true }).populate(
-      "parent",
-      "name slug"
-    );
-
-    if (!category) {
-      return res.status(404).json({
-        success: false,
-        message: "Category not found",
-      });
+    if (!category || !category.isActive) {
+      return res.status(404).json({ success: false, message: "Category not found" });
     }
 
-    const subcategories = await Category.find({
-      parent: category._id,
-      isActive: true,
-    }).sort({ createdAt: 1 });
+    let parentData = null;
+    if (category.parent) {
+      parentData = await getCategoryById(category.parent);
+      if (parentData) {
+        category.parent = { _id: parentData._id, name: parentData.name, slug: parentData.slug };
+      }
+    }
+
+    const subcategories = await getCategoriesByParent(category._id);
 
     return res.status(200).json({
       success: true,
       data: { category, subcategories },
     });
   } catch (err) {
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    console.error("getSingleCategory error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -206,81 +182,58 @@ const updateCategory = async (req, res) => {
     const { id } = req.params;
     const { name, description, parent, image, isActive } = req.body;
 
-    const category = await Category.findById(id);
-
+    const category = await getCategoryById(id);
     if (!category) {
-      return res.status(404).json({
-        success: false,
-        message: "Category not found",
-      });
+      return res.status(404).json({ success: false, message: "Category not found" });
     }
+
+    const updates = {};
 
     if (name && name.trim()) {
       const trimmedName = name.trim();
-      const slug = trimmedName
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "");
+      const slug = trimmedName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 
-      const existCategory = await Category.findOne({
-        slug,
-        parent: parent !== undefined ? parent || null : category.parent,
-        _id: { $ne: id },
-      });
+      const parentId = parent !== undefined ? (parent || "") : (category.parent || "");
+      const existCategory = await findCategoryBySlugAndParent(slug, parentId);
 
-      if (existCategory) {
-        return res.status(409).json({
-          success: false,
-          message: "Category with this name already exists",
-        });
+      if (existCategory && existCategory._id !== id) {
+        return res.status(409).json({ success: false, message: "Category with this name already exists" });
       }
 
-      category.name = trimmedName;
-      category.slug = slug;
+      updates.name = trimmedName;
+      updates.slug = slug;
     }
 
-    if (description !== undefined) category.description = description;
-    if (image !== undefined) category.image = image;
-    if (isActive !== undefined) category.isActive = isActive;
+    if (description !== undefined) updates.description = description;
+    if (image !== undefined) updates.image = image;
+    if (isActive !== undefined) updates.isActive = isActive;
 
     if (parent !== undefined) {
       if (parent === id) {
-        return res.status(400).json({
-          success: false,
-          message: "Category cannot be its own parent",
-        });
+        return res.status(400).json({ success: false, message: "Category cannot be its own parent" });
       }
       if (parent) {
-        const parentCategory = await Category.findById(parent);
+        const parentCategory = await getCategoryById(parent);
         if (!parentCategory) {
-          return res.status(404).json({
-            success: false,
-            message: "Parent category not found",
-          });
+          return res.status(404).json({ success: false, message: "Parent category not found" });
         }
         if (parentCategory.parent) {
-          return res.status(400).json({
-            success: false,
-            message: "Only 2-level hierarchy allowed",
-          });
+          return res.status(400).json({ success: false, message: "Only 2-level hierarchy allowed" });
         }
       }
-      category.parent = parent || null;
+      updates.parent = parent || "";
     }
 
-    await category.save();
+    const updated = await updateCategoryInDB(id, updates);
 
     return res.status(200).json({
       success: true,
       message: "Category updated successfully",
-      data: category,
+      data: updated,
     });
   } catch (err) {
     console.error("updateCategory error:", err);
-    return res.status(500).json({
-      success: false,
-      message: err.message,
-    });
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
@@ -288,41 +241,35 @@ const deleteCategory = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const category = await Category.findById(id);
-
+    const category = await getCategoryById(id);
     if (!category) {
-      return res.status(404).json({
-        success: false,
-        message: "Category not found",
-      });
+      return res.status(404).json({ success: false, message: "Category not found" });
     }
 
-    const activeChildren = await Category.findOne({
-      parent: id,
-      isActive: true,
-    });
-    if (activeChildren) {
+    const children = await getCategoriesByParent(id);
+    if (children.length > 0) {
       return res.status(400).json({
         success: false,
-        message:
-          "Cannot delete: This category has active subcategories. Delete subcategories first.",
+        message: "Cannot delete: This category has active subcategories.",
       });
     }
 
-    const hasProducts = await Product.findOne({
+    const productResult = await getAllProducts({
       category: id,
-      isDeleted: { $ne: true },
+      status: "approved",
+      isActive: true,
+      page: 1,
+      limit: 1,
     });
-    if (hasProducts) {
+
+    if (productResult.total > 0) {
       return res.status(400).json({
         success: false,
-        message:
-          "Cannot delete: Products exist in this category. Delete or move products first.",
+        message: "Cannot delete: Products exist in this category.",
       });
     }
 
-    await Category.deleteMany({ parent: id });
-    await Category.findByIdAndDelete(id);
+    await deleteCategoryFromDB(id);
 
     return res.status(200).json({
       success: true,
@@ -330,54 +277,51 @@ const deleteCategory = async (req, res) => {
     });
   } catch (err) {
     console.error("deleteCategory error:", err);
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
 const restoreCategory = async (req, res) => {
   try {
     const { id } = req.params;
-    const category = await Category.findById(id);
+    const category = await getCategoryById(id);
 
     if (!category) {
-      return res.status(404).json({
-        success: false,
-        message: "Category not found",
-      });
+      return res.status(404).json({ success: false, message: "Category not found" });
     }
 
-    category.isActive = true;
-    await category.save();
+    const updated = await updateCategoryInDB(id, { isActive: true });
 
     return res.status(200).json({
       success: true,
       message: "Category restored successfully",
-      data: category,
+      data: updated,
     });
   } catch (err) {
-    return res.status(500).json({
-      success: false,
-      message: err.message,
-    });
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
 const getCategoryStats = async (req, res) => {
   try {
-    const [
-      totalMainCategories,
-      totalSubcategories,
-      inactiveCategories,
-      totalProducts,
-    ] = await Promise.all([
-      Category.countDocuments({ parent: null, isActive: true }),
-      Category.countDocuments({ parent: { $ne: null }, isActive: true }),
-      Category.countDocuments({ isActive: false }),
-      Product.countDocuments({ isActive: true, isDeleted: { $ne: true } }),
-    ]);
+    const allCategories = await getAllCategoriesFromDB(true);
+
+    const totalMainCategories = allCategories.filter(
+      (c) => (!c.parent || c.parent === "") && c.isActive
+    ).length;
+
+    const totalSubcategories = allCategories.filter(
+      (c) => c.parent && c.parent !== "" && c.isActive
+    ).length;
+
+    const inactiveCategories = allCategories.filter((c) => !c.isActive).length;
+
+    const productResult = await getAllProducts({
+      status: "approved",
+      isActive: true,
+      page: 1,
+      limit: 10000,
+    });
 
     return res.status(200).json({
       success: true,
@@ -385,14 +329,11 @@ const getCategoryStats = async (req, res) => {
         totalMainCategories,
         totalSubcategories,
         inactiveCategories,
-        totalProducts,
+        totalProducts: productResult.total,
       },
     });
   } catch (err) {
-    return res.status(500).json({
-      success: false,
-      message: err.message,
-    });
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 

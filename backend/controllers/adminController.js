@@ -1,7 +1,26 @@
-const User = require("../models/users");
-const Vendor = require("../models/vendors");
-const Order = require("../models/order");
 const bcrypt = require("bcryptjs");
+const {
+  createUser,
+  getUserById,
+  getUserByEmail,
+  getUserByIdWithPassword,
+  getUsersByRole,
+  updateUser,
+  searchUsers,
+  countUsersByRole,
+  softDeleteUser,
+} = require("../models/dynamodb/userModel");
+const {
+  getVendorById,
+  getVendorByUserId,
+  getVendorsByStatus,
+  getAllVendors: getAllVendorsFromDB,
+  updateVendor,
+  countVendorsByStatus,
+} = require("../models/dynamodb/vendorModel");
+const { getAllOrders, getTotalRevenue } = require("../models/dynamodb/orderModel");
+const { getAllProducts, countProductsByVendor } = require("../models/dynamodb/productModel");
+const { getAllCoupons } = require("../models/dynamodb/couponModel");
 
 const createAdmin = async (req, res) => {
   try {
@@ -10,32 +29,16 @@ const createAdmin = async (req, res) => {
     if (!firstName || !lastName || !email || !phone || !password) {
       return res.status(400).json({ success: false, message: "All fields are required." });
     }
-
-    if (password.length < 6) {
-      return res.status(400).json({ success: false, message: "Password must be at least 6 characters" });
-    }
-
-    if (!/[A-Z]/.test(password)) {
-      return res.status(400).json({ success: false, message: "Password must contain at least one uppercase letter" });
-    }
-
-    if (!/[0-9]/.test(password)) {
-      return res.status(400).json({ success: false, message: "Password must contain at least one number" });
-    }
+    if (password.length < 6) return res.status(400).json({ success: false, message: "Password must be at least 6 characters" });
+    if (!/[A-Z]/.test(password)) return res.status(400).json({ success: false, message: "Must contain uppercase letter" });
+    if (!/[0-9]/.test(password)) return res.status(400).json({ success: false, message: "Must contain number" });
 
     const normalizedEmail = email.toLowerCase().trim();
-    const existUser = await User.findOne({ email: normalizedEmail });
-    if (existUser) {
-      return res.status(409).json({ success: false, message: "Email already registered" });
-    }
-
-    const existPhone = await User.findOne({ phone: phone.trim() });
-    if (existPhone) {
-      return res.status(409).json({ success: false, message: "Phone already registered" });
-    }
+    const existUser = await getUserByEmail(normalizedEmail);
+    if (existUser) return res.status(409).json({ success: false, message: "Email already registered" });
 
     const hashedPassword = await bcrypt.hash(password, 12);
-    const user = await User.create({
+    const user = await createUser({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       email: normalizedEmail,
@@ -48,27 +51,18 @@ const createAdmin = async (req, res) => {
     return res.status(201).json({
       success: true,
       message: "Admin account created successfully.",
-      data: {
-        id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        createdAt: user.createdAt,
-      },
+      data: { id: user._id, firstName: user.firstName, lastName: user.lastName, email: user.email, phone: user.phone, role: user.role, createdAt: user.createdAt },
     });
   } catch (err) {
+    console.error("createAdmin error:", err);
     return res.status(500).json({ success: false, message: err.message });
   }
 };
 
 const getAllAdmins = async (req, res) => {
   try {
-    const admins = await User.find({ role: "admin", isDeleted: false })
-      .select("-password -refreshTokens -passwordResetOTP -passwordResetOTPExpiry")
-      .sort({ createdAt: -1 });
-
+    const result = await getUsersByRole("admin", 100);
+    const admins = result.items.filter((a) => !a.isDeleted);
     return res.status(200).json({ success: true, data: admins });
   } catch (err) {
     return res.status(500).json({ success: false, message: "Server error" });
@@ -77,20 +71,11 @@ const getAllAdmins = async (req, res) => {
 
 const getAdminProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id)
-      .select("-password -refreshTokens -passwordResetOTP -passwordResetOTPExpiry");
-
-    if (!user) {
-      return res.status(404).json({ success: false, message: "Admin not found" });
-    }
-
-    if (user.role !== "admin") {
-      return res.status(403).json({ success: false, message: "Not an admin" });
-    }
-
+    const user = await getUserById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: "Admin not found" });
+    if (user.role !== "admin") return res.status(403).json({ success: false, message: "Not an admin" });
     return res.status(200).json({ success: true, data: user });
   } catch (err) {
-    console.error("getAdminProfile error:", err);
     return res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -99,48 +84,18 @@ const updateAdminProfile = async (req, res) => {
   try {
     const { firstName, lastName, phone, dateOfBirth, avatar } = req.body;
 
-    if (firstName !== undefined && firstName.trim().length < 2) {
-      return res.status(400).json({ success: false, message: "First name must be at least 2 characters" });
-    }
+    const updates = {};
+    if (firstName !== undefined) updates.firstName = firstName.trim();
+    if (lastName !== undefined) updates.lastName = lastName.trim();
+    if (phone !== undefined) updates.phone = phone.trim();
+    if (dateOfBirth !== undefined) updates.dateOfBirth = dateOfBirth || null;
+    if (avatar !== undefined) updates.avatar = avatar;
 
-    if (phone !== undefined && phone.trim() !== "" && !/^[6-9]\d{9}$/.test(phone.trim())) {
-      return res.status(400).json({ success: false, message: "Valid 10-digit Indian phone number required" });
-    }
+    const user = await updateUser(req.user.id, updates);
+    if (!user) return res.status(404).json({ success: false, message: "Admin not found" });
 
-    if (phone && phone.trim() !== "") {
-      const existPhone = await User.findOne({
-        phone: phone.trim(),
-        _id: { $ne: req.user.id },
-      });
-      if (existPhone) {
-        return res.status(409).json({ success: false, message: "Phone number already in use" });
-      }
-    }
-
-    const updateData = {};
-    if (firstName !== undefined) updateData.firstName = firstName.trim();
-    if (lastName !== undefined) updateData.lastName = lastName.trim();
-    if (phone !== undefined) updateData.phone = phone.trim();
-    if (dateOfBirth !== undefined) updateData.dateOfBirth = dateOfBirth || null;
-    if (avatar !== undefined) updateData.avatar = avatar;
-
-    const user = await User.findByIdAndUpdate(
-      req.user.id,
-      updateData,
-      { new: true, runValidators: true }
-    ).select("-password -refreshTokens -passwordResetOTP -passwordResetOTPExpiry");
-
-    if (!user) {
-      return res.status(404).json({ success: false, message: "Admin not found" });
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: "Profile updated successfully",
-      data: user,
-    });
+    return res.status(200).json({ success: true, message: "Profile updated successfully", data: user });
   } catch (err) {
-    console.error("updateAdminProfile error:", err);
     return res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -148,48 +103,36 @@ const updateAdminProfile = async (req, res) => {
 const changeAdminPassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) return res.status(400).json({ success: false, message: "Both passwords are required" });
+    if (newPassword.length < 6) return res.status(400).json({ success: false, message: "Password must be at least 6 characters" });
+    if (!/[A-Z]/.test(newPassword)) return res.status(400).json({ success: false, message: "Must contain uppercase letter" });
+    if (!/[0-9]/.test(newPassword)) return res.status(400).json({ success: false, message: "Must contain number" });
 
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ success: false, message: "Both passwords are required" });
-    }
-    if (newPassword.length < 6) {
-      return res.status(400).json({ success: false, message: "Password must be at least 6 characters" });
-    }
-    if (!/[A-Z]/.test(newPassword)) {
-      return res.status(400).json({ success: false, message: "Must contain at least one uppercase letter" });
-    }
-    if (!/[0-9]/.test(newPassword)) {
-      return res.status(400).json({ success: false, message: "Must contain at least one number" });
-    }
-
-    const user = await User.findById(req.user.id).select("+password");
-    if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
-    }
+    const user = await getUserByIdWithPassword(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
     const isMatch = await bcrypt.compare(currentPassword, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ success: false, message: "Current password is incorrect" });
-    }
+    if (!isMatch) return res.status(401).json({ success: false, message: "Current password is incorrect" });
 
-    user.password = await bcrypt.hash(newPassword, 12);
-    user.refreshTokens = [];
-    await user.save();
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    await updateUser(req.user.id, { password: hashedPassword, refreshTokens: [] });
 
     return res.status(200).json({ success: true, message: "Password changed successfully" });
   } catch (err) {
-    console.error("changeAdminPassword error:", err);
     return res.status(500).json({ success: false, message: err.message });
   }
 };
 
 const getPendingVendors = async (req, res) => {
   try {
-    const vendors = await Vendor.find({ approvalStatus: "pending", isDeleted: false })
-      .populate("userId", "firstName lastName email phone createdAt status")
-      .sort({ createdAt: -1 });
+    const vendors = await getVendorsByStatus("pending");
 
-    return res.status(200).json({ success: true, data: vendors });
+    const enriched = await Promise.all(vendors.map(async (vendor) => {
+      const user = await getUserById(vendor.userId);
+      return { ...vendor, userId: user || { _id: vendor.userId } };
+    }));
+
+    return res.status(200).json({ success: true, data: enriched });
   } catch (err) {
     return res.status(500).json({ success: false, message: "Server error" });
   }
@@ -198,23 +141,22 @@ const getPendingVendors = async (req, res) => {
 const getAllVendors = async (req, res) => {
   try {
     const { status, page = 1, limit = 20 } = req.query;
-    const skip = (page - 1) * limit;
+    const result = await getAllVendorsFromDB({ status });
+    const vendors = result.items;
 
-    const filter = { isDeleted: false };
-    if (status) filter.approvalStatus = status;
+    const enriched = await Promise.all(vendors.map(async (vendor) => {
+      const user = await getUserById(vendor.userId);
+      return { ...vendor, userId: user || { _id: vendor.userId } };
+    }));
 
-    const vendors = await Vendor.find(filter)
-      .populate("userId", "firstName lastName email phone status createdAt lastLogin")
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(Number(limit));
-
-    const total = await Vendor.countDocuments(filter);
+    const total = enriched.length;
+    const skip = (Number(page) - 1) * Number(limit);
+    const paginated = enriched.slice(skip, skip + Number(limit));
 
     return res.status(200).json({
       success: true,
-      data: vendors,
-      pagination: { page: Number(page), limit: Number(limit), total, pages: Math.ceil(total / limit) },
+      data: paginated,
+      pagination: { page: Number(page), limit: Number(limit), total, pages: Math.ceil(total / Number(limit)) },
     });
   } catch (err) {
     return res.status(500).json({ success: false, message: "Server error" });
@@ -224,17 +166,13 @@ const getAllVendors = async (req, res) => {
 const approveVendor = async (req, res) => {
   try {
     const { vendorId } = req.params;
-    const vendor = await Vendor.findById(vendorId);
+    const vendor = await getVendorById(vendorId);
     if (!vendor) return res.status(404).json({ success: false, message: "Vendor not found" });
-    if (vendor.approvalStatus === "approved") {
-      return res.status(400).json({ success: false, message: "Vendor is already approved" });
-    }
-    vendor.approvalStatus = "approved";
-    vendor.approvedAt = new Date();
-    vendor.approvedBy = req.user.id;
-    vendor.rejectionReason = "";
-    await vendor.save();
-    await User.findByIdAndUpdate(vendor.userId, { status: "active" });
+    if (vendor.approvalStatus === "approved") return res.status(400).json({ success: false, message: "Already approved" });
+
+    await updateVendor(vendorId, { approvalStatus: "approved", approvedAt: new Date().toISOString(), approvedBy: req.user.id, rejectionReason: "" });
+    await updateUser(vendor.userId, { status: "active" });
+
     return res.status(200).json({ success: true, message: "Vendor approved successfully" });
   } catch (err) {
     return res.status(500).json({ success: false, message: "Server error" });
@@ -245,12 +183,12 @@ const rejectVendor = async (req, res) => {
   try {
     const { vendorId } = req.params;
     const { reason } = req.body;
-    const vendor = await Vendor.findById(vendorId);
+    const vendor = await getVendorById(vendorId);
     if (!vendor) return res.status(404).json({ success: false, message: "Vendor not found" });
-    vendor.approvalStatus = "rejected";
-    vendor.rejectionReason = reason || "No reason provided";
-    await vendor.save();
-    await User.findByIdAndUpdate(vendor.userId, { status: "blocked" });
+
+    await updateVendor(vendorId, { approvalStatus: "rejected", rejectionReason: reason || "No reason provided" });
+    await updateUser(vendor.userId, { status: "blocked" });
+
     return res.status(200).json({ success: true, message: "Vendor rejected" });
   } catch (err) {
     return res.status(500).json({ success: false, message: "Server error" });
@@ -261,12 +199,12 @@ const suspendVendor = async (req, res) => {
   try {
     const { vendorId } = req.params;
     const { reason } = req.body;
-    const vendor = await Vendor.findById(vendorId);
+    const vendor = await getVendorById(vendorId);
     if (!vendor) return res.status(404).json({ success: false, message: "Vendor not found" });
-    vendor.approvalStatus = "suspended";
-    vendor.rejectionReason = reason || "Suspended by admin";
-    await vendor.save();
-    await User.findByIdAndUpdate(vendor.userId, { status: "blocked" });
+
+    await updateVendor(vendorId, { approvalStatus: "suspended", rejectionReason: reason || "Suspended by admin" });
+    await updateUser(vendor.userId, { status: "blocked" });
+
     return res.status(200).json({ success: true, message: "Vendor suspended" });
   } catch (err) {
     return res.status(500).json({ success: false, message: "Server error" });
@@ -276,12 +214,12 @@ const suspendVendor = async (req, res) => {
 const unsuspendVendor = async (req, res) => {
   try {
     const { vendorId } = req.params;
-    const vendor = await Vendor.findById(vendorId);
+    const vendor = await getVendorById(vendorId);
     if (!vendor) return res.status(404).json({ success: false, message: "Vendor not found" });
-    vendor.approvalStatus = "approved";
-    vendor.rejectionReason = "";
-    await vendor.save();
-    await User.findByIdAndUpdate(vendor.userId, { status: "active" });
+
+    await updateVendor(vendorId, { approvalStatus: "approved", rejectionReason: "" });
+    await updateUser(vendor.userId, { status: "active" });
+
     return res.status(200).json({ success: true, message: "Vendor unsuspended" });
   } catch (err) {
     return res.status(500).json({ success: false, message: "Server error" });
@@ -295,7 +233,7 @@ const updateVendorCommission = async (req, res) => {
     if (commission === undefined || commission < 0 || commission > 100) {
       return res.status(400).json({ success: false, message: "Commission must be between 0 and 100" });
     }
-    const vendor = await Vendor.findByIdAndUpdate(vendorId, { commission }, { new: true });
+    const vendor = await updateVendor(vendorId, { commission });
     if (!vendor) return res.status(404).json({ success: false, message: "Vendor not found" });
     return res.status(200).json({ success: true, message: "Commission updated", data: { commission: vendor.commission } });
   } catch (err) {
@@ -306,50 +244,42 @@ const updateVendorCommission = async (req, res) => {
 const getAllCustomers = async (req, res) => {
   try {
     const { status, search, page = 1, limit = 20 } = req.query;
-    const skip = (page - 1) * limit;
 
-    const filter = { role: "customer", isDeleted: false };
-    if (status) filter.status = status;
+    let customers;
     if (search) {
-      filter.$or = [
-        { firstName: { $regex: search, $options: "i" } },
-        { lastName: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } },
-        { phone: { $regex: search, $options: "i" } },
-      ];
+      customers = await searchUsers(search, "customer", 100);
+    } else {
+      const result = await getUsersByRole("customer", 1000);
+      customers = result.items.filter((u) => !u.isDeleted);
     }
 
-    const customers = await User.find(filter)
-      .select("-password -refreshTokens -passwordResetOTP -passwordResetOTPExpiry")
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(Number(limit));
+    if (status) customers = customers.filter((c) => c.status === status);
 
-    const total = await User.countDocuments(filter);
+    const { getUserOrders } = require("../models/dynamodb/orderModel");
 
-    const customersWithStats = await Promise.all(
-      customers.map(async (customer) => {
-        const orderCount = await Order.countDocuments({ user: customer._id });
-        const orders = await Order.find({ user: customer._id });
-        const totalSpent = orders.reduce((sum, o) => sum + (o.total || 0), 0);
-        const totalSaved = orders.reduce((sum, o) => sum + (o.discount || 0), 0);
-        const couponOrders = orders.filter((o) => o.couponCode).length;
-        return {
-          ...customer.toObject(),
-          orderCount,
-          totalSpent,
-          totalSaved,
-          couponOrders,
-        };
-      })
-    );
+    const enriched = await Promise.all(customers.map(async (customer) => {
+      const ordersResult = await getUserOrders(customer._id, { page: 1, limit: 1000 });
+      const orders = ordersResult.items;
+      return {
+        ...customer,
+        orderCount: orders.length,
+        totalSpent: orders.reduce((sum, o) => sum + (o.total || 0), 0),
+        totalSaved: orders.reduce((sum, o) => sum + (o.discount || 0), 0),
+        couponOrders: orders.filter((o) => o.couponCode).length,
+      };
+    }));
+
+    const total = enriched.length;
+    const skip = (Number(page) - 1) * Number(limit);
+    const paginated = enriched.slice(skip, skip + Number(limit));
 
     return res.status(200).json({
       success: true,
-      data: customersWithStats,
-      pagination: { page: Number(page), limit: Number(limit), total, pages: Math.ceil(total / limit) },
+      data: paginated,
+      pagination: { page: Number(page), limit: Number(limit), total, pages: Math.ceil(total / Number(limit)) },
     });
   } catch (err) {
+    console.error("getAllCustomers error:", err);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
@@ -357,29 +287,25 @@ const getAllCustomers = async (req, res) => {
 const getSingleCustomer = async (req, res) => {
   try {
     const { userId } = req.params;
-    const customer = await User.findOne({ _id: userId, role: "customer", isDeleted: false })
-      .select("-password -refreshTokens -passwordResetOTP -passwordResetOTPExpiry");
+    const customer = await getUserById(userId);
+    if (!customer || customer.role !== "customer" || customer.isDeleted) {
+      return res.status(404).json({ success: false, message: "Customer not found" });
+    }
 
-    if (!customer) return res.status(404).json({ success: false, message: "Customer not found" });
-
-    const orders = await Order.find({ user: userId }).sort({ createdAt: -1 }).limit(10);
-    const allOrders = await Order.find({ user: userId });
-    const totalOrders = allOrders.length;
-    const totalSpent = allOrders.reduce((sum, o) => sum + (o.total || 0), 0);
-    const totalSaved = allOrders.reduce((sum, o) => sum + (o.discount || 0), 0);
-    const couponOrdersCount = allOrders.filter((o) => o.couponCode).length;
-    const couponsUsed = [...new Set(allOrders.filter((o) => o.couponCode).map((o) => o.couponCode))];
+    const { getUserOrders } = require("../models/dynamodb/orderModel");
+    const ordersResult = await getUserOrders(userId, { page: 1, limit: 1000 });
+    const allOrders = ordersResult.items;
 
     return res.status(200).json({
       success: true,
       data: {
-        ...customer.toObject(),
-        recentOrders: orders,
-        totalOrders,
-        totalSpent,
-        totalSaved,
-        couponOrdersCount,
-        couponsUsed,
+        ...customer,
+        recentOrders: allOrders.slice(0, 10),
+        totalOrders: allOrders.length,
+        totalSpent: allOrders.reduce((sum, o) => sum + (o.total || 0), 0),
+        totalSaved: allOrders.reduce((sum, o) => sum + (o.discount || 0), 0),
+        couponOrdersCount: allOrders.filter((o) => o.couponCode).length,
+        couponsUsed: [...new Set(allOrders.filter((o) => o.couponCode).map((o) => o.couponCode))],
       },
     });
   } catch (err) {
@@ -390,27 +316,13 @@ const getSingleCustomer = async (req, res) => {
 const blockCustomer = async (req, res) => {
   try {
     const { userId } = req.params;
-    const user = await User.findOne({ _id: userId, role: "customer" });
+    const user = await getUserById(userId);
+    if (!user || user.role !== "customer") return res.status(404).json({ success: false, message: "Customer not found" });
+    if (user.isDeleted) return res.status(400).json({ success: false, message: "Cannot block deleted customer" });
 
-    if (!user) {
-      return res.status(404).json({ success: false, message: "Customer not found" });
-    }
-
-    if (user.isDeleted) {
-      return res.status(400).json({ success: false, message: "Cannot block deleted customer" });
-    }
-
-    user.status = "blocked";
-    user.refreshTokens = [];
-    await user.save();
-
-    return res.status(200).json({
-      success: true,
-      message: "Customer blocked successfully",
-      data: { _id: user._id, status: user.status },
-    });
+    await updateUser(userId, { status: "blocked", refreshTokens: [] });
+    return res.status(200).json({ success: true, message: "Customer blocked successfully", data: { _id: userId, status: "blocked" } });
   } catch (err) {
-    console.error("blockCustomer error:", err);
     return res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -418,26 +330,12 @@ const blockCustomer = async (req, res) => {
 const unblockCustomer = async (req, res) => {
   try {
     const { userId } = req.params;
-    const user = await User.findOne({ _id: userId, role: "customer" });
+    const user = await getUserById(userId);
+    if (!user || user.role !== "customer") return res.status(404).json({ success: false, message: "Customer not found" });
 
-    if (!user) {
-      return res.status(404).json({ success: false, message: "Customer not found" });
-    }
-
-    if (user.isDeleted) {
-      return res.status(400).json({ success: false, message: "Cannot unblock deleted customer" });
-    }
-
-    user.status = "active";
-    await user.save();
-
-    return res.status(200).json({
-      success: true,
-      message: "Customer unblocked successfully",
-      data: { _id: user._id, status: user.status },
-    });
+    await updateUser(userId, { status: "active" });
+    return res.status(200).json({ success: true, message: "Customer unblocked successfully", data: { _id: userId, status: "active" } });
   } catch (err) {
-    console.error("unblockCustomer error:", err);
     return res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -445,11 +343,10 @@ const unblockCustomer = async (req, res) => {
 const deleteCustomer = async (req, res) => {
   try {
     const { userId } = req.params;
-    const user = await User.findOne({ _id: userId, role: "customer" });
-    if (!user) return res.status(404).json({ success: false, message: "Customer not found" });
-    user.isDeleted = true;
-    user.status = "blocked";
-    await user.save();
+    const user = await getUserById(userId);
+    if (!user || user.role !== "customer") return res.status(404).json({ success: false, message: "Customer not found" });
+
+    await softDeleteUser(userId);
     return res.status(200).json({ success: true, message: "Customer deleted" });
   } catch (err) {
     return res.status(500).json({ success: false, message: "Server error" });
@@ -458,57 +355,30 @@ const deleteCustomer = async (req, res) => {
 
 const getAdminStats = async (req, res) => {
   try {
-    const Product = require("../models/product");
-    const Coupon = require("../models/coupon");
+    const customersResult = await getUsersByRole("customer", 10000);
+    const allCustomers = customersResult.items.filter((u) => !u.isDeleted);
 
-    const [
-      totalCustomers,
-      activeCustomers,
-      blockedCustomers,
-      totalVendors,
-      approvedVendors,
-      pendingVendors,
-      suspendedVendors,
-      totalAdmins,
-      totalOrders,
-      pendingOrders,
-      deliveredOrders,
-      cancelledOrders,
-      totalProducts,
-      approvedProducts,
-      pendingProducts,
-      allOrders,
-      totalCoupons,
-      activeCoupons,
-    ] = await Promise.all([
-      User.countDocuments({ role: "customer", isDeleted: false }),
-      User.countDocuments({ role: "customer", status: "active", isDeleted: false }),
-      User.countDocuments({ role: "customer", status: "blocked", isDeleted: false }),
-      Vendor.countDocuments({ isDeleted: false }),
-      Vendor.countDocuments({ approvalStatus: "approved", isDeleted: false }),
-      Vendor.countDocuments({ approvalStatus: "pending", isDeleted: false }),
-      Vendor.countDocuments({ approvalStatus: "suspended", isDeleted: false }),
-      User.countDocuments({ role: "admin", isDeleted: false }),
-      Order.countDocuments({}),
-      Order.countDocuments({ orderStatus: "pending" }),
-      Order.countDocuments({ orderStatus: "delivered" }),
-      Order.countDocuments({ orderStatus: "cancelled" }),
-      Product.countDocuments({ isDeleted: false }),
-      Product.countDocuments({ status: "approved", isDeleted: false }),
-      Product.countDocuments({ status: "pending", isDeleted: false }),
-      Order.find({}).select("total discount couponCode createdAt orderStatus"),
-      Coupon.countDocuments({}).catch(() => 0),
-      Coupon.countDocuments({ isActive: true, expiryDate: { $gt: new Date() } }).catch(() => 0),
-    ]);
+    const vendorsResult = await getAllVendorsFromDB();
+    const allVendors = vendorsResult.items;
 
-    const totalRevenue = allOrders
-      .filter((o) => o.orderStatus === "delivered")
-      .reduce((sum, o) => sum + (o.total || 0), 0);
+    const adminsResult = await getUsersByRole("admin", 100);
 
-    const totalDiscountGiven = allOrders
-      .filter((o) => o.orderStatus === "delivered" && o.discount > 0)
-      .reduce((sum, o) => sum + (o.discount || 0), 0);
+    const ordersResult = await getAllOrders({ page: 1, limit: 100000 });
+    const allOrders = ordersResult.items;
 
+    const productsResult = await getAllProducts({ page: 1, limit: 100000 });
+    const allProducts = productsResult.items;
+
+    let totalCoupons = 0;
+    let activeCoupons = 0;
+    try {
+      const couponsResult = await getAllCoupons({});
+      totalCoupons = couponsResult.total || 0;
+      activeCoupons = couponsResult.stats?.activeCoupons || 0;
+    } catch (e) {}
+
+    const totalRevenue = allOrders.filter((o) => o.orderStatus === "delivered").reduce((sum, o) => sum + (o.total || 0), 0);
+    const totalDiscountGiven = allOrders.filter((o) => o.orderStatus === "delivered" && o.discount > 0).reduce((sum, o) => sum + (o.discount || 0), 0);
     const ordersWithCoupons = allOrders.filter((o) => o.couponCode).length;
 
     const now = new Date();
@@ -517,88 +387,38 @@ const getAdminStats = async (req, res) => {
     const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
     const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    const revenueThisMonth = allOrders
-      .filter((o) => o.orderStatus === "delivered" && new Date(o.createdAt) >= thisMonthStart)
-      .reduce((sum, o) => sum + (o.total || 0), 0);
-
-    const revenueLastMonth = allOrders
-      .filter((o) => {
-        const d = new Date(o.createdAt);
-        return o.orderStatus === "delivered" && d >= lastMonthStart && d <= lastMonthEnd;
-      })
-      .reduce((sum, o) => sum + (o.total || 0), 0);
-
-    const ordersLast7Days = allOrders.filter((o) => new Date(o.createdAt) >= last7Days).length;
-    const ordersThisMonth = allOrders.filter((o) => new Date(o.createdAt) >= thisMonthStart).length;
-    const ordersLastMonth = allOrders.filter((o) => {
-      const d = new Date(o.createdAt);
-      return d >= lastMonthStart && d <= lastMonthEnd;
-    }).length;
+    const revenueThisMonth = allOrders.filter((o) => o.orderStatus === "delivered" && new Date(o.createdAt) >= thisMonthStart).reduce((sum, o) => sum + (o.total || 0), 0);
+    const revenueLastMonth = allOrders.filter((o) => { const d = new Date(o.createdAt); return o.orderStatus === "delivered" && d >= lastMonthStart && d <= lastMonthEnd; }).reduce((sum, o) => sum + (o.total || 0), 0);
 
     const dailyRevenue = {};
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const key = d.toISOString().split("T")[0];
-      dailyRevenue[key] = 0;
-    }
-    allOrders
-      .filter((o) => o.orderStatus === "delivered" && new Date(o.createdAt) >= last7Days)
-      .forEach((order) => {
-        const key = new Date(order.createdAt).toISOString().split("T")[0];
-        if (dailyRevenue[key] !== undefined) dailyRevenue[key] += order.total || 0;
-      });
+    for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); dailyRevenue[d.toISOString().split("T")[0]] = 0; }
+    allOrders.filter((o) => o.orderStatus === "delivered" && new Date(o.createdAt) >= last7Days).forEach((o) => { const key = new Date(o.createdAt).toISOString().split("T")[0]; if (dailyRevenue[key] !== undefined) dailyRevenue[key] += o.total || 0; });
 
-    const growthPercent =
-      revenueLastMonth > 0
-        ? Math.round(((revenueThisMonth - revenueLastMonth) / revenueLastMonth) * 100)
-        : revenueThisMonth > 0
-        ? 100
-        : 0;
+    const growthPercent = revenueLastMonth > 0 ? Math.round(((revenueThisMonth - revenueLastMonth) / revenueLastMonth) * 100) : revenueThisMonth > 0 ? 100 : 0;
 
     return res.status(200).json({
       success: true,
       data: {
-        customers: { total: totalCustomers, active: activeCustomers, blocked: blockedCustomers },
-        vendors: {
-          total: totalVendors,
-          approved: approvedVendors,
-          pending: pendingVendors,
-          suspended: suspendedVendors,
-        },
-        admins: { total: totalAdmins },
+        customers: { total: allCustomers.length, active: allCustomers.filter((c) => c.status === "active").length, blocked: allCustomers.filter((c) => c.status === "blocked").length },
+        vendors: { total: allVendors.length, approved: allVendors.filter((v) => v.approvalStatus === "approved").length, pending: allVendors.filter((v) => v.approvalStatus === "pending").length, suspended: allVendors.filter((v) => v.approvalStatus === "suspended").length },
+        admins: { total: adminsResult.items.length },
         orders: {
-          total: totalOrders,
-          pending: pendingOrders,
-          delivered: deliveredOrders,
-          cancelled: cancelledOrders,
-          last7Days: ordersLast7Days,
-          thisMonth: ordersThisMonth,
-          lastMonth: ordersLastMonth,
+          total: allOrders.length,
+          pending: allOrders.filter((o) => o.orderStatus === "pending" || o.orderStatus === "payment_pending").length,
+          delivered: allOrders.filter((o) => o.orderStatus === "delivered").length,
+          cancelled: allOrders.filter((o) => o.orderStatus === "cancelled").length,
+          last7Days: allOrders.filter((o) => new Date(o.createdAt) >= last7Days).length,
+          thisMonth: allOrders.filter((o) => new Date(o.createdAt) >= thisMonthStart).length,
+          lastMonth: allOrders.filter((o) => { const d = new Date(o.createdAt); return d >= lastMonthStart && d <= lastMonthEnd; }).length,
           withCoupons: ordersWithCoupons,
         },
-        products: {
-          total: totalProducts,
-          approved: approvedProducts,
-          pending: pendingProducts,
-        },
-        revenue: {
-          total: totalRevenue,
-          thisMonth: revenueThisMonth,
-          lastMonth: revenueLastMonth,
-          growthPercent,
-          daily: dailyRevenue,
-          totalDiscountGiven,
-        },
-        coupons: {
-          total: totalCoupons,
-          active: activeCoupons,
-          ordersUsingCoupons: ordersWithCoupons,
-          totalSavingsGiven: totalDiscountGiven,
-        },
+        products: { total: allProducts.length, approved: allProducts.filter((p) => p.status === "approved").length, pending: allProducts.filter((p) => p.status === "pending").length },
+        revenue: { total: totalRevenue, thisMonth: revenueThisMonth, lastMonth: revenueLastMonth, growthPercent, daily: dailyRevenue, totalDiscountGiven },
+        coupons: { total: totalCoupons, active: activeCoupons, ordersUsingCoupons: ordersWithCoupons, totalSavingsGiven: totalDiscountGiven },
       },
     });
   } catch (err) {
+    console.error("getAdminStats error:", err);
     return res.status(500).json({ success: false, message: err.message });
   }
 };

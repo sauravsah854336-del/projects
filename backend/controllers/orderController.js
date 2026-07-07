@@ -1,15 +1,54 @@
-const Order = require("../models/order");
-const Cart = require("../models/cart");
-const Product = require("../models/product");
-const User = require("../models/users");
-const { applyCouponUsage } = require("./couponController");
+const {
+  createOrder,
+  getOrderById,
+  getUserOrders,
+  getAllOrders,
+  getVendorOrders,
+  updateOrder,
+  getTotalRevenue,
+} = require("../models/dynamodb/orderModel");
+const { getOrCreateCart, saveCart } = require("../models/dynamodb/cartModel");
+const { getProductById, updateProduct, incrementProductField } = require("../models/dynamodb/productModel");
+const { updateUser } = require("../models/dynamodb/userModel");
+const { getVendorByUserId } = require("../models/dynamodb/vendorModel");
 
 const generateOrderNumber = () => {
   const timestamp = Date.now().toString();
-  const random = Math.floor(Math.random() * 10000)
-    .toString()
-    .padStart(4, "0");
+  const random = Math.floor(Math.random() * 10000).toString().padStart(4, "0");
   return `ORD-${timestamp}-${random}`;
+};
+
+const applyCouponUsage = async (couponCode, userId) => {
+  try {
+    const { getCouponByCode } = require("../models/dynamodb/couponModel");
+    const { PutCommand } = require("@aws-sdk/lib-dynamodb");
+    const { docClient, getTableName } = require("../config/dynamodb");
+
+    const coupon = await getCouponByCode(couponCode);
+    if (!coupon) return;
+
+    const usedBy = coupon.usedBy || [];
+    const userIndex = usedBy.findIndex((u) => (u.user || u) === userId);
+
+    if (userIndex > -1) {
+      usedBy[userIndex].usedCount = (usedBy[userIndex].usedCount || 1) + 1;
+      usedBy[userIndex].lastUsedAt = new Date().toISOString();
+    } else {
+      usedBy.push({ user: userId, usedCount: 1, lastUsedAt: new Date().toISOString() });
+    }
+
+    await docClient.send(new PutCommand({
+      TableName: getTableName("coupons"),
+      Item: {
+        ...coupon,
+        usedCount: (coupon.usedCount || 0) + 1,
+        usedBy,
+        updatedAt: Date.now(),
+      },
+    }));
+  } catch (err) {
+    console.log("Coupon usage tracking failed:", err.message);
+  }
 };
 
 const placeOrder = async (req, res) => {
@@ -36,23 +75,13 @@ const placeOrder = async (req, res) => {
       });
     }
 
-    if (
-      !shippingAddress?.fullName ||
-      !shippingAddress?.phone ||
-      !shippingAddress?.street ||
-      !shippingAddress?.city ||
-      !shippingAddress?.state ||
-      !shippingAddress?.postalCode
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Complete shipping address is required",
-      });
+    if (!shippingAddress?.fullName || !shippingAddress?.phone ||
+        !shippingAddress?.street || !shippingAddress?.city ||
+        !shippingAddress?.state || !shippingAddress?.postalCode) {
+      return res.status(400).json({ success: false, message: "Complete shipping address is required" });
     }
 
-    const cart = await Cart.findOne({ user: req.user.id }).populate(
-      "items.product"
-    );
+    const cart = await getOrCreateCart(req.user.id);
 
     if (!cart || cart.items.length === 0) {
       return res.status(400).json({ success: false, message: "Cart is empty" });
@@ -62,17 +91,9 @@ const placeOrder = async (req, res) => {
     let subtotalINR = 0;
 
     for (const item of cart.items) {
-      const product = await Product.findById(item.product._id).populate(
-        "vendorStore",
-        "storeName"
-      );
+      const product = await getProductById(item.product);
 
-      if (
-        !product ||
-        product.status !== "approved" ||
-        product.isDeleted ||
-        !product.isActive
-      ) {
+      if (!product || product.status !== "approved" || product.isDeleted || !product.isActive) {
         return res.status(400).json({
           success: false,
           message: `Product "${item.name}" is no longer available`,
@@ -86,14 +107,22 @@ const placeOrder = async (req, res) => {
         });
       }
 
+      let storeName = item.storeName || "";
+      if (!storeName) {
+        try {
+          const vendor = await getVendorByUserId(product.vendorId);
+          storeName = vendor?.storeName || "";
+        } catch (e) {}
+      }
+
       orderItems.push({
         product: product._id,
         name: product.name,
         image: product.images?.[0]?.url || "",
         price: product.price,
         quantity: item.quantity,
-        vendor: product.vendor,
-        storeName: product.vendorStore?.storeName || "",
+        vendor: product.vendorId || "",
+        storeName,
       });
 
       subtotalINR += product.price * item.quantity;
@@ -129,7 +158,6 @@ const placeOrder = async (req, res) => {
     const standardShippingCost = countryInfo.shipping?.standardCost || 0;
 
     let shippingCostLocal = 0;
-
     if (isFreeShippingCoupon) {
       shippingCostLocal = 0;
     } else if (freeThreshold > 0 && subtotalAfterDiscountLocal >= freeThreshold) {
@@ -138,47 +166,38 @@ const placeOrder = async (req, res) => {
       shippingCostLocal = standardShippingCost;
     }
 
-    const shippingCostINR =
-      exchangeRate > 0 ? shippingCostLocal / exchangeRate : 0;
+    const shippingCostINR = exchangeRate > 0 ? shippingCostLocal / exchangeRate : 0;
+
+    const totalINR = subtotalAfterDiscountINR + shippingCostINR + (exchangeRate > 0 ? taxAmount / exchangeRate : 0);
+    const totalLocal = totalINR * exchangeRate;
 
     console.log("═══════════════════════════════════════════════");
     console.log("🧾 ORDER CALCULATION:");
     console.log(`   Subtotal INR:        ₹${subtotalINR.toFixed(2)}`);
     console.log(`   Discount INR:        ₹${discountINR.toFixed(2)}`);
-    console.log(`   Subtotal After Disc: ₹${subtotalAfterDiscountINR.toFixed(2)}`);
-    console.log(`   Free Threshold:      ${countryInfo.currency.symbol}${freeThreshold}`);
-    console.log(`   Standard Ship Cost:  ${countryInfo.currency.symbol}${standardShippingCost}`);
-    console.log(`   Free Ship Coupon:    ${isFreeShippingCoupon ? "YES ✅" : "NO"}`);
-    console.log(`   Qualifies Free Ship: ${subtotalAfterDiscountLocal >= freeThreshold ? "YES ✅" : "NO"}`);
     console.log(`   Final Shipping INR:  ₹${shippingCostINR.toFixed(2)}`);
+    console.log(`   Total INR:           ₹${totalINR.toFixed(2)}`);
     console.log("═══════════════════════════════════════════════");
 
-    const totalINR =
-      subtotalAfterDiscountINR +
-      shippingCostINR +
-      (exchangeRate > 0 ? taxAmount / exchangeRate : 0);
-    const totalLocal = totalINR * exchangeRate;
-
-    const order = await Order.create({
-  orderNumber: generateOrderNumber(),
-  user: req.user.id,
-  items: orderItems,
-  shippingAddress,
-  paymentMethod,
-  paymentStatus: "pending",
-  orderStatus: paymentMethod === "online" ? "payment_pending" : "confirmed",
-  confirmedAt: paymentMethod === "cod" ? new Date() : null,
-  paymentAttempts: 0,
-  lastPaymentAttemptAt: null,
-  paymentExpiresAt: null,
-  subtotal: subtotalINR,
-  discount: discountINR,
-  couponCode: couponCode,
-  shippingCharge: shippingCostINR,
-  total: totalINR,
-  notes,
-  country: {
-
+    const order = await createOrder({
+      orderNumber: generateOrderNumber(),
+      userId: req.user.id,
+      items: orderItems,
+      shippingAddress,
+      paymentMethod,
+      paymentStatus: "pending",
+      orderStatus: "payment_pending",
+      confirmedAt: null,
+      paymentAttempts: 0,
+      lastPaymentAttemptAt: null,
+      paymentExpiresAt: null,
+      subtotal: subtotalINR,
+      discount: discountINR,
+      couponCode,
+      shippingCharge: shippingCostINR,
+      total: totalINR,
+      notes,
+      country: {
         code: countryInfo.code || "IN",
         name: countryInfo.name || "India",
         flag: countryInfo.flag || "🇮🇳",
@@ -187,51 +206,44 @@ const placeOrder = async (req, res) => {
           symbol: countryInfo.currency?.symbol || "₹",
           name: countryInfo.currency?.name || "Indian Rupee",
         },
-        exchangeRate: exchangeRate,
+        exchangeRate,
       },
       pricing: {
-        subtotalINR,
-        subtotalLocal,
-        taxAmount,
-        taxRate,
+        subtotalINR, subtotalLocal, taxAmount, taxRate,
         taxLabel: countryInfo.tax?.label || "",
         taxIncluded,
         shippingCost: shippingCostLocal,
-        shippingCostINR,
-        discountINR,
-        discountLocal,
-        totalINR,
-        totalLocal,
+        shippingCostINR, discountINR, discountLocal, totalINR, totalLocal,
       },
     });
 
     for (const item of orderItems) {
-      await Product.findByIdAndUpdate(item.product, {
-        $inc: { stock: -item.quantity, totalSold: item.quantity },
-      });
+      const product = await getProductById(item.product);
+      if (product) {
+        await updateProduct(item.product, {
+          stock: Math.max(0, product.stock - item.quantity),
+          totalSold: (product.totalSold || 0) + item.quantity,
+        });
+      }
     }
 
     if (couponCode) {
-      try {
-        await applyCouponUsage(couponCode, req.user.id);
-      } catch (couponErr) {
-        console.log("Coupon usage tracking failed:", couponErr.message);
-      }
+      await applyCouponUsage(couponCode, req.user.id);
     }
 
-    await Cart.findOneAndUpdate(
-      { user: req.user.id },
-      {
-        items: [],
-        totalItems: 0,
-        subtotal: 0,
-        total: 0,
-        coupon: { code: "", discount: 0, discountType: "fixed" },
-      }
-    );
+    const emptyCart = {
+      ...cart,
+      items: [],
+      totalItems: 0,
+      subtotal: 0,
+      total: 0,
+      coupon: { code: "", discount: 0, discountType: "fixed", freeShipping: false, description: "", appliedAt: null },
+      userId: req.user.id,
+    };
+    await saveCart(emptyCart);
 
     if (countryInfo.code) {
-      await User.findByIdAndUpdate(req.user.id, {
+      await updateUser(req.user.id, {
         preferredCountry: countryInfo.code,
         preferredCurrency: countryInfo.currency?.code || "INR",
       });
@@ -253,19 +265,13 @@ const getMyOrders = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
 
-    const orders = await Order.find({ user: req.user.id })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
-
-    const total = await Order.countDocuments({ user: req.user.id });
+    const result = await getUserOrders(req.user.id, { page, limit });
 
     return res.status(200).json({
       success: true,
-      data: orders,
-      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+      data: result.items,
+      pagination: { page: result.page, limit: result.limit, total: result.total, pages: result.pages },
     });
   } catch (err) {
     console.error("getMyOrders error:", err);
@@ -276,16 +282,11 @@ const getMyOrders = async (req, res) => {
 const getSingleOrder = async (req, res) => {
   try {
     const { id } = req.params;
-    const order = await Order.findById(id);
+    const order = await getOrderById(id);
 
-    if (!order)
-      return res
-        .status(404)
-        .json({ success: false, message: "Order not found" });
-    if (order.user.toString() !== req.user.id) {
-      return res
-        .status(403)
-        .json({ success: false, message: "Not authorized" });
+    if (!order) return res.status(404).json({ success: false, message: "Order not found" });
+    if (order.userId !== req.user.id) {
+      return res.status(403).json({ success: false, message: "Not authorized" });
     }
 
     return res.status(200).json({ success: true, data: order });
@@ -300,15 +301,10 @@ const cancelOrder = async (req, res) => {
     const { id } = req.params;
     const { reason } = req.body;
 
-    const order = await Order.findById(id);
-    if (!order)
-      return res
-        .status(404)
-        .json({ success: false, message: "Order not found" });
-    if (order.user.toString() !== req.user.id) {
-      return res
-        .status(403)
-        .json({ success: false, message: "Not authorized" });
+    const order = await getOrderById(id);
+    if (!order) return res.status(404).json({ success: false, message: "Order not found" });
+    if (order.userId !== req.user.id) {
+      return res.status(403).json({ success: false, message: "Not authorized" });
     }
 
     if (!["confirmed", "processing", "payment_pending"].includes(order.orderStatus)) {
@@ -318,22 +314,29 @@ const cancelOrder = async (req, res) => {
       });
     }
 
-    await Order.findByIdAndUpdate(id, {
+    const updateData = {
       orderStatus: "cancelled",
       cancelReason: reason || "Cancelled by customer",
-      cancelledAt: new Date(),
-      ...(order.paymentStatus === "paid" ? { paymentStatus: "refunded" } : {}),
-    });
+      cancelledAt: new Date().toISOString(),
+    };
 
-    for (const item of order.items) {
-      await Product.findByIdAndUpdate(item.product, {
-        $inc: { stock: item.quantity, totalSold: -item.quantity },
-      });
+    if (order.paymentStatus === "paid") {
+      updateData.paymentStatus = "refunded";
     }
 
-    return res
-      .status(200)
-      .json({ success: true, message: "Order cancelled successfully" });
+    await updateOrder(id, updateData);
+
+    for (const item of order.items) {
+      const product = await getProductById(item.product);
+      if (product) {
+        await updateProduct(item.product, {
+          stock: (product.stock || 0) + item.quantity,
+          totalSold: Math.max(0, (product.totalSold || 0) - item.quantity),
+        });
+      }
+    }
+
+    return res.status(200).json({ success: true, message: "Order cancelled successfully" });
   } catch (err) {
     console.error("cancelOrder error:", err);
     return res.status(500).json({ success: false, message: err.message });
@@ -344,38 +347,38 @@ const adminGetAllOrders = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 15;
-    const skip = (page - 1) * limit;
     const { status, search } = req.query;
 
-    const filter = {};
-    if (status) filter.orderStatus = status;
+    const result = await getAllOrders({ status, search, page, limit });
 
-    if (search) {
-      const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      filter.orderNumber = { $regex: escaped, $options: "i" };
-    }
+    const enrichedOrders = await Promise.all(
+      result.items.map(async (order) => {
+        let userData = null;
+        try {
+          const { getUserById } = require("../models/dynamodb/userModel");
+          userData = await getUserById(order.userId);
+        } catch (e) {}
 
-    const orders = await Order.find(filter)
-      .populate("user", "firstName lastName email phone")
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
+        return {
+          ...order,
+          user: userData ? {
+            _id: userData._id,
+            firstName: userData.firstName,
+            lastName: userData.lastName,
+            email: userData.email,
+            phone: userData.phone,
+          } : { _id: order.userId },
+        };
+      })
+    );
 
-    const total = await Order.countDocuments(filter);
-
-    const totalRevenue = await Order.aggregate([
-      { $match: { orderStatus: "delivered" } },
-      { $group: { _id: null, total: { $sum: "$total" } } },
-    ]);
+    const totalRevenue = await getTotalRevenue();
 
     return res.status(200).json({
       success: true,
-      data: orders,
-      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
-      summary: {
-        totalRevenue: totalRevenue[0]?.total || 0,
-        totalOrders: total,
-      },
+      data: enrichedOrders,
+      pagination: { page: result.page, limit: result.limit, total: result.total, pages: result.pages },
+      summary: { totalRevenue, totalOrders: result.total },
     });
   } catch (err) {
     console.error("adminGetAllOrders error:", err);
@@ -388,34 +391,36 @@ const adminCancelOrder = async (req, res) => {
     const { id } = req.params;
     const { reason } = req.body;
 
-    const order = await Order.findById(id);
-    if (!order)
-      return res
-        .status(404)
-        .json({ success: false, message: "Order not found" });
+    const order = await getOrderById(id);
+    if (!order) return res.status(404).json({ success: false, message: "Order not found" });
 
     if (["cancelled", "delivered", "refunded"].includes(order.orderStatus)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Cannot cancel this order" });
+      return res.status(400).json({ success: false, message: "Cannot cancel this order" });
     }
 
-    await Order.findByIdAndUpdate(id, {
+    const updateData = {
       orderStatus: "cancelled",
       cancelReason: reason || "Cancelled by admin",
-      cancelledAt: new Date(),
-      ...(order.paymentStatus === "paid" ? { paymentStatus: "refunded" } : {}),
-    });
+      cancelledAt: new Date().toISOString(),
+    };
 
-    for (const item of order.items) {
-      await Product.findByIdAndUpdate(item.product, {
-        $inc: { stock: item.quantity, totalSold: -item.quantity },
-      });
+    if (order.paymentStatus === "paid") {
+      updateData.paymentStatus = "refunded";
     }
 
-    return res
-      .status(200)
-      .json({ success: true, message: "Order cancelled by admin" });
+    await updateOrder(id, updateData);
+
+    for (const item of order.items) {
+      const product = await getProductById(item.product);
+      if (product) {
+        await updateProduct(item.product, {
+          stock: (product.stock || 0) + item.quantity,
+          totalSold: Math.max(0, (product.totalSold || 0) - item.quantity),
+        });
+      }
+    }
+
+    return res.status(200).json({ success: true, message: "Order cancelled by admin" });
   } catch (err) {
     console.error("adminCancelOrder error:", err);
     return res.status(500).json({ success: false, message: err.message });
@@ -427,44 +432,22 @@ const vendorUpdateOrderStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
-    const allowedStatuses = [
-      "processing",
-      "shipped",
-      "out_for_delivery",
-      "delivered",
-      "cancelled",
-    ];
+    const allowedStatuses = ["processing", "shipped", "out_for_delivery", "delivered", "cancelled"];
     if (!allowedStatuses.includes(status)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid status" });
+      return res.status(400).json({ success: false, message: "Invalid status" });
     }
 
-    const order = await Order.findById(id);
-    if (!order)
-      return res
-        .status(404)
-        .json({ success: false, message: "Order not found" });
+    const order = await getOrderById(id);
+    if (!order) return res.status(404).json({ success: false, message: "Order not found" });
 
-    const vendorItems = order.items.filter(
-      (item) => item.vendor.toString() === req.user.id
-    );
+    const vendorItems = order.items.filter((item) => item.vendor === req.user.id);
 
     if (vendorItems.length === 0) {
-      return res.status(403).json({
-        success: false,
-        message: "No items from your store in this order",
-      });
+      return res.status(403).json({ success: false, message: "No items from your store in this order" });
     }
 
-    if (
-      status === "cancelled" &&
-      !["confirmed", "processing"].includes(order.orderStatus)
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Cannot cancel order that has already been shipped",
-      });
+    if (status === "cancelled" && !["confirmed", "processing"].includes(order.orderStatus)) {
+      return res.status(400).json({ success: false, message: "Cannot cancel order that has already been shipped" });
     }
 
     const progression = {
@@ -474,11 +457,7 @@ const vendorUpdateOrderStatus = async (req, res) => {
       out_for_delivery: ["delivered"],
     };
 
-    if (
-      status !== "cancelled" &&
-      progression[order.orderStatus] &&
-      !progression[order.orderStatus].includes(status)
-    ) {
+    if (status !== "cancelled" && progression[order.orderStatus] && !progression[order.orderStatus].includes(status)) {
       return res.status(400).json({
         success: false,
         message: `Cannot change status from "${order.orderStatus}" to "${status}"`,
@@ -488,28 +467,26 @@ const vendorUpdateOrderStatus = async (req, res) => {
     const updateData = { orderStatus: status };
 
     if (status === "delivered") {
-      updateData.deliveredAt = new Date();
+      updateData.deliveredAt = new Date().toISOString();
     }
 
     if (status === "cancelled") {
       updateData.cancelReason = req.body.reason || "Cancelled by vendor";
-      updateData.cancelledAt = new Date();
+      updateData.cancelledAt = new Date().toISOString();
       for (const item of vendorItems) {
-        await Product.findByIdAndUpdate(item.product, {
-          $inc: { stock: item.quantity, totalSold: -item.quantity },
-        });
+        const product = await getProductById(item.product);
+        if (product) {
+          await updateProduct(item.product, {
+            stock: (product.stock || 0) + item.quantity,
+            totalSold: Math.max(0, (product.totalSold || 0) - item.quantity),
+          });
+        }
       }
     }
 
-    const updatedOrder = await Order.findByIdAndUpdate(id, updateData, {
-      new: true,
-    });
+    const updatedOrder = await updateOrder(id, updateData);
 
-    return res.status(200).json({
-      success: true,
-      message: "Order status updated",
-      data: updatedOrder,
-    });
+    return res.status(200).json({ success: true, message: "Order status updated", data: updatedOrder });
   } catch (err) {
     console.error("vendorUpdateOrderStatus error:", err);
     return res.status(500).json({ success: false, message: err.message });
@@ -520,31 +497,35 @@ const vendorGetOrders = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
     const status = req.query.status;
 
-    const filter = { "items.vendor": req.user.id };
-    if (status) filter.orderStatus = status;
+    const result = await getVendorOrders(req.user.id, { status, page, limit });
 
-    const orders = await Order.find(filter)
-      .populate("user", "firstName lastName email phone")
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
+    const enrichedOrders = await Promise.all(
+      result.items.map(async (order) => {
+        let userData = null;
+        try {
+          const { getUserById } = require("../models/dynamodb/userModel");
+          userData = await getUserById(order.userId);
+        } catch (e) {}
 
-    const vendorOrders = orders.map((order) => ({
-      ...order.toObject(),
-      items: order.items.filter(
-        (item) => item.vendor.toString() === req.user.id
-      ),
-    }));
-
-    const total = await Order.countDocuments(filter);
+        return {
+          ...order,
+          user: userData ? {
+            _id: userData._id,
+            firstName: userData.firstName,
+            lastName: userData.lastName,
+            email: userData.email,
+            phone: userData.phone,
+          } : { _id: order.userId },
+        };
+      })
+    );
 
     return res.status(200).json({
       success: true,
-      data: vendorOrders,
-      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+      data: enrichedOrders,
+      pagination: { page: result.page, limit: result.limit, total: result.total, pages: result.pages },
     });
   } catch (err) {
     console.error("vendorGetOrders error:", err);
