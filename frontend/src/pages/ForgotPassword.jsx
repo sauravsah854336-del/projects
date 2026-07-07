@@ -7,6 +7,7 @@ import {
   useResendOTPMutation,
 } from "../features/auth/authApi";
 import { toast } from "../components/Toast";
+import PlatformLogo from "../assets/PlatformLogo.jpeg";
 
 const ForgotPassword = () => {
   const [forgotPassword] = useForgotPasswordMutation();
@@ -176,7 +177,6 @@ const ForgotPassword = () => {
 
   const stepLabels = ["Email", "Verify OTP", "New Password", "Done"];
 
-
   const ErrorAlert = ({ msg }) =>
     msg ? (
       <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2.5">
@@ -248,28 +248,29 @@ const ForgotPassword = () => {
     </button>
   );
 
-
   return (
     <div className="min-h-[85vh] flex items-center justify-center px-4 py-8 sm:py-12 bg-gray-50">
       <div className="w-full max-w-[960px] grid lg:grid-cols-[1fr_1.2fr] bg-white rounded-2xl shadow-xl shadow-gray-200/50 overflow-hidden border border-gray-200">
 
         <div className="hidden lg:flex flex-col justify-center bg-gradient-to-br from-[#0F172A] via-[#1E3A8A] to-[#0F172A] p-10 relative overflow-hidden">
-          {/* blobs */}
           <div className="absolute top-0 right-0 w-48 h-48 bg-blue-500/15 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-40 h-40 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
 
           <div className="relative">
-            {/* Logo — same as Login */}
             <Link to="/" className="flex items-center gap-2.5 no-underline mb-8">
-              <div className="w-11 h-11 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl flex items-center justify-center text-white font-black text-lg shadow-lg shadow-blue-500/30">
-                E
+              <div className="w-12 h-12 rounded-xl overflow-hidden ring-2 ring-blue-400/40 shadow-lg shadow-blue-500/30 shrink-0">
+                <img
+                  src={PlatformLogo}
+                  alt="shop.design"
+                  className="w-full h-full object-cover"
+                />
               </div>
               <div>
-                <p className="text-base font-black text-white m-0">
-                  E<span className="text-blue-400">·</span>Commerce
+                <p className="text-base font-black text-white m-0 leading-tight">
+                  shop<span className="text-blue-400">.</span>design
                 </p>
-                <p className="text-[9px] text-blue-300/50 m-0 uppercase tracking-wider font-bold">
-                  Marketplace
+                <p className="text-[9px] text-blue-300/60 m-0 uppercase tracking-wider font-bold">
+                  Design your space
                 </p>
               </div>
             </Link>
@@ -278,7 +279,7 @@ const ForgotPassword = () => {
               Reset Password
             </h2>
             <p className="text-sm text-blue-200/60 m-0 mb-8 leading-relaxed max-w-xs">
-              Follow the steps to securely reset your account password.
+              Follow the steps to securely reset your shop.design account password.
             </p>
 
             <div className="space-y-3 mb-8">
@@ -288,7 +289,6 @@ const ForgotPassword = () => {
                 const isActive = step === num;
                 return (
                   <div key={label} className="flex items-center gap-3">
-                    {/* circle */}
                     <div
                       className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-extrabold shrink-0 transition-all duration-300 ${
                         isDone
@@ -332,7 +332,7 @@ const ForgotPassword = () => {
               })}
             </div>
 
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 mb-6">
               {[
                 { icon: "🔒", text: "OTP expires in 10 minutes" },
                 { icon: "🛡️", text: "Never share your OTP with anyone" },
@@ -344,6 +344,15 @@ const ForgotPassword = () => {
                 </div>
               ))}
             </div>
+
+            <div className="pt-6 border-t border-white/10">
+              <p className="text-[10px] text-blue-300/40 m-0 uppercase tracking-wider font-bold">
+                A product of
+              </p>
+              <p className="text-xs text-blue-200/70 font-bold m-0 mt-0.5">
+                Quleep Pvt Ltd
+              </p>
+            </div>
           </div>
         </div>
 
@@ -351,10 +360,16 @@ const ForgotPassword = () => {
 
           <div className="lg:hidden text-center mb-6">
             <Link to="/" className="inline-flex items-center gap-2 no-underline mb-3">
-              <div className="w-9 h-9 bg-gradient-to-br from-[#0F172A] to-[#1E3A8A] rounded-lg flex items-center justify-center text-white font-black text-sm shadow-md">
-                E
+              <div className="w-10 h-10 rounded-lg overflow-hidden ring-2 ring-blue-500/20 shadow-md shrink-0">
+                <img
+                  src={PlatformLogo}
+                  alt="shop.design"
+                  className="w-full h-full object-cover"
+                />
               </div>
-              <span className="text-base font-extrabold text-gray-900">Commerce</span>
+              <span className="text-base font-extrabold text-gray-900">
+                shop<span className="text-blue-600">.</span>design
+              </span>
             </Link>
           </div>
 
@@ -405,7 +420,7 @@ const ForgotPassword = () => {
                   <>OTP sent to <strong className="text-gray-700">{email}</strong></>
                 )}
                 {step === 3 && "Choose a strong password for your account"}
-                {step === 4 && "Your password has been updated successfully"}
+                {step === 4 && "Your shop.design password has been updated"}
               </p>
             </div>
           </div>
@@ -652,7 +667,7 @@ const ForgotPassword = () => {
                 Password Updated!
               </h2>
               <p className="text-gray-500 text-sm mb-1 m-0">
-                Your password has been reset successfully.
+                Your <span className="font-bold text-gray-700">shop.design</span> password has been reset successfully.
               </p>
               <p className="text-gray-400 text-sm mb-8 m-0">
                 You can now log in with your new password.

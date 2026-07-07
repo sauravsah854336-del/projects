@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import PlatformLogo from "../assets/PlatformLogo.jpeg";
 
 const AboutPage = () => {
   return (
@@ -16,15 +17,42 @@ const AboutPage = () => {
             <span className="text-gray-900 font-semibold">About Us</span>
           </div>
           <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 m-0">
-            About E-Commerce
+            About shop.design
           </h1>
           <p className="text-sm text-gray-500 m-0 mt-1">
-            India's growing multi-vendor marketplace
+            India's premium multi-vendor marketplace — Design your space, delivered
           </p>
         </div>
       </div>
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <div className="bg-gradient-to-br from-[#0F172A] via-[#1E3A8A] to-[#0F172A] rounded-2xl p-6 sm:p-8 mb-6 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="relative flex items-center gap-4 sm:gap-5">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden ring-2 ring-blue-400/40 shadow-2xl shadow-blue-500/30 shrink-0">
+              <img
+                src={PlatformLogo}
+                alt="shop.design"
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-2xl sm:text-3xl font-black text-white m-0 leading-tight">
+                shop<span className="text-blue-400">.</span>design
+              </h2>
+              <p className="text-xs sm:text-sm text-blue-200/80 m-0 mt-1 font-semibold uppercase tracking-wider">
+                Design your space, delivered
+              </p>
+              <p className="text-xs text-blue-300/60 m-0 mt-2">
+                A product of{" "}
+                <span className="text-white font-bold">Quleep Pvt Ltd</span>
+              </p>
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
           {[
             { icon: "🏪", value: "25+", label: "Verified Sellers" },
@@ -53,15 +81,24 @@ const AboutPage = () => {
               <span className="text-xl">📖</span> Our Story
             </h2>
             <p className="text-sm text-gray-600 leading-relaxed m-0 mb-3">
-              E-Commerce is a modern multi-vendor marketplace that connects
-              buyers with verified sellers across India. We believe everyone
-              deserves access to quality products at fair prices, delivered
-              right to their doorstep.
+              <strong className="text-gray-900">shop.design</strong> is a modern
+              multi-vendor marketplace built for design-conscious shoppers. We
+              connect buyers with verified sellers across India, curating
+              furniture, home décor, and lifestyle products that transform
+              spaces into homes.
             </p>
             <p className="text-sm text-gray-600 leading-relaxed m-0">
-              Founded with a mission to empower small businesses and independent
-              sellers, our platform provides the tools and technology needed to
-              reach customers nationwide.
+              Crafted by{" "}
+              <a
+                href="https://www.quleep.in"
+                target="_blank"
+                rel="noreferrer"
+                className="text-blue-600 no-underline hover:underline font-semibold"
+              >
+                Quleep Pvt Ltd
+              </a>
+              , our platform empowers independent sellers with the tools and
+              technology to reach design-loving customers nationwide.
             </p>
           </div>
 
@@ -70,19 +107,20 @@ const AboutPage = () => {
               <span className="text-xl">🎯</span> Our Mission
             </h2>
             <p className="text-sm text-gray-600 leading-relaxed m-0 mb-3">
-              To create a trusted, transparent, and accessible marketplace where
-              sellers can grow their businesses and customers can shop with
-              confidence.
+              To make premium design accessible to every home in India. We
+              believe great design shouldn't be a luxury — it should be part of
+              everyday life.
             </p>
             <p className="text-sm text-gray-600 leading-relaxed m-0 mb-3">
-              We envision a world where every small business has equal access to
-              technology and customers, breaking geographical barriers.
+              We envision a world where every home tells a story, and every
+              small design business has an equal opportunity to be part of that
+              journey.
             </p>
             <div className="flex flex-wrap gap-1.5">
-              {["Trust", "Transparency", "Quality", "Innovation"].map((v) => (
+              {["Design", "Trust", "Craftsmanship", "Innovation"].map((v) => (
                 <span
                   key={v}
-                  className="text-[10px] font-bold bg-gray-100 text-gray-700 border border-gray-200 px-2.5 py-1 rounded-full"
+                  className="text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-full"
                 >
                   {v}
                 </span>
@@ -97,14 +135,14 @@ const AboutPage = () => {
           </h2>
           <div className="grid sm:grid-cols-2 gap-2">
             {[
-              "Wide range of products across 50+ categories",
-              "Verified and trusted sellers only",
-              "Secure payment options including COD, UPI, Cards",
-              "Fast and reliable delivery across India",
+              "Curated furniture, décor & lifestyle products",
+              "Verified and trusted design sellers only",
+              "Secure payments — UPI, Cards, NetBanking",
+              "Fast & reliable delivery across India",
               "Easy 10-day return and refund policy",
               "24/7 customer support via email and phone",
               "Best price guarantee with regular deals",
-              "Seller tools, analytics & vendor dashboard",
+              "Seller dashboard with analytics & insights",
               "Multi-country support with currency conversion",
               "Exclusive coupons and promotional offers",
             ].map((item) => (
@@ -140,9 +178,9 @@ const AboutPage = () => {
                 desc: "Every seller is verified. Every transaction is secure. Every customer is protected.",
               },
               {
-                icon: "🌟",
-                title: "Quality First",
-                desc: "High standards through manual seller approval and continuous quality monitoring.",
+                icon: "🎨",
+                title: "Design First",
+                desc: "High standards through manual seller approval and continuous quality curation.",
               },
               {
                 icon: "💡",
@@ -152,7 +190,7 @@ const AboutPage = () => {
               {
                 icon: "🌱",
                 title: "Empowerment",
-                desc: "Tools, analytics, and a platform to help small businesses reach millions of customers.",
+                desc: "Tools, analytics, and a platform to help small design businesses reach millions.",
               },
               {
                 icon: "🔒",
@@ -167,7 +205,7 @@ const AboutPage = () => {
             ].map((value) => (
               <div
                 key={value.title}
-                className="bg-white rounded-xl border border-gray-200 p-5 hover:border-gray-300 transition-colors"
+                className="bg-white rounded-xl border border-gray-200 p-5 hover:border-blue-300 hover:shadow-md transition-all"
               >
                 <span className="text-2xl">{value.icon}</span>
                 <h3 className="text-sm font-extrabold text-gray-900 m-0 mt-2 mb-1.5">
@@ -185,6 +223,18 @@ const AboutPage = () => {
           <h2 className="text-lg font-extrabold text-gray-900 m-0 mb-4 flex items-center gap-2">
             <span className="text-xl">🏢</span> Company Information
           </h2>
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-lg p-4 mb-4">
+            <p className="text-xs text-blue-700 font-bold uppercase tracking-wider m-0 mb-1">
+              About the Company
+            </p>
+            <p className="text-sm text-gray-700 m-0 leading-relaxed">
+              <strong className="text-gray-900">shop.design</strong> is
+              owned and operated by{" "}
+              <strong className="text-blue-700">Quleep Private Limited</strong>,
+              a technology company building modern digital products for
+              India and beyond.
+            </p>
+          </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {[
               {
@@ -195,7 +245,6 @@ const AboutPage = () => {
               { label: "Email", value: "info@quleep.in" },
               { label: "Phone", value: "+91 98830 19518" },
               {
-                icon: "🌐",
                 label: "Website",
                 value: "www.quleep.in",
                 href: "https://www.quleep.in",
@@ -204,7 +253,7 @@ const AboutPage = () => {
                 label: "Working Hours",
                 value: "Mon-Sat, 10:00 AM - 7:00 PM IST",
               },
-              { label: "Company", value: "Quleep Technologies" },
+              { label: "Parent Company", value: "Quleep Pvt Ltd" },
             ].map((item) => (
               <div key={item.label} className="p-3 bg-gray-50 rounded-lg">
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider m-0">
@@ -229,26 +278,39 @@ const AboutPage = () => {
           </div>
         </div>
 
-        <div className="bg-gray-900 rounded-xl p-6 sm:p-8 text-center">
-          <h2 className="text-xl font-extrabold text-white m-0 mb-2">
-            Ready to get started?
-          </h2>
-          <p className="text-sm text-gray-400 m-0 mb-5">
-            Join thousands of happy customers and verified sellers.
-          </p>
-          <div className="flex gap-3 justify-center flex-wrap">
-            <Link
-              to="/signup"
-              className="bg-white text-gray-900 no-underline px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-gray-100 transition"
-            >
-              Create Account
-            </Link>
-            <Link
-              to="/contact"
-              className="bg-white/10 text-white no-underline px-5 py-2.5 rounded-lg text-sm font-semibold border border-white/20 hover:bg-white/20 transition"
-            >
-              Contact Us
-            </Link>
+        <div className="bg-gradient-to-br from-[#0F172A] via-[#1E3A8A] to-[#0F172A] rounded-xl p-6 sm:p-8 text-center relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-40 h-40 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="relative">
+            <div className="w-14 h-14 rounded-xl overflow-hidden ring-2 ring-blue-400/40 shadow-lg mx-auto mb-4">
+              <img
+                src={PlatformLogo}
+                alt="shop.design"
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <h2 className="text-xl font-extrabold text-white m-0 mb-2">
+              Ready to design your space?
+            </h2>
+            <p className="text-sm text-blue-200/80 m-0 mb-5">
+              Join thousands of happy customers and verified sellers on{" "}
+              <span className="text-blue-400 font-bold">shop.design</span>
+            </p>
+            <div className="flex gap-3 justify-center flex-wrap">
+              <Link
+                to="/signup"
+                className="bg-white text-gray-900 no-underline px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-gray-100 transition shadow-lg"
+              >
+                Create Account
+              </Link>
+              <Link
+                to="/contact"
+                className="bg-white/10 text-white no-underline px-5 py-2.5 rounded-lg text-sm font-semibold border border-white/20 hover:bg-white/20 transition"
+              >
+                Contact Us
+              </Link>
+            </div>
           </div>
         </div>
       </div>

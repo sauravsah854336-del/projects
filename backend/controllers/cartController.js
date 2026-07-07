@@ -6,9 +6,9 @@ const {
 const { getProductById } = require("../models/dynamodb/productModel");
 
 const recalculateCart = async (cart) => {
-  cart.totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0);
-  cart.subtotal = cart.items.reduce(
-    (sum, item) => sum + item.price * item.quantity,
+  cart.totalItems = (cart.items || []).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+  cart.subtotal = (cart.items || []).reduce(
+    (sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 0),
     0
   );
 
@@ -45,9 +45,7 @@ const recalculateCart = async (cart) => {
           };
         }
       }
-    } catch (e) {
-      console.log("Coupon recalculation error:", e.message);
-    }
+    } catch (e) {}
   }
 
   cart.total = cart.subtotal - (cart.coupon?.discount || 0);
@@ -62,25 +60,28 @@ const getCart = async (req, res) => {
 
     const validItems = [];
 
-    for (const item of cart.items) {
-      const product = await getProductById(item.product);
+    for (const item of cart.items || []) {
+      const productId = String(item.product || "").trim();
+      if (!productId) continue;
 
-      if (!product || product.stock <= 0 || product.status !== "approved") {
+      const product = await getProductById(productId);
+      const productStatus = product?.status || "";
+      const productStock = Number(product?.stock) || 0;
+
+      if (!product || productStock <= 0 || productStatus !== "approved" || product.isActive === false || product.isDeleted) {
         continue;
       }
 
-      const maxQty = Math.min(item.quantity, product.stock);
-
       validItems.push({
-        product: product._id,
-        quantity: maxQty,
-        price: product.price,
-        comparePrice: product.comparePrice || 0,
-        name: product.name,
-        image: product.images?.[0]?.url || "",
-        vendor: product.vendorId || product.vendor,
+        product: String(product._id || product.productId || productId),
+        quantity: Math.min(Number(item.quantity) || 1, productStock),
+        price: Number(product.price) || 0,
+        comparePrice: Number(product.comparePrice) || 0,
+        name: product.name || "",
+        image: product.images?.[0]?.url || product.images?.[0] || "",
+        vendor: String(product.vendorId || product.vendor || ""),
         storeName: product.storeName || "",
-        maxQuantity: product.stock,
+        maxQuantity: productStock,
       });
     }
 
@@ -104,44 +105,53 @@ const addToCart = async (req, res) => {
       return res.status(400).json({ success: false, message: "Product ID is required" });
     }
 
-    const product = await getProductById(productId);
+    const cleanProductId = String(productId).trim();
+    const product = await getProductById(cleanProductId);
 
     if (!product) {
       return res.status(404).json({ success: false, message: "Product not found" });
     }
 
-    if (product.status !== "approved" || product.stock <= 0) {
+    const productStatus = product.status || "";
+    const productStock = Number(product.stock) || 0;
+
+    if (productStatus !== "approved" || product.isActive === false || product.isDeleted) {
       return res.status(400).json({ success: false, message: "Product is not available" });
     }
 
-    const requestedQty = Math.min(quantity, product.stock);
+    if (productStock <= 0) {
+      return res.status(400).json({ success: false, message: "Product is out of stock" });
+    }
+
+    const requestedQty = Math.max(1, Math.min(Number(quantity) || 1, productStock));
     let cart = await getOrCreateCart(req.user.id);
 
-    const existingIndex = cart.items.findIndex((item) => item.product === productId);
+    const existingIndex = (cart.items || []).findIndex((item) => String(item.product || "") === cleanProductId);
+
+    const productImage = product.images?.[0]?.url || product.images?.[0] || "";
+    const vendorId = String(product.vendorId || product.vendor || "");
 
     if (existingIndex > -1) {
-      cart.items[existingIndex].quantity += requestedQty;
-      if (cart.items[existingIndex].quantity > product.stock) {
-        cart.items[existingIndex].quantity = product.stock;
-      }
-      cart.items[existingIndex].price = product.price;
-      cart.items[existingIndex].comparePrice = product.comparePrice || 0;
-      cart.items[existingIndex].name = product.name;
-      cart.items[existingIndex].image = product.images?.[0]?.url || "";
-      cart.items[existingIndex].vendor = product.vendorId || product.vendor;
+      const nextQty = (Number(cart.items[existingIndex].quantity) || 0) + requestedQty;
+      cart.items[existingIndex].quantity = Math.min(nextQty, productStock);
+      cart.items[existingIndex].price = Number(product.price) || 0;
+      cart.items[existingIndex].comparePrice = Number(product.comparePrice) || 0;
+      cart.items[existingIndex].name = product.name || "";
+      cart.items[existingIndex].image = productImage;
+      cart.items[existingIndex].vendor = vendorId;
       cart.items[existingIndex].storeName = product.storeName || "";
-      cart.items[existingIndex].maxQuantity = product.stock;
+      cart.items[existingIndex].maxQuantity = productStock;
     } else {
       cart.items.push({
-        product: productId,
+        product: cleanProductId,
         quantity: requestedQty,
-        price: product.price,
-        comparePrice: product.comparePrice || 0,
-        name: product.name,
-        image: product.images?.[0]?.url || "",
-        vendor: product.vendorId || product.vendor,
+        price: Number(product.price) || 0,
+        comparePrice: Number(product.comparePrice) || 0,
+        name: product.name || "",
+        image: productImage,
+        vendor: vendorId,
         storeName: product.storeName || "",
-        maxQuantity: product.stock,
+        maxQuantity: productStock,
       });
     }
 
@@ -168,24 +178,25 @@ const updateCartItem = async (req, res) => {
       return res.status(400).json({ success: false, message: "Quantity must be at least 1" });
     }
 
+    const cleanProductId = String(productId).trim();
     let cart = await getOrCreateCart(req.user.id);
 
-    const itemIndex = cart.items.findIndex((item) => item.product === productId);
+    const itemIndex = (cart.items || []).findIndex((item) => String(item.product || "") === cleanProductId);
 
     if (itemIndex === -1) {
       return res.status(404).json({ success: false, message: "Product not in cart" });
     }
 
-    const product = await getProductById(productId);
+    const product = await getProductById(cleanProductId);
 
     if (!product) {
       return res.status(404).json({ success: false, message: "Product not found" });
     }
 
-    cart.items[itemIndex].quantity = Math.min(quantity, product.stock);
-    cart.items[itemIndex].price = product.price;
-    cart.items[itemIndex].comparePrice = product.comparePrice || 0;
-    cart.items[itemIndex].maxQuantity = product.stock;
+    cart.items[itemIndex].quantity = Math.min(Number(quantity) || 1, Number(product.stock) || 0);
+    cart.items[itemIndex].price = Number(product.price) || 0;
+    cart.items[itemIndex].comparePrice = Number(product.comparePrice) || 0;
+    cart.items[itemIndex].maxQuantity = Number(product.stock) || 0;
 
     await recalculateCart(cart);
     cart.userId = req.user.id;
@@ -201,10 +212,11 @@ const updateCartItem = async (req, res) => {
 const removeCartItem = async (req, res) => {
   try {
     const { productId } = req.params;
+    const cleanProductId = String(productId).trim();
 
     let cart = await getOrCreateCart(req.user.id);
 
-    cart.items = cart.items.filter((item) => item.product !== productId);
+    cart.items = (cart.items || []).filter((item) => String(item.product || "") !== cleanProductId);
 
     await recalculateCart(cart);
     cart.userId = req.user.id;
@@ -220,7 +232,6 @@ const removeCartItem = async (req, res) => {
 const clearCart = async (req, res) => {
   try {
     const cart = await clearCartInDB(req.user.id);
-
     return res.status(200).json({ success: true, message: "Cart cleared", data: cart });
   } catch (err) {
     console.error("clearCart error:", err);
@@ -240,33 +251,36 @@ const mergeGuestCart = async (req, res) => {
     let cart = await getOrCreateCart(req.user.id);
 
     for (const guestItem of items) {
-      const product = await getProductById(guestItem.productId);
+      const cleanProductId = String(guestItem.productId || "").trim();
+      if (!cleanProductId) continue;
 
-      if (!product || product.status !== "approved" || product.stock <= 0) {
+      const product = await getProductById(cleanProductId);
+
+      if (!product || product.status !== "approved" || product.isActive === false || product.isDeleted || (Number(product.stock) || 0) <= 0) {
         continue;
       }
 
-      const existingIndex = cart.items.findIndex(
-        (item) => item.product === guestItem.productId
+      const existingIndex = (cart.items || []).findIndex(
+        (item) => String(item.product || "") === cleanProductId
       );
 
       if (existingIndex > -1) {
-        const newQty = cart.items[existingIndex].quantity + (guestItem.quantity || 1);
-        cart.items[existingIndex].quantity = Math.min(newQty, product.stock);
-        cart.items[existingIndex].price = product.price;
-        cart.items[existingIndex].comparePrice = product.comparePrice || 0;
-        cart.items[existingIndex].maxQuantity = product.stock;
+        const newQty = (Number(cart.items[existingIndex].quantity) || 0) + (Number(guestItem.quantity) || 1);
+        cart.items[existingIndex].quantity = Math.min(newQty, Number(product.stock) || 0);
+        cart.items[existingIndex].price = Number(product.price) || 0;
+        cart.items[existingIndex].comparePrice = Number(product.comparePrice) || 0;
+        cart.items[existingIndex].maxQuantity = Number(product.stock) || 0;
       } else {
         cart.items.push({
-          product: guestItem.productId,
-          quantity: Math.min(guestItem.quantity || 1, product.stock),
-          price: product.price,
-          comparePrice: product.comparePrice || 0,
-          name: product.name,
-          image: product.images?.[0]?.url || "",
-          vendor: product.vendorId || product.vendor,
+          product: cleanProductId,
+          quantity: Math.min(Number(guestItem.quantity) || 1, Number(product.stock) || 0),
+          price: Number(product.price) || 0,
+          comparePrice: Number(product.comparePrice) || 0,
+          name: product.name || "",
+          image: product.images?.[0]?.url || product.images?.[0] || "",
+          vendor: String(product.vendorId || product.vendor || ""),
           storeName: product.storeName || "",
-          maxQuantity: product.stock,
+          maxQuantity: Number(product.stock) || 0,
         });
       }
     }
@@ -334,6 +348,8 @@ const applyCouponToCart = async (req, res) => {
     if (userUsage && (userUsage.usedCount || 1) >= perUserLimit) {
       return res.status(400).json({ success: false, message: "You have already used this coupon" });
     }
+
+    await recalculateCart(cart);
 
     if (cart.subtotal < (coupon.minOrderAmount || 0)) {
       return res.status(400).json({

@@ -4,9 +4,10 @@ import { API_URL } from "../../utils/apiConfig";
 
 const baseQuery = fetchBaseQuery({
   baseUrl: API_URL,
-  prepareHeaders: (headers, { getState }) => {
+  prepareHeaders: (headers, { getState, endpoint }) => {
     const token = getState().auth.token;
-    if (token) {
+    const publicEndpoints = ["vendorSignup", "vendorLogin", "login", "signup", "refresh", "forgotPassword", "verifyOTP", "resetPassword", "resendOTP"];
+    if (token && !publicEndpoints.includes(endpoint)) {
       headers.set("authorization", `Bearer ${token}`);
     }
     return headers;
@@ -128,7 +129,6 @@ export const authApi = createApi({
         body: data,
       }),
     }),
-
     getAdminStats: builder.query({
       query: () => "/admin/stats",
       providesTags: ["AdminStats"],
@@ -145,7 +145,6 @@ export const authApi = createApi({
       }),
       invalidatesTags: ["Admins", "AdminStats"],
     }),
-
     getAdminProfile: builder.query({
       query: () => "/admin/profile",
       providesTags: ["AdminProfile"],
@@ -165,7 +164,6 @@ export const authApi = createApi({
         body: data,
       }),
     }),
-
     getVendorProfile: builder.query({
       query: () => "/vendor/profile",
       providesTags: ["VendorProfile"],
@@ -193,7 +191,10 @@ export const authApi = createApi({
         body: data,
       }),
     }),
-
+    getVendorStats: builder.query({
+      query: () => "/vendor/stats",
+      providesTags: ["VendorStats"],
+    }),
     getPendingVendors: builder.query({
       query: () => "/admin/vendors/pending",
       providesTags: ["Vendors"],
@@ -246,7 +247,6 @@ export const authApi = createApi({
       }),
       invalidatesTags: ["Vendors"],
     }),
-
     getAllCustomers: builder.query({
       query: (params) => {
         const q = new URLSearchParams();
@@ -298,20 +298,17 @@ export const {
   useVerifyOTPMutation,
   useResetPasswordMutation,
   useResendOTPMutation,
-
   useGetAdminStatsQuery,
   useGetAllAdminsQuery,
   useCreateAdminMutation,
-
   useGetAdminProfileQuery,
   useUpdateAdminProfileMutation,
   useChangeAdminPasswordMutation,
-
   useGetVendorProfileQuery,
   useUpdateVendorProfileMutation,
   useUpdateVendorStoreMutation,
   useChangeVendorPasswordMutation,
-
+  useGetVendorStatsQuery,
   useGetPendingVendorsQuery,
   useGetAllVendorsQuery,
   useApproveVendorMutation,
@@ -319,7 +316,6 @@ export const {
   useSuspendVendorMutation,
   useUnsuspendVendorMutation,
   useUpdateVendorCommissionMutation,
-
   useGetAllCustomersQuery,
   useGetSingleCustomerQuery,
   useBlockCustomerMutation,

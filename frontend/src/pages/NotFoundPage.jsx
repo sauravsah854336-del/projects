@@ -4,6 +4,7 @@ import { useSelector } from "react-redux";
 import { useGetAllProductsQuery } from "../features/product/productApi";
 import { useGetCategoryTreeQuery } from "../features/category/categoryApi";
 import { PLACEHOLDER_MEDIUM } from "../utils/placeholder";
+import PlatformLogo from "../assets/PlatformLogo.jpeg";
 
 const formatRupee = (amount) =>
   new Intl.NumberFormat("en-IN", {
@@ -91,9 +92,9 @@ const NotFoundPage = () => {
           display: block;
         }
         .nf-product-card:hover {
-          border-color: #D85A30;
+          border-color: #3B82F6;
           transform: translateY(-4px);
-          box-shadow: 0 12px 24px rgba(216,90,48,0.15);
+          box-shadow: 0 12px 24px rgba(59,130,246,0.15);
         }
         .nf-cat-card {
           background: white;
@@ -107,25 +108,47 @@ const NotFoundPage = () => {
           color: inherit;
         }
         .nf-cat-card:hover {
-          border-color: #D85A30;
+          border-color: #3B82F6;
           transform: translateY(-2px);
-          box-shadow: 0 6px 16px rgba(216,90,48,0.12);
+          box-shadow: 0 6px 16px rgba(59,130,246,0.12);
         }
       `}</style>
 
       <section style={{
-        background: "linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #312e81 100%)",
+        background: "linear-gradient(135deg, #0F172A 0%, #1E3A8A 50%, #0F172A 100%)",
         padding: "40px 20px 60px",
         position: "relative",
         overflow: "hidden",
       }}>
-        <div className="nf-cloud" style={{ position: "absolute", top: "20%", left: "10%", width: 120, height: 120, background: "rgba(216,90,48,0.15)", borderRadius: "50%", filter: "blur(40px)" }}></div>
+        <div className="nf-cloud" style={{ position: "absolute", top: "20%", left: "10%", width: 120, height: 120, background: "rgba(59,130,246,0.15)", borderRadius: "50%", filter: "blur(40px)" }}></div>
         <div className="nf-cloud" style={{ position: "absolute", bottom: "10%", right: "10%", width: 180, height: 180, background: "rgba(124,58,237,0.15)", borderRadius: "50%", filter: "blur(50px)", animationDelay: "2s" }}></div>
         <div className="nf-cloud" style={{ position: "absolute", top: "50%", right: "30%", width: 100, height: 100, background: "rgba(99,102,241,0.1)", borderRadius: "50%", filter: "blur(40px)", animationDelay: "4s" }}></div>
 
         <div className="nf-section" style={{ maxWidth: 900, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40, alignItems: "center", position: "relative", zIndex: 1 }}>
 
           <div>
+            <Link to="/" style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 10,
+              textDecoration: "none",
+              marginBottom: 20,
+            }}>
+              <div style={{
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                overflow: "hidden",
+                boxShadow: "0 4px 12px rgba(59,130,246,0.3)",
+                border: "2px solid rgba(96,165,250,0.4)",
+              }}>
+                <img src={PlatformLogo} alt="shop.design" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              </div>
+              <span style={{ fontSize: 15, fontWeight: 900, color: "white" }}>
+                shop<span style={{ color: "#60A5FA" }}>.</span>design
+              </span>
+            </Link>
+
             <div style={{
               display: "inline-flex",
               alignItems: "center",
@@ -150,17 +173,17 @@ const NotFoundPage = () => {
             }}>
               Lost in the<br />
               <span style={{
-                background: "linear-gradient(135deg, #D85A30, #FF8C5A)",
+                background: "linear-gradient(135deg, #60A5FA, #3B82F6)",
                 WebkitBackgroundClip: "text",
                 backgroundClip: "text",
                 WebkitTextFillColor: "transparent",
               }}>
-                marketplace?
+                design space?
               </span>
             </h1>
 
             <p style={{ fontSize: 15, color: "#94A3B8", lineHeight: 1.7, margin: "0 0 28px", maxWidth: 380 }}>
-              We searched everywhere but couldn't find this page. It might have been moved, deleted, or never existed.
+              We searched everywhere but couldn't find this page. It might have been moved, deleted, or never existed on shop.design.
             </p>
 
             <form
@@ -183,7 +206,7 @@ const NotFoundPage = () => {
               </div>
               <input
                 type="text"
-                placeholder="Search for products..."
+                placeholder="Search shop.design for products..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 style={{
@@ -200,15 +223,16 @@ const NotFoundPage = () => {
               <button
                 type="submit"
                 style={{
-                  background: "linear-gradient(180deg, #FFD814, #F7CA00)",
-                  color: "#111",
-                  border: "1px solid #FCD200",
+                  background: "linear-gradient(135deg, #3B82F6, #2563EB)",
+                  color: "white",
+                  border: "none",
                   borderRadius: 10,
                   padding: "10px 22px",
                   fontSize: 13,
                   fontWeight: 800,
                   cursor: "pointer",
                   fontFamily: "inherit",
+                  boxShadow: "0 4px 12px rgba(59,130,246,0.4)",
                 }}
               >
                 Search
@@ -241,7 +265,7 @@ const NotFoundPage = () => {
               <Link
                 to={getDashboard()}
                 style={{
-                  background: "linear-gradient(135deg, #D85A30, #FF8C5A)",
+                  background: "linear-gradient(135deg, #3B82F6, #2563EB)",
                   color: "white",
                   textDecoration: "none",
                   borderRadius: 10,
@@ -251,7 +275,7 @@ const NotFoundPage = () => {
                   display: "flex",
                   alignItems: "center",
                   gap: 6,
-                  boxShadow: "0 8px 20px rgba(216,90,48,0.4)",
+                  boxShadow: "0 8px 20px rgba(59,130,246,0.4)",
                 }}
               >
                 🏠 {user ? "My Dashboard" : "Home"}
@@ -272,13 +296,13 @@ const NotFoundPage = () => {
               position: "relative",
               width: 200,
               height: 200,
-              background: "linear-gradient(135deg, #D85A30, #FF8C5A)",
+              background: "linear-gradient(135deg, #3B82F6, #1E40AF)",
               borderRadius: 24,
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: "0 20px 60px rgba(216,90,48,0.5)",
+              boxShadow: "0 20px 60px rgba(59,130,246,0.5)",
               border: "4px solid rgba(255,255,255,0.1)",
             }}>
               <div style={{ display: "flex", gap: 18, marginBottom: 12 }}>
@@ -319,12 +343,12 @@ const NotFoundPage = () => {
               <Link
                 to="/products"
                 style={{
-                  color: "#0066C0",
+                  color: "#2563EB",
                   fontSize: 13,
                   fontWeight: 700,
                   textDecoration: "none",
                   padding: "6px 14px",
-                  border: "1px solid #0066C0",
+                  border: "1px solid #2563EB",
                   borderRadius: 8,
                 }}
               >
@@ -338,7 +362,7 @@ const NotFoundPage = () => {
                   <div style={{
                     width: 44,
                     height: 44,
-                    background: "linear-gradient(135deg, #FFF5F0, #FFE8DF)",
+                    background: "linear-gradient(135deg, #EFF6FF, #DBEAFE)",
                     borderRadius: 10,
                     display: "flex",
                     alignItems: "center",
@@ -362,7 +386,7 @@ const NotFoundPage = () => {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
               <div>
                 <h2 style={{ fontSize: 20, fontWeight: 900, color: "#111", margin: 0 }}>
-                  🔥 Trending right now
+                  🔥 Trending on shop.design
                 </h2>
                 <p style={{ fontSize: 13, color: "#6B7280", margin: "3px 0 0" }}>
                   Don't miss these popular products
@@ -371,12 +395,12 @@ const NotFoundPage = () => {
               <Link
                 to="/products?sort=popular"
                 style={{
-                  color: "#0066C0",
+                  color: "#2563EB",
                   fontSize: 13,
                   fontWeight: 700,
                   textDecoration: "none",
                   padding: "6px 14px",
-                  border: "1px solid #0066C0",
+                  border: "1px solid #2563EB",
                   borderRadius: 8,
                 }}
               >
@@ -397,7 +421,7 @@ const NotFoundPage = () => {
                     {product.comparePrice > product.price && (
                       <span style={{
                         position: "absolute", top: 8, right: 8,
-                        background: "#D85A30", color: "white",
+                        background: "#3B82F6", color: "white",
                         padding: "3px 8px", borderRadius: 5,
                         fontSize: 10, fontWeight: 800,
                       }}>
@@ -422,7 +446,7 @@ const NotFoundPage = () => {
                       </div>
                     )}
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <span style={{ fontSize: 15, fontWeight: 800, color: "#B12704" }}>{formatRupee(product.price)}</span>
+                      <span style={{ fontSize: 15, fontWeight: 800, color: "#1E40AF" }}>{formatRupee(product.price)}</span>
                       {product.comparePrice > 0 && (
                         <span style={{ fontSize: 11, color: "#9CA3AF", textDecoration: "line-through" }}>{formatRupee(product.comparePrice)}</span>
                       )}
@@ -441,7 +465,7 @@ const NotFoundPage = () => {
             🆘 Still need help?
           </h3>
           <p style={{ fontSize: 13, color: "#6B7280", textAlign: "center", margin: "0 0 24px" }}>
-            Our team is here to assist you
+            The shop.design team is here to assist you
           </p>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
@@ -494,8 +518,8 @@ const NotFoundPage = () => {
             <Link
               to="/orders"
               style={{
-                background: "linear-gradient(135deg, #FFF5F0, #FFE8DF)",
-                border: "1px solid #FDBA74",
+                background: "linear-gradient(135deg, #FEF3C7, #FDE68A)",
+                border: "1px solid #FCD34D",
                 borderRadius: 14,
                 padding: "20px",
                 textDecoration: "none",
@@ -509,8 +533,8 @@ const NotFoundPage = () => {
                 📦
               </div>
               <div>
-                <p style={{ fontSize: 14, fontWeight: 800, color: "#9A3412", margin: 0 }}>Track Order</p>
-                <p style={{ fontSize: 11, color: "#C2410C", margin: "2px 0 0" }}>Check your order status</p>
+                <p style={{ fontSize: 14, fontWeight: 800, color: "#78350F", margin: 0 }}>Track Order</p>
+                <p style={{ fontSize: 11, color: "#B45309", margin: "2px 0 0" }}>Check your order status</p>
               </div>
             </Link>
           </div>
@@ -529,8 +553,12 @@ const NotFoundPage = () => {
           }}>
             <span style={{ fontSize: 13, color: "#6B7280" }}>Error code: <strong style={{ color: "#111", fontFamily: "monospace" }}>404_PAGE_NOT_FOUND</strong></span>
             <span style={{ color: "#E5E7EB" }}>•</span>
-            <span style={{ fontSize: 13, color: "#6B7280" }}>If this seems like a mistake, <Link to="/contact" style={{ color: "#D85A30", fontWeight: 700, textDecoration: "none" }}>let us know</Link></span>
+            <span style={{ fontSize: 13, color: "#6B7280" }}>If this seems like a mistake, <Link to="/contact" style={{ color: "#2563EB", fontWeight: 700, textDecoration: "none" }}>let us know</Link></span>
           </div>
+
+          <p style={{ fontSize: 11, color: "#9CA3AF", textAlign: "center", marginTop: 20, textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 }}>
+            shop.design · A product of Quleep Pvt Ltd
+          </p>
         </div>
       </section>
     </div>

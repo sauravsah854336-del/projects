@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import PlatformLogo from "../assets/PlatformLogo.jpeg";
 
 const ContactPage = () => {
   const [form, setForm] = useState({ name: "", email: "", phone: "", subject: "", category: "", message: "" });
@@ -47,6 +48,9 @@ const ContactPage = () => {
     return (
       <div className="bg-gray-50 min-h-screen flex items-center justify-center px-4 py-16">
         <div className="max-w-md w-full bg-white rounded-2xl border border-gray-200 p-10 text-center shadow-sm">
+          <div className="w-14 h-14 rounded-xl overflow-hidden ring-2 ring-blue-500/20 shadow-md mx-auto mb-4">
+            <img src={PlatformLogo} alt="shop.design" className="w-full h-full object-cover" />
+          </div>
           <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-5 shadow-lg shadow-green-500/30">
             <svg width="32" height="32" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" viewBox="0 0 24 24">
               <path d="M5 13l4 4L19 7" />
@@ -58,12 +62,13 @@ const ContactPage = () => {
           </p>
           <h2 className="text-xl font-extrabold text-gray-900 m-0 mb-2">Thank you! 🎉</h2>
           <p className="text-sm text-gray-500 m-0 mb-5">
-            We'll get back to you within <strong className="text-gray-900">2-24 hours</strong> via email.
+            The <span className="font-bold text-gray-900">shop.design</span> team will get back to you within{" "}
+            <strong className="text-gray-900">2-24 hours</strong> via email.
           </p>
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-5 text-left">
             <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider m-0 mb-1">Reference</p>
             <p className="text-sm font-bold text-gray-900 m-0 font-mono">
-              #TKT-{Date.now().toString().slice(-8)}
+              #SD-{Date.now().toString().slice(-8)}
             </p>
           </div>
           <div className="flex gap-2 justify-center">
@@ -75,7 +80,7 @@ const ContactPage = () => {
             </button>
             <Link
               to="/"
-              className="bg-gray-900 text-white no-underline px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-gray-800 transition"
+              className="bg-gradient-to-r from-[#0F172A] to-[#1E3A8A] text-white no-underline px-5 py-2.5 rounded-xl text-sm font-bold hover:brightness-110 transition"
             >
               Back to Home
             </Link>
@@ -106,9 +111,16 @@ const ContactPage = () => {
             <span className="text-gray-900 font-semibold">Contact Us</span>
           </div>
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-            <div>
-              <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 m-0">Contact Us</h1>
-              <p className="text-sm text-gray-500 m-0 mt-1">Have a question? Our team is ready to help.</p>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl overflow-hidden ring-1 ring-blue-500/20 shadow-md shrink-0 hidden sm:block">
+                <img src={PlatformLogo} alt="shop.design" className="w-full h-full object-cover" />
+              </div>
+              <div>
+                <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 m-0">Contact Us</h1>
+                <p className="text-sm text-gray-500 m-0 mt-1">
+                  Get in touch with the <span className="font-bold text-blue-600">shop.design</span> team
+                </p>
+              </div>
             </div>
             <div className="flex items-center gap-3 text-xs text-gray-500 shrink-0">
               <span>⚡ &lt;2hr Response</span>
@@ -131,7 +143,7 @@ const ContactPage = () => {
               href={item.href}
               target={item.href.startsWith("http") ? "_blank" : undefined}
               rel={item.href.startsWith("http") ? "noreferrer" : undefined}
-              className="bg-white rounded-xl border border-gray-200 p-4 no-underline text-inherit hover:border-gray-300 hover:-translate-y-0.5 hover:shadow-md transition-all block"
+              className="bg-white rounded-xl border border-gray-200 p-4 no-underline text-inherit hover:border-blue-300 hover:-translate-y-0.5 hover:shadow-md transition-all block"
             >
               <span className="text-xl">{item.icon}</span>
               <p className="text-xs font-extrabold text-gray-900 m-0 mt-2">{item.title}</p>
@@ -142,7 +154,7 @@ const ContactPage = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-5 items-start">
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100">
+            <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
               <h2 className="text-base font-extrabold text-gray-900 m-0">Send us a message</h2>
               <p className="text-xs text-gray-500 m-0 mt-0.5">Fill in the form and we'll respond within 2 hours</p>
             </div>
@@ -221,7 +233,7 @@ const ContactPage = () => {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full bg-gray-900 hover:bg-gray-800 text-white border-none rounded-xl py-3.5 text-sm font-extrabold cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed transition-all font-[inherit] flex items-center justify-center gap-2 shadow-md"
+                className="w-full bg-gradient-to-r from-[#0F172A] to-[#1E3A8A] hover:brightness-110 text-white border-none rounded-xl py-3.5 text-sm font-extrabold cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed transition-all font-[inherit] flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20"
               >
                 {submitting ? (
                   <>
@@ -250,7 +262,10 @@ const ContactPage = () => {
               <h3 className="text-sm font-extrabold text-gray-900 m-0 mb-3 flex items-center gap-2">
                 <span>📍</span> Our Office
               </h3>
-              <div className="bg-gray-50 rounded-lg p-3 mb-3">
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-lg p-3 mb-3">
+                <p className="text-[10px] font-bold text-blue-700 uppercase tracking-wider m-0 mb-1">
+                  Quleep Pvt Ltd
+                </p>
                 <p className="text-sm font-bold text-gray-900 m-0">Bhutani Alphathum</p>
                 <p className="text-xs text-gray-600 m-0 mt-1 leading-relaxed">
                   1432 B-Wing, Sector 90<br />Noida, UP – 201305, India
@@ -292,29 +307,40 @@ const ContactPage = () => {
               </div>
             </div>
 
-            <div className="bg-gray-900 rounded-xl p-5">
-              <h3 className="text-sm font-extrabold text-white m-0 mb-3 flex items-center gap-2">
-                <span>⚡</span> Quick Help
-              </h3>
-              <div className="flex flex-col gap-2">
-                {[
-                  { label: "Help Center", path: "/help", icon: "💬" },
-                  { label: "Track Order", path: "/orders", icon: "📦" },
-                  { label: "Return Policy", path: "/policy/returns", icon: "🔄" },
-                  { label: "Shipping Info", path: "/policy/shipping-info", icon: "🚚" },
-                ].map((link) => (
-                  <Link
-                    key={link.label}
-                    to={link.path}
-                    className="flex items-center gap-2.5 px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white no-underline text-xs font-semibold hover:bg-white/10 transition"
-                  >
-                    <span className="text-sm">{link.icon}</span>
-                    <span className="flex-1">{link.label}</span>
-                    <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" strokeLinecap="round">
-                      <path d="M9 5l7 7-7 7" />
-                    </svg>
-                  </Link>
-                ))}
+            <div className="bg-gradient-to-br from-[#0F172A] via-[#1E3A8A] to-[#0F172A] rounded-xl p-5 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+              <div className="relative">
+                <div className="flex items-center gap-2.5 mb-4">
+                  <div className="w-10 h-10 rounded-lg overflow-hidden ring-1 ring-blue-400/40 shadow-md shrink-0">
+                    <img src={PlatformLogo} alt="shop.design" className="w-full h-full object-cover" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-extrabold text-white m-0 flex items-center gap-2">
+                      <span>⚡</span> Quick Help
+                    </h3>
+                    <p className="text-[10px] text-blue-300/60 m-0 font-semibold">shop.design support</p>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2">
+                  {[
+                    { label: "Help Center", path: "/help", icon: "💬" },
+                    { label: "Track Order", path: "/orders", icon: "📦" },
+                    { label: "Return Policy", path: "/policy/returns", icon: "🔄" },
+                    { label: "Shipping Info", path: "/policy/shipping-info", icon: "🚚" },
+                  ].map((link) => (
+                    <Link
+                      key={link.label}
+                      to={link.path}
+                      className="flex items-center gap-2.5 px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white no-underline text-xs font-semibold hover:bg-white/10 transition"
+                    >
+                      <span className="text-sm">{link.icon}</span>
+                      <span className="flex-1">{link.label}</span>
+                      <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" strokeLinecap="round">
+                        <path d="M9 5l7 7-7 7" />
+                      </svg>
+                    </Link>
+                  ))}
+                </div>
               </div>
             </div>
           </div>

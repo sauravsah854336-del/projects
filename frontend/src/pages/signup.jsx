@@ -10,6 +10,7 @@ import { getGuestCartForMerge, clearGuestCart } from "../utils/guestCart";
 import { getGuestWishlistForMerge, clearGuestWishlist } from "../utils/guestWishlist";
 import { toast } from "../components/Toast";
 import PhoneInput, { COUNTRIES } from "../components/PhoneInput";
+import PlatformLogo from "../assets/PlatformLogo.jpeg";
 
 const ErrorAlert = ({ message }) => (
   <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2.5">
@@ -270,20 +271,28 @@ const Signup = () => {
 
           <div className="relative">
             <Link to="/" className="flex items-center gap-2.5 no-underline mb-8">
-              <div className="w-11 h-11 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl flex items-center justify-center text-white font-black text-lg shadow-lg shadow-blue-500/30">
-                E
+              <div className="w-12 h-12 rounded-xl overflow-hidden ring-2 ring-blue-400/40 shadow-lg shadow-blue-500/30 shrink-0">
+                <img
+                  src={PlatformLogo}
+                  alt="shop.design"
+                  className="w-full h-full object-cover"
+                />
               </div>
               <div>
-                <p className="text-base font-black text-white m-0">E<span className="text-blue-400">·</span>Commerce</p>
-                <p className="text-[9px] text-blue-300/50 m-0 uppercase tracking-wider font-bold">Marketplace</p>
+                <p className="text-base font-black text-white m-0 leading-tight">
+                  shop<span className="text-blue-400">.</span>design
+                </p>
+                <p className="text-[9px] text-blue-300/60 m-0 uppercase tracking-wider font-bold">
+                  Design your space
+                </p>
               </div>
             </Link>
 
             <h2 className="text-2xl font-extrabold text-white m-0 mb-2 leading-tight">
-              Join Us Today!
+              Start designing today!
             </h2>
             <p className="text-sm text-blue-200/60 m-0 mb-8 leading-relaxed max-w-xs">
-              Create your account and start shopping from thousands of products across verified sellers.
+              Create your account and discover curated furniture, décor, and lifestyle products from verified sellers.
             </p>
 
             <div className="flex flex-col gap-2.5">
@@ -291,7 +300,7 @@ const Signup = () => {
                 { icon: "🚚", text: "Free delivery on orders above ₹499" },
                 { icon: "🔄", text: "Easy 10-day returns" },
                 { icon: "🛡️", text: "100% secure payments" },
-                { icon: "✅", text: "Verified sellers only" },
+                { icon: "✅", text: "Verified design sellers only" },
               ].map((item) => (
                 <div key={item.text} className="flex items-center gap-2.5">
                   <span className="text-sm">{item.icon}</span>
@@ -299,16 +308,31 @@ const Signup = () => {
                 </div>
               ))}
             </div>
+
+            <div className="mt-8 pt-6 border-t border-white/10">
+              <p className="text-[10px] text-blue-300/40 m-0 uppercase tracking-wider font-bold">
+                A product of
+              </p>
+              <p className="text-xs text-blue-200/70 font-bold m-0 mt-0.5">
+                Quleep Pvt Ltd
+              </p>
+            </div>
           </div>
         </div>
 
         <div className="p-6 sm:p-8 lg:p-10">
           <div className="lg:hidden text-center mb-6">
             <Link to="/" className="inline-flex items-center gap-2 no-underline mb-3">
-              <div className="w-9 h-9 bg-gradient-to-br from-[#0F172A] to-[#1E3A8A] rounded-lg flex items-center justify-center text-white font-black text-sm shadow-md">
-                E
+              <div className="w-10 h-10 rounded-lg overflow-hidden ring-2 ring-blue-500/20 shadow-md shrink-0">
+                <img
+                  src={PlatformLogo}
+                  alt="shop.design"
+                  className="w-full h-full object-cover"
+                />
               </div>
-              <span className="text-base font-extrabold text-gray-900">Commerce</span>
+              <span className="text-base font-extrabold text-gray-900">
+                shop<span className="text-blue-600">.</span>design
+              </span>
             </Link>
           </div>
 
@@ -534,7 +558,13 @@ const Signup = () => {
               {!formError && error && <ErrorAlert message={error?.data?.message} />}
 
               <div className="flex gap-3">
-               
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  className="flex-1 bg-white text-gray-700 border-2 border-gray-200 py-3.5 rounded-xl font-bold hover:bg-gray-50 transition text-sm cursor-pointer font-[inherit]"
+                >
+                  ← Back
+                </button>
                 <button
                   type="submit"
                   disabled={isLoading || mergingData}

@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import PlatformLogo from "../assets/PlatformLogo.jpeg";
 
 const helpCategories = [
   {
@@ -8,11 +9,11 @@ const helpCategories = [
     icon: "📦",
     description: "Track orders, manage shipments, view history",
     questions: [
-      { q: "How do I place an order?", a: "Browse our wide range of products, click 'Add to Cart' on items you like, proceed to checkout, fill in your shipping address, select your preferred payment method (COD or Online), and confirm your order. You'll receive an order confirmation email immediately." },
+      { q: "How do I place an order?", a: "Browse the shop.design catalog, click 'Add to Cart' on items you like, proceed to checkout, fill in your shipping address, select your preferred payment method (COD or Online), and confirm your order. You'll receive an order confirmation email immediately." },
       { q: "How can I track my order?", a: "After logging in, go to 'My Orders' from your dashboard. You can see the real-time status of each order: Pending → Processing → Shipped → Out for Delivery → Delivered. You'll also receive email and SMS notifications at each stage." },
       { q: "Can I cancel my order?", a: "Yes! You can cancel your order if it's still in 'Pending' or 'Processing' status. Go to 'My Orders', find your order, and click 'Cancel Order'. The refund will be processed within 5-7 business days for prepaid orders." },
       { q: "Can I modify my order after placing it?", a: "Orders cannot be modified once placed. However, you can cancel the order (if not yet shipped) and place a new order with the correct details. For shipping address changes, please contact our support team immediately." },
-      { q: "What if my order is delayed?", a: "We strive to deliver on time. If your order is delayed beyond the estimated delivery date, please contact our support team. We'll investigate immediately and keep you updated on the status." },
+      { q: "What if my order is delayed?", a: "We strive to deliver on time. If your order is delayed beyond the estimated delivery date, please contact the shop.design support team. We'll investigate immediately and keep you updated on the status." },
     ],
   },
   {
@@ -21,10 +22,10 @@ const helpCategories = [
     icon: "💳",
     description: "Payment methods, refunds, billing",
     questions: [
-      { q: "What payment methods are accepted?", a: "We accept multiple payment methods: Cash on Delivery (COD), UPI (Google Pay, PhonePe, Paytm), Credit/Debit Cards (Visa, Mastercard, RuPay, Amex), Net Banking, and Digital Wallets. All online payments are secured by 256-bit SSL encryption." },
+      { q: "What payment methods are accepted?", a: "shop.design accepts multiple payment methods: UPI (Google Pay, PhonePe, Paytm, BHIM), Credit/Debit Cards (Visa, Mastercard, RuPay, Amex), Net Banking, and Digital Wallets. All online payments are secured by 256-bit SSL encryption via Cashfree." },
       { q: "Is my payment information secure?", a: "Absolutely! All payments are processed through PCI-DSS compliant payment gateways. We never store your card details on our servers. Your financial information is encrypted and protected at all times." },
       { q: "When will I be charged?", a: "For prepaid orders, payment is processed immediately upon order confirmation. For COD orders, you pay only when the order is delivered to you." },
-      { q: "How do refunds work?", a: "Refunds are processed within 5-7 business days after we receive the returned item. The amount will be credited back to your original payment method. For COD orders, refunds go to your registered bank account or UPI." },
+      { q: "How do refunds work?", a: "shop.design operates a no-returns policy — all sales are final. However, if you receive a damaged or incorrect product, please contact us within 24 hours of delivery with photos. Such cases are reviewed individually and refunds (if approved) are processed within 5-7 business days." },
       { q: "Are there any hidden charges?", a: "No hidden charges! The price you see at checkout includes everything — product cost, GST, and shipping (if applicable). Free shipping is available on orders above ₹499." },
     ],
   },
@@ -35,7 +36,7 @@ const helpCategories = [
     description: "Delivery times, charges, locations",
     questions: [
       { q: "How long does delivery take?", a: "Standard delivery takes 3-7 business days depending on your location. Metro cities (Mumbai, Delhi, Bangalore, Chennai, Kolkata, Hyderabad) typically receive orders within 3-4 days. Tier-2 and Tier-3 cities may take 5-7 days." },
-      { q: "Is there free shipping?", a: "Yes! We offer FREE shipping on all orders above ₹499. For orders below ₹499, a small delivery fee of ₹49 applies." },
+      { q: "Is there free shipping?", a: "Yes! shop.design offers FREE shipping on all orders above ₹499. For orders below ₹499, a small delivery fee of ₹49 applies." },
       { q: "Do you deliver to my area?", a: "We deliver to over 25,000+ PIN codes across India. Enter your PIN code on the product page or at checkout to confirm delivery availability and estimated date." },
       { q: "Can I get same-day delivery?", a: "Same-day delivery is currently available in select metro cities for eligible products. Look for the 'Same Day Delivery' badge on product pages." },
       { q: "What if I'm not available to receive the order?", a: "Our delivery partner will make up to 3 delivery attempts. You can also reschedule the delivery or change the delivery address through the tracking link." },
@@ -43,15 +44,15 @@ const helpCategories = [
   },
   {
     id: "returns",
-    title: "Returns & Refunds",
-    icon: "🔄",
-    description: "Return policy, refunds, exchanges",
+    title: "Returns Policy",
+    icon: "🚫",
+    description: "No-returns policy explained",
     questions: [
-      { q: "What is your return policy?", a: "We offer a 10-day return policy on most products. Items must be unused, in original condition with all tags and packaging intact. Some categories like innerwear, personal care, and customized products are non-returnable." },
-      { q: "How do I return a product?", a: "Login to your account, go to 'My Orders', find the order, and click 'Request Return'. Choose the reason for return and a pickup will be scheduled within 2-3 business days. Pack the item securely in the original packaging." },
-      { q: "When will I get my refund?", a: "Refunds are initiated within 24 hours of receiving the returned item. Credit card refunds take 5-7 business days, UPI/Net Banking refunds take 3-5 business days, and COD refunds (to bank) take 5-7 business days." },
-      { q: "Can I exchange a product?", a: "Currently, we don't offer direct exchanges. Please return the product for a refund and place a new order for the desired item or size." },
-      { q: "What if I receive a damaged product?", a: "If you receive a damaged or defective product, please contact us within 48 hours of delivery with photos. We'll arrange a free pickup and provide a full refund or replacement at no extra cost." },
+      { q: "What is your return policy?", a: "shop.design operates a NO-RETURNS policy. All sales are final. We do not accept returns, refunds, or exchanges on purchased products. Please carefully review product details, images, and vendor information before placing an order." },
+      { q: "Why does shop.design have a no-returns policy?", a: "As a curated multi-vendor design marketplace, we work directly with independent sellers who manage their own inventory. This policy helps us keep prices competitive, support small design businesses, and maintain fast order fulfillment across all categories." },
+      { q: "What if I receive a damaged or wrong product?", a: "If you receive a damaged or completely different product, contact us within 24 hours of delivery at info@quleep.in with clear photos and your order number. These cases are reviewed individually and addressed at the platform's discretion." },
+      { q: "Can I cancel my order?", a: "Yes! Orders can be cancelled BEFORE they are shipped. Once dispatched, cancellation is not possible. Go to My Orders → Select Order → Click Cancel Order. Prepaid amounts (if not yet processed) will not be charged." },
+      { q: "What about product warranty?", a: "Some products come with a manufacturer's warranty. Warranty claims must be directed to the manufacturer using the details in the product package. shop.design is not responsible for handling warranty claims." },
     ],
   },
   {
@@ -60,11 +61,11 @@ const helpCategories = [
     icon: "👤",
     description: "Login, password, profile, security",
     questions: [
-      { q: "How do I create an account?", a: "Click 'Sign Up' at the top right corner. Fill in your details (name, email, phone, password) in the 2-step form. Verify your phone number and you're ready to shop! It takes less than a minute." },
-      { q: "I forgot my password. What should I do?", a: "Click 'Forgot Password' on the login page. Enter your registered email address and we'll send you a password reset link instantly. The link is valid for 24 hours." },
+      { q: "How do I create an account?", a: "Click 'Sign Up' at the top right corner. Fill in your details (name, email, phone, password) in the 2-step form. Verify your phone number and you're ready to shop on shop.design! It takes less than a minute." },
+      { q: "I forgot my password. What should I do?", a: "Click 'Forgot Password' on the login page. Enter your registered email address and we'll send you a password reset OTP instantly. The OTP is valid for 10 minutes." },
       { q: "How do I update my profile?", a: "Login and go to 'My Profile' from the dashboard. You can update your name, phone, date of birth, profile photo, and manage your saved addresses. Email cannot be changed for security reasons." },
-      { q: "How do I delete my account?", a: "We're sorry to see you go! Please contact our support team to request account deletion. We'll process your request within 7 business days, ensuring all your personal data is securely removed." },
-      { q: "Is my data safe?", a: "Absolutely! We use industry-standard encryption (SSL/TLS) to protect your data. We never sell your information to third parties. Your password is hashed and never stored in plain text." },
+      { q: "How do I delete my account?", a: "We're sorry to see you go! Please contact our support team at info@quleep.in to request account deletion. We'll process your request within 7 business days, ensuring all your personal data is securely removed." },
+      { q: "Is my data safe?", a: "Absolutely! shop.design uses industry-standard encryption (SSL/TLS) to protect your data. We never sell your information to third parties. Your password is hashed and never stored in plain text. Documents are stored securely on AWS S3." },
     ],
   },
   {
@@ -73,20 +74,20 @@ const helpCategories = [
     icon: "🏪",
     description: "Selling, vendor account, commission",
     questions: [
-      { q: "How do I become a seller?", a: "Click 'Become a Seller' on the homepage. Complete the 3-step registration: Business Info → Tax & Banking → Security. Upload required documents (PAN, GST, Cancelled Cheque). Approval takes 24-48 hours." },
-      { q: "What documents do I need?", a: "Required: PAN Card, Cancelled Cheque/Bank Passbook, Valid Bank Account. Optional: GST Certificate, Business Registration Document. All documents should be clear and legible." },
-      { q: "What is the commission structure?", a: "Commission varies by category: Electronics (8%), Fashion (12%), Furniture (10%), Books (6%), Beauty (15%). View our complete Commission Policy for detailed information." },
+      { q: "How do I become a seller on shop.design?", a: "Click 'Become a Seller' on the homepage. Complete the 3-step registration: Business Info → Tax & Banking → Security. Upload required documents (PAN, GST, Cancelled Cheque). Approval takes 24-48 hours." },
+      { q: "What documents do I need?", a: "Required: PAN Card, GST Certificate, Cancelled Cheque/Bank Passbook, Valid Bank Account. Optional: Business Registration Document. All documents should be clear and legible." },
+      { q: "What is the commission structure?", a: "Commission varies by category: Electronics (8%), Fashion (12%), Furniture (10%), Books (6%), Beauty (15%), Home Decor (12%). View our complete Commission Policy for detailed information." },
       { q: "When do I get paid?", a: "Payments are settled every 7 days to your registered bank account. Minimum settlement amount is ₹100. You can view detailed earnings and reports in your Vendor Dashboard." },
     ],
   },
 ];
 
 const categoryColors = [
-  { bg: "bg-orange-50", border: "border-orange-200", text: "text-orange-600", activeBg: "bg-orange-100", iconBg: "bg-orange-100", shadow: "shadow-orange-500/10" },
-  { bg: "bg-green-50", border: "border-green-200", text: "text-green-600", activeBg: "bg-green-100", iconBg: "bg-green-100", shadow: "shadow-green-500/10" },
   { bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-600", activeBg: "bg-blue-100", iconBg: "bg-blue-100", shadow: "shadow-blue-500/10" },
-  { bg: "bg-purple-50", border: "border-purple-200", text: "text-purple-600", activeBg: "bg-purple-100", iconBg: "bg-purple-100", shadow: "shadow-purple-500/10" },
+  { bg: "bg-green-50", border: "border-green-200", text: "text-green-600", activeBg: "bg-green-100", iconBg: "bg-green-100", shadow: "shadow-green-500/10" },
+  { bg: "bg-indigo-50", border: "border-indigo-200", text: "text-indigo-600", activeBg: "bg-indigo-100", iconBg: "bg-indigo-100", shadow: "shadow-indigo-500/10" },
   { bg: "bg-red-50", border: "border-red-200", text: "text-red-600", activeBg: "bg-red-100", iconBg: "bg-red-100", shadow: "shadow-red-500/10" },
+  { bg: "bg-purple-50", border: "border-purple-200", text: "text-purple-600", activeBg: "bg-purple-100", iconBg: "bg-purple-100", shadow: "shadow-purple-500/10" },
   { bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-600", activeBg: "bg-amber-100", iconBg: "bg-amber-100", shadow: "shadow-amber-500/10" },
 ];
 
@@ -132,53 +133,60 @@ const HelpPage = () => {
       `}</style>
 
       <div className="bg-white border-b border-gray-200">
-  <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 sm:py-5">
-    <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-3">
-      <Link to="/" className="hover:text-gray-900 no-underline transition-colors">Home</Link>
-      <span>›</span>
-      <span className="text-gray-900 font-semibold">Help Center</span>
-    </div>
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 sm:py-5">
+          <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-3">
+            <Link to="/" className="hover:text-gray-900 no-underline transition-colors">Home</Link>
+            <span>›</span>
+            <span className="text-gray-900 font-semibold">Help Center</span>
+          </div>
 
-    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-      <div>
-        <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 m-0">Help Center</h1>
-        <p className="text-sm text-gray-500 m-0 mt-1">Search our knowledge base or browse categories</p>
-      </div>
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl overflow-hidden ring-1 ring-blue-500/20 shadow-md shrink-0 hidden sm:block">
+                <img src={PlatformLogo} alt="shop.design" className="w-full h-full object-cover" />
+              </div>
+              <div>
+                <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 m-0">Help Center</h1>
+                <p className="text-sm text-gray-500 m-0 mt-1">
+                  Search the <span className="font-bold text-blue-600">shop.design</span> knowledge base or browse categories
+                </p>
+              </div>
+            </div>
 
-      <div className="flex items-center gap-4 text-xs text-gray-500 shrink-0">
-        <span>📚 30+ Articles</span>
-        <span>⚡ &lt;2hr Response</span>
-      </div>
-    </div>
+            <div className="flex items-center gap-4 text-xs text-gray-500 shrink-0">
+              <span>📚 30+ Articles</span>
+              <span>⚡ &lt;2hr Response</span>
+            </div>
+          </div>
 
-    <form
-      onSubmit={(e) => e.preventDefault()}
-      className="mt-4 bg-gray-50 border border-gray-200 rounded-xl p-1 flex gap-1 max-w-xl"
-    >
-      <div className="flex items-center pl-3">
-        <svg width="18" height="18" fill="none" stroke="#9CA3AF" strokeWidth="2.5" viewBox="0 0 24 24" strokeLinecap="round">
-          <circle cx="11" cy="11" r="7" />
-          <path d="M21 21l-4.35-4.35" />
-        </svg>
+          <form
+            onSubmit={(e) => e.preventDefault()}
+            className="mt-4 bg-gray-50 border border-gray-200 rounded-xl p-1 flex gap-1 max-w-xl"
+          >
+            <div className="flex items-center pl-3">
+              <svg width="18" height="18" fill="none" stroke="#9CA3AF" strokeWidth="2.5" viewBox="0 0 24 24" strokeLinecap="round">
+                <circle cx="11" cy="11" r="7" />
+                <path d="M21 21l-4.35-4.35" />
+              </svg>
+            </div>
+            <input
+              type="text"
+              placeholder="Search shop.design help articles..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1 border-none outline-none text-sm text-gray-900 py-2.5 bg-transparent font-[inherit] placeholder:text-gray-400"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="px-3 text-gray-400 hover:text-gray-600 bg-transparent border-none cursor-pointer text-lg"
+              >
+                ×
+              </button>
+            )}
+          </form>
+        </div>
       </div>
-      <input
-        type="text"
-        placeholder="Search for help articles..."
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        className="flex-1 border-none outline-none text-sm text-gray-900 py-2.5 bg-transparent font-[inherit] placeholder:text-gray-400"
-      />
-      {searchQuery && (
-        <button
-          onClick={() => setSearchQuery("")}
-          className="px-3 text-gray-400 hover:text-gray-600 bg-transparent border-none cursor-pointer text-lg"
-        >
-          ×
-        </button>
-      )}
-    </form>
-  </div>
-</div>
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
         {!searchQuery && (
@@ -234,7 +242,7 @@ const HelpPage = () => {
                 <p className="text-sm text-gray-500 m-0 mb-5">Try different keywords or contact our support team</p>
                 <button
                   onClick={() => setSearchQuery("")}
-                  className="bg-gray-900 text-white border-none rounded-xl px-6 py-2.5 text-sm font-bold cursor-pointer hover:bg-gray-800 transition font-[inherit]"
+                  className="bg-gradient-to-r from-[#0F172A] to-[#1E3A8A] text-white border-none rounded-xl px-6 py-2.5 text-sm font-bold cursor-pointer hover:brightness-110 transition font-[inherit]"
                 >
                   Browse Categories
                 </button>
@@ -344,8 +352,13 @@ const HelpPage = () => {
       <div className="bg-white border-t border-gray-200 py-12 sm:py-16 px-4 sm:px-6">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-8">
+            <div className="w-14 h-14 rounded-xl overflow-hidden ring-2 ring-blue-500/20 shadow-md mx-auto mb-3">
+              <img src={PlatformLogo} alt="shop.design" className="w-full h-full object-cover" />
+            </div>
             <h2 className="text-2xl font-extrabold text-gray-900 m-0 mb-2">Still need help? 🤝</h2>
-            <p className="text-sm text-gray-500 m-0">Our support team is here for you 7 days a week</p>
+            <p className="text-sm text-gray-500 m-0">
+              The <span className="font-bold text-blue-600">shop.design</span> support team is here for you 7 days a week
+            </p>
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -377,14 +390,20 @@ const HelpPage = () => {
             })}
           </div>
 
-          <div className="mt-8 bg-gray-900 rounded-xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl shadow-blue-900/20">
-            <div>
-              <h3 className="text-lg font-extrabold text-white m-0 mb-1">Need to track an order? 📦</h3>
-              <p className="text-sm text-blue-200/60 m-0">Visit your orders page for real-time tracking</p>
+          <div className="mt-8 bg-gradient-to-br from-[#0F172A] via-[#1E3A8A] to-[#0F172A] rounded-xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl shadow-blue-900/20 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="relative flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl overflow-hidden ring-2 ring-blue-400/40 shadow-md shrink-0">
+                <img src={PlatformLogo} alt="shop.design" className="w-full h-full object-cover" />
+              </div>
+              <div>
+                <h3 className="text-lg font-extrabold text-white m-0 mb-1">Need to track an order? 📦</h3>
+                <p className="text-sm text-blue-200/60 m-0">Visit your orders page for real-time tracking</p>
+              </div>
             </div>
             <Link
               to="/orders"
-              className="bg-gradient-to-r from-blue-500 to-blue-600 text-white no-underline px-6 py-3 rounded-xl text-sm font-extrabold shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:brightness-110 transition-all whitespace-nowrap"
+              className="relative bg-gradient-to-r from-blue-500 to-blue-600 text-white no-underline px-6 py-3 rounded-xl text-sm font-extrabold shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:brightness-110 transition-all whitespace-nowrap"
             >
               Track Order →
             </Link>
@@ -398,7 +417,7 @@ const HelpPage = () => {
           <div className="flex flex-wrap gap-2 justify-center">
             {[
               { label: "Shipping Policy", path: "/policy/shipping-info" },
-              { label: "Returns Policy", path: "/policy/returns" },
+              { label: "No Returns Policy", path: "/policy/no-returns" },
               { label: "Privacy Policy", path: "/policy/privacy" },
               { label: "Terms of Service", path: "/policy/terms" },
               { label: "Cookie Policy", path: "/policy/cookies" },
@@ -416,6 +435,10 @@ const HelpPage = () => {
               </Link>
             ))}
           </div>
+
+          <p className="text-[10px] text-gray-400 text-center mt-6 uppercase tracking-wider font-bold">
+            shop.design · A product of Quleep Pvt Ltd
+          </p>
         </div>
       </div>
     </div>

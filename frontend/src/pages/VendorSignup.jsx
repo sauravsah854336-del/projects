@@ -3,6 +3,7 @@ import { useVendorSignupMutation } from "../features/auth/authApi";
 import { Link } from "react-router-dom";
 import DocumentUploader from "../components/DocumentUploader";
 import { verifyIFSC, verifyPinCode, checkStoreName, validateGSTNumber } from "../utils/verificationApis";
+import PlatformLogo from "../assets/PlatformLogo.jpeg";
 
 const INDIAN_STATES = [
   "Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh",
@@ -317,6 +318,9 @@ const VendorSignup = () => {
     return (
       <div className="min-h-screen flex items-center justify-center px-4 py-10 bg-gray-50">
         <div className="max-w-[480px] w-full bg-white rounded-2xl p-8 sm:p-10 text-center border border-gray-200 shadow-xl shadow-gray-200/50">
+          <div className="w-16 h-16 rounded-xl overflow-hidden ring-2 ring-blue-500/20 shadow-lg mx-auto mb-4">
+            <img src={PlatformLogo} alt="shop.design" className="w-full h-full object-cover" />
+          </div>
           <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center mx-auto mb-5 shadow-xl shadow-green-500/30">
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
               <path d="M5 13l4 4L19 7" />
@@ -327,8 +331,11 @@ const VendorSignup = () => {
             <span className="text-xs font-bold text-green-700">Application Received</span>
           </div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 mb-2 leading-tight">You're Almost There!</h2>
+          <p className="text-sm text-gray-500 leading-relaxed mb-2">
+            Your <span className="font-bold text-gray-900">shop.design</span> vendor application has been submitted.
+          </p>
           <p className="text-sm text-gray-500 leading-relaxed mb-6">
-            Your vendor application has been submitted. Our team will review within <strong className="text-gray-900">24–48 hours</strong>.
+            Our team will review within <strong className="text-gray-900">24–48 hours</strong>.
           </p>
           <div className="flex flex-col gap-2.5">
             <Link to="/vendor/login" className="block bg-gradient-to-r from-[#0F172A] to-[#1E3A8A] hover:brightness-110 text-white no-underline py-3.5 rounded-xl font-bold text-sm shadow-lg shadow-blue-900/20 transition-all">
@@ -338,6 +345,9 @@ const VendorSignup = () => {
               Back to Home
             </Link>
           </div>
+          <p className="text-[10px] text-gray-400 mt-4 uppercase tracking-wider font-bold">
+            shop.design · Quleep Pvt Ltd
+          </p>
         </div>
       </div>
     );
@@ -355,12 +365,20 @@ const VendorSignup = () => {
 
           <div className="relative flex-1">
             <Link to="/" className="flex items-center gap-2.5 mb-6 no-underline">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl flex items-center justify-center text-white font-black text-base shadow-lg shadow-blue-500/30 shrink-0">
-                E
+              <div className="w-11 h-11 rounded-xl overflow-hidden ring-2 ring-blue-400/40 shadow-lg shadow-blue-500/30 shrink-0">
+                <img
+                  src={PlatformLogo}
+                  alt="shop.design"
+                  className="w-full h-full object-cover"
+                />
               </div>
               <div>
-                <p className="text-sm font-black text-white m-0">E<span className="text-blue-400">·</span>Commerce</p>
-                <p className="text-[9px] text-blue-300/50 m-0 uppercase tracking-wider font-bold">Seller Central</p>
+                <p className="text-sm font-black text-white m-0 leading-tight">
+                  shop<span className="text-blue-400">.</span>design
+                </p>
+                <p className="text-[9px] text-blue-300/60 m-0 uppercase tracking-wider font-bold">
+                  Seller Central
+                </p>
               </div>
             </Link>
 
@@ -370,7 +388,9 @@ const VendorSignup = () => {
             </div>
 
             <h2 className="text-lg sm:text-xl font-extrabold text-white mb-1.5 leading-tight">Start Selling Today</h2>
-            <p className="text-xs text-blue-200/60 leading-relaxed mb-6">Join thousands of verified sellers.</p>
+            <p className="text-xs text-blue-200/60 leading-relaxed mb-6">
+              Join our curated design marketplace and reach thousands of design-loving customers.
+            </p>
 
             <div className="flex flex-col gap-1.5 mb-6">
               {stepLabels.map((label, i) => {
@@ -423,6 +443,15 @@ const VendorSignup = () => {
                 <span className="text-[11px] text-blue-200/50 font-medium">{item.text}</span>
               </div>
             ))}
+
+            <div className="mt-4 pt-3 border-t border-white/10">
+              <p className="text-[9px] text-blue-300/40 m-0 uppercase tracking-wider font-bold">
+                A product of
+              </p>
+              <p className="text-[11px] text-blue-200/70 font-bold m-0 mt-0.5">
+                Quleep Pvt Ltd
+              </p>
+            </div>
           </div>
         </div>
 
@@ -431,7 +460,9 @@ const VendorSignup = () => {
             <div className="flex items-center justify-between mb-1">
               <div>
                 <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 m-0">Vendor Registration</h1>
-                <p className="text-xs text-gray-500 mt-1 m-0">Step {step} of 3 — {stepLabels[step - 1]}</p>
+                <p className="text-xs text-gray-500 mt-1 m-0">
+                  Step {step} of 3 — {stepLabels[step - 1]}
+                </p>
               </div>
               <div className="w-11 h-11 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl flex items-center justify-center text-xl border border-indigo-200">
                 {stepIcons[step - 1]}
@@ -806,7 +837,8 @@ const VendorSignup = () => {
               </div>
 
               <p className="text-center text-[11px] text-gray-400 leading-relaxed m-0">
-                By submitting, you confirm all information is accurate and genuine.
+                By submitting, you confirm all information is accurate and genuine. Your application will be reviewed by the{" "}
+                <span className="font-bold text-gray-600">shop.design</span> team.
               </p>
             </form>
           )}

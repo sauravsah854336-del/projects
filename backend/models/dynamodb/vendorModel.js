@@ -1,17 +1,19 @@
-const { v4: uuidv4 } = require("uuid");
 const { PutCommand, GetCommand, QueryCommand, UpdateCommand, ScanCommand } = require("@aws-sdk/lib-dynamodb");
 const { docClient, getTableName } = require("../../config/dynamodb");
 
 const TABLE = getTableName("vendors");
 
+const normalizeStoreName = (value = "") => value.trim().replace(/\s+/g, " ").toLowerCase();
+
 const createVendor = async (vendorData) => {
-  const vendorId = uuidv4();
+  const vendorId = require("uuid").v4();
   const now = Date.now();
 
   const item = {
     vendorId,
     userId: vendorData.userId || "",
     storeName: vendorData.storeName || "",
+    storeNameNormalized: normalizeStoreName(vendorData.storeName || ""),
     storeDescription: vendorData.storeDescription || "",
     storeLogo: vendorData.storeLogo || "",
     storeBanner: vendorData.storeBanner || "",
@@ -89,11 +91,14 @@ const getVendorByUserId = async (userId) => {
 };
 
 const getVendorByStoreName = async (storeName) => {
-  const result = await docClient.send(new QueryCommand({
+  const normalized = normalizeStoreName(storeName);
+  const result = await docClient.send(new ScanCommand({
     TableName: TABLE,
-    IndexName: "storeName-index",
-    KeyConditionExpression: "storeName = :sn",
-    ExpressionAttributeValues: { ":sn": storeName },
+    FilterExpression: "storeNameNormalized = :sn AND isDeleted = :notDeleted",
+    ExpressionAttributeValues: {
+      ":sn": normalized,
+      ":notDeleted": false,
+    },
   }));
 
   if (!result.Items || result.Items.length === 0) return null;
@@ -146,7 +151,13 @@ const updateVendor = async (vendorId, updates) => {
   const names = {};
   const values = {};
 
-  Object.entries(updates).forEach(([key, value]) => {
+  const finalUpdates = { ...updates };
+  if (typeof finalUpdates.storeName === "string") {
+    finalUpdates.storeName = finalUpdates.storeName.trim();
+    finalUpdates.storeNameNormalized = normalizeStoreName(finalUpdates.storeName);
+  }
+
+  Object.entries(finalUpdates).forEach(([key, value]) => {
     if (key === "vendorId" || key === "_id") return;
     const attrName = `#${key}`;
     const attrValue = `:${key}`;
@@ -158,8 +169,6 @@ const updateVendor = async (vendorId, updates) => {
   values[":updatedAt"] = Date.now();
   names["#updatedAt"] = "updatedAt";
   expressions.push("#updatedAt = :updatedAt");
-
-  if (expressions.length === 0) return null;
 
   const result = await docClient.send(new UpdateCommand({
     TableName: TABLE,
@@ -201,21 +210,21 @@ const findVendorByGST = async (gstNumber) => {
   return formatVendor(result.Items[0]);
 };
 
-const findVendorByStoreNameCaseInsensitive = async (storeName) => {
+const findVendorByStoreNameCaseInsensitive = async (storeName, excludeVendorId = null) => {
+  const normalized = normalizeStoreName(storeName);
+
   const result = await docClient.send(new ScanCommand({
     TableName: TABLE,
-    FilterExpression: "isDeleted = :notDeleted",
+    FilterExpression: "storeNameNormalized = :sn AND isDeleted = :notDeleted",
     ExpressionAttributeValues: {
+      ":sn": normalized,
       ":notDeleted": false,
     },
   }));
 
-  if (!result.Items) return null;
+  if (!result.Items || result.Items.length === 0) return null;
 
-  const found = result.Items.find(
-    (v) => v.storeName.toLowerCase() === storeName.toLowerCase()
-  );
-
+  const found = result.Items.find((v) => !excludeVendorId || v.vendorId !== excludeVendorId);
   return found ? formatVendor(found) : null;
 };
 
@@ -242,6 +251,7 @@ const formatVendor = (item) => {
     vendorId: item.vendorId,
     userId: item.userId || "",
     storeName: item.storeName || "",
+    storeNameNormalized: item.storeNameNormalized || normalizeStoreName(item.storeName || ""),
     storeDescription: item.storeDescription || "",
     storeLogo: item.storeLogo || "",
     storeBanner: item.storeBanner || "",

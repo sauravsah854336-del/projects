@@ -13,12 +13,12 @@ const createOrder = async (orderData) => {
     orderNumber: orderData.orderNumber || "",
     userId: orderData.userId || orderData.user || "",
     items: (orderData.items || []).map((i) => ({
-      product: i.product?.toString() || i.product || "",
+      product: String(i.product?._id || i.product || ""),
       name: i.name || "",
       image: i.image || "",
-      price: i.price || 0,
-      quantity: i.quantity || 1,
-      vendor: i.vendor?.toString() || i.vendor || "",
+      price: Number(i.price) || 0,
+      quantity: Number(i.quantity) || 1,
+      vendor: String(i.vendor?._id || i.vendor || ""),
       storeName: i.storeName || "",
     })),
     shippingAddress: orderData.shippingAddress || {},
@@ -178,13 +178,21 @@ const getAllOrders = async (filters = {}) => {
     lastKey = result.LastEvaluatedKey;
   } while (lastKey);
 
-  allItems.sort((a, b) => b.createdAt - a.createdAt);
+  let filtered = allItems;
 
-  const total = allItems.length;
+  if (filters.vendorId) {
+    filtered = filtered.filter((order) =>
+      (order.items || []).some((item) => String(item.vendor || "") === String(filters.vendorId))
+    );
+  }
+
+  filtered.sort((a, b) => b.createdAt - a.createdAt);
+
+  const total = filtered.length;
   const page = filters.page || 1;
   const limit = filters.limit || 15;
   const skip = (page - 1) * limit;
-  const paginated = allItems.slice(skip, skip + limit);
+  const paginated = filtered.slice(skip, skip + limit);
 
   return {
     items: paginated.map(formatOrder),
@@ -196,34 +204,17 @@ const getAllOrders = async (filters = {}) => {
 };
 
 const getVendorOrders = async (vendorId, options = {}) => {
-  const params = {
-    TableName: TABLE,
-    FilterExpression: "contains(#items, :vid)",
-    ExpressionAttributeNames: { "#items": "items" },
-    ExpressionAttributeValues: { ":vid": vendorId },
-  };
+  const result = await getAllOrders({
+    ...options,
+    vendorId,
+    page: 1,
+    limit: 10000,
+  });
 
-  if (options.status) {
-    params.FilterExpression += " AND #st = :status";
-    params.ExpressionAttributeNames["#st"] = "orderStatus";
-    params.ExpressionAttributeValues[":status"] = options.status;
-  }
-
-  const allItems = [];
-  let lastKey = null;
-
-  do {
-    if (lastKey) params.ExclusiveStartKey = lastKey;
-    const result = await docClient.send(new ScanCommand(params));
-    allItems.push(...(result.Items || []));
-    lastKey = result.LastEvaluatedKey;
-  } while (lastKey);
-
-  const vendorOrders = allItems.filter((order) =>
-    (order.items || []).some((item) => item.vendor === vendorId)
-  );
-
-  vendorOrders.sort((a, b) => b.createdAt - a.createdAt);
+  const vendorOrders = (result.items || []).map((order) => ({
+    ...order,
+    items: (order.items || []).filter((item) => String(item.vendor || "") === String(vendorId)),
+  }));
 
   const total = vendorOrders.length;
   const page = options.page || 1;
@@ -232,11 +223,7 @@ const getVendorOrders = async (vendorId, options = {}) => {
   const paginated = vendorOrders.slice(skip, skip + limit);
 
   return {
-    items: paginated.map((order) => {
-      const formatted = formatOrder(order);
-      formatted.items = formatted.items.filter((item) => item.vendor === vendorId);
-      return formatted;
-    }),
+    items: paginated,
     total,
     page,
     limit,
@@ -307,8 +294,6 @@ const updateOrder = async (orderId, updates) => {
   names["#updatedAt"] = "updatedAt";
   expressions.push("#updatedAt = :updatedAt");
 
-  if (expressions.length === 0) return null;
-
   const result = await docClient.send(new UpdateCommand({
     TableName: TABLE,
     Key: { orderId },
@@ -343,12 +328,12 @@ const formatOrder = (item) => {
     user: item.userId || "",
     userId: item.userId || "",
     items: (item.items || []).map((i) => ({
-      product: i.product || "",
+      product: String(i.product || ""),
       name: i.name || "",
       image: i.image || "",
-      price: i.price || 0,
-      quantity: i.quantity || 1,
-      vendor: i.vendor || "",
+      price: Number(i.price) || 0,
+      quantity: Number(i.quantity) || 1,
+      vendor: String(i.vendor || ""),
       storeName: i.storeName || "",
     })),
     shippingAddress: item.shippingAddress || {},
@@ -361,15 +346,16 @@ const formatOrder = (item) => {
     autoCancelledAt: item.autoCancelledAt || null,
     country: item.country || {},
     pricing: item.pricing || {},
-    orderStatus: item.orderStatus || "payment_pending",
+    orderStatus: item.orderStatus || item.status || "payment_pending",
+    status: item.status || item.orderStatus || "payment_pending",
     confirmedAt: item.confirmedAt || null,
-    subtotal: item.subtotal || 0,
-    discount: item.discount || 0,
+    subtotal: Number(item.subtotal) || 0,
+    discount: Number(item.discount) || 0,
     couponCode: item.couponCode || "",
-    couponDiscount: item.couponDiscount || 0,
+    couponDiscount: Number(item.couponDiscount) || 0,
     couponType: item.couponType || "",
-    shippingCharge: item.shippingCharge || 0,
-    total: item.total || 0,
+    shippingCharge: Number(item.shippingCharge) || 0,
+    total: Number(item.total) || 0,
     notes: item.notes || "",
     cancelReason: item.cancelReason || "",
     deliveredAt: item.deliveredAt || null,

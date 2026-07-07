@@ -15,7 +15,7 @@ const createProduct = async (productData) => {
     description: productData.description || "",
     shortDescription: productData.shortDescription || "",
     keyFeatures: productData.keyFeatures || [],
-    category: productData.category || "",
+    category: productData.category?._id || productData.category || "",
     brand: productData.brand || "",
     modelNumber: productData.modelNumber || "",
     price: productData.price || 0,
@@ -240,39 +240,39 @@ const getAllProducts = async (filters = {}) => {
       p.description.toLowerCase().includes(searchLower) ||
       p.brand.toLowerCase().includes(searchLower) ||
       p.modelNumber.toLowerCase().includes(searchLower) ||
-      (p.tags || []).some((t) => t.toLowerCase().includes(searchLower)) ||
-      (p.keyFeatures || []).some((f) => f.toLowerCase().includes(searchLower))
+      (p.tags || []).some((t) => String(t).toLowerCase().includes(searchLower)) ||
+      (p.keyFeatures || []).some((f) => String(f).toLowerCase().includes(searchLower))
     );
   }
 
   if (filters.brands) {
-    const brandArr = filters.brands.split(",").filter(Boolean);
+    const brandArr = String(filters.brands).split(",").filter(Boolean);
     if (brandArr.length) products = products.filter((p) => brandArr.includes(p.brand));
   }
 
   if (filters.colors) {
-    const colorArr = filters.colors.split(",").filter(Boolean);
+    const colorArr = String(filters.colors).split(",").filter(Boolean);
     if (colorArr.length) products = products.filter((p) =>
       (p.colors || []).some((c) => colorArr.includes(c.name))
     );
   }
 
   if (filters.sizes) {
-    const sizeArr = filters.sizes.split(",").filter(Boolean);
+    const sizeArr = String(filters.sizes).split(",").filter(Boolean);
     if (sizeArr.length) products = products.filter((p) =>
       (p.sizes || []).some((s) => sizeArr.includes(s.name))
     );
   }
 
   if (filters.materials) {
-    const matArr = filters.materials.split(",").filter(Boolean);
+    const matArr = String(filters.materials).split(",").filter(Boolean);
     if (matArr.length) products = products.filter((p) =>
       (p.materials || []).some((m) => matArr.includes(m))
     );
   }
 
   if (filters.roomType) {
-    const roomArr = filters.roomType.split(",").filter(Boolean);
+    const roomArr = String(filters.roomType).split(",").filter(Boolean);
     if (roomArr.length) products = products.filter((p) =>
       (p.roomType || []).some((r) => roomArr.includes(r))
     );
@@ -287,7 +287,8 @@ const getAllProducts = async (filters = {}) => {
   }
 
   if (filters.categoryIds) {
-    products = products.filter((p) => filters.categoryIds.includes(p.category));
+    const categoryIds = Array.isArray(filters.categoryIds) ? filters.categoryIds.map(String) : [];
+    products = products.filter((p) => categoryIds.includes(String(p.category?._id || p.category || "")));
   }
 
   const sortMap = {
@@ -296,15 +297,15 @@ const getAllProducts = async (filters = {}) => {
     rating: (a, b) => b.averageRating - a.averageRating || b.totalReviews - a.totalReviews,
     popular: (a, b) => b.totalSold - a.totalSold,
     newest: (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
-    discount: (a, b) => b.comparePrice - a.comparePrice,
+    discount: (a, b) => (b.comparePrice - b.price) - (a.comparePrice - a.price),
   };
 
   const sortFn = sortMap[filters.sort] || sortMap.newest;
   products.sort(sortFn);
 
   const total = products.length;
-  const page = filters.page || 1;
-  const limit = filters.limit || 12;
+  const page = Number(filters.page) || 1;
+  const limit = Number(filters.limit) || 12;
   const skip = (page - 1) * limit;
   const paginated = products.slice(skip, skip + limit);
 
@@ -321,8 +322,13 @@ const updateProduct = async (productId, updates) => {
   const expressions = [];
   const names = {};
   const values = {};
+  const finalUpdates = { ...updates };
 
-  Object.entries(updates).forEach(([key, value]) => {
+  if (finalUpdates.category !== undefined) {
+    finalUpdates.category = finalUpdates.category?._id || finalUpdates.category || "";
+  }
+
+  Object.entries(finalUpdates).forEach(([key, value]) => {
     if (key === "productId" || key === "_id") return;
     if (key === "status") {
       names["#st"] = "status";
@@ -340,8 +346,6 @@ const updateProduct = async (productId, updates) => {
   values[":updatedAt"] = Date.now();
   names["#updatedAt"] = "updatedAt";
   expressions.push("#updatedAt = :updatedAt");
-
-  if (expressions.length === 0) return null;
 
   const result = await docClient.send(new UpdateCommand({
     TableName: TABLE,
@@ -379,7 +383,7 @@ const checkDuplicateProduct = async (vendorId, { name, sku, modelNumber }, exclu
   const products = result.Items.filter((p) => !excludeProductId || p.productId !== excludeProductId);
 
   for (const p of products) {
-    if (name && p.name.toLowerCase() === name.trim().toLowerCase()) {
+    if (name && String(p.name || "").toLowerCase() === name.trim().toLowerCase()) {
       return formatProduct(p);
     }
     if (sku && sku.trim() && p.sku === sku.trim()) {
@@ -542,14 +546,14 @@ const formatProduct = (item) => {
     description: item.description || "",
     shortDescription: item.shortDescription || "",
     keyFeatures: item.keyFeatures || [],
-    category: item.category ? { _id: item.category, name: item.categoryName || "" } : null,
+    category: item.category ? { _id: String(item.category), name: item.categoryName || "" } : null,
     brand: item.brand || "",
     modelNumber: item.modelNumber || "",
-    price: item.price || 0,
-    basePrice: item.basePrice || item.price || 0,
+    price: Number(item.price) || 0,
+    basePrice: Number(item.basePrice || item.price) || 0,
     baseCurrency: item.baseCurrency || "INR",
-    comparePrice: item.comparePrice || 0,
-    costPrice: item.costPrice || 0,
+    comparePrice: Number(item.comparePrice) || 0,
+    costPrice: Number(item.costPrice) || 0,
     bulkPricing: item.bulkPricing || [],
     images: item.images || [],
     videoUrl: item.videoUrl || "",
@@ -559,12 +563,12 @@ const formatProduct = (item) => {
     materials: item.materials || [],
     variants: item.variants || [],
     specifications: item.specifications || [],
-    stock: item.stock || 0,
-    lowStockThreshold: item.lowStockThreshold || 5,
-    reservedStock: item.reservedStock || 0,
+    stock: Number(item.stock) || 0,
+    lowStockThreshold: Number(item.lowStockThreshold) || 5,
+    reservedStock: Number(item.reservedStock) || 0,
     sku: item.sku || "",
     barcode: item.barcode || "",
-    weight: item.weight || 0,
+    weight: Number(item.weight) || 0,
     weightUnit: item.weightUnit || "kg",
     dimensions: item.dimensions || { length: 0, width: 0, height: 0, unit: "cm" },
     roomType: item.roomType || [],
@@ -586,12 +590,12 @@ const formatProduct = (item) => {
     isBestSeller: item.isBestSeller || false,
     isNewArrival: item.isNewArrival || false,
     isActive: item.isActive !== false,
-    averageRating: item.averageRating || 0,
-    totalReviews: item.totalReviews || 0,
+    averageRating: Number(item.averageRating) || 0,
+    totalReviews: Number(item.totalReviews) || 0,
     ratingDistribution: item.ratingDistribution || {},
-    totalSold: item.totalSold || 0,
-    views: item.views || 0,
-    wishlistCount: item.wishlistCount || 0,
+    totalSold: Number(item.totalSold) || 0,
+    views: Number(item.views) || 0,
+    wishlistCount: Number(item.wishlistCount) || 0,
     isDeleted: item.isDeleted || false,
     delistReason: item.delistReason || "",
     createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),

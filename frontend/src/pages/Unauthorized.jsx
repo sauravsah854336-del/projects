@@ -1,5 +1,6 @@
 import { useNavigate, Link } from "react-router-dom";
 import { useSelector } from "react-redux";
+import PlatformLogo from "../assets/PlatformLogo.jpeg";
 
 const Unauthorized = () => {
   const navigate = useNavigate();
@@ -95,9 +96,9 @@ const Unauthorized = () => {
           transition: all 0.2s;
         }
         .unauth-link:hover {
-          border-color: #EF4444;
+          border-color: #3B82F6;
           transform: translateY(-2px);
-          box-shadow: 0 6px 16px rgba(239,68,68,0.1);
+          box-shadow: 0 6px 16px rgba(59,130,246,0.1);
         }
       `}</style>
 
@@ -106,9 +107,31 @@ const Unauthorized = () => {
       <div className="unauth-ring" style={{ width: 700, height: 700, top: "50%", left: "50%", transform: "translate(-50%, -50%)", animationDelay: "1s" }}></div>
 
       <div style={{ position: "absolute", top: "15%", left: "10%", width: 200, height: 200, background: "rgba(239,68,68,0.08)", borderRadius: "50%", filter: "blur(50px)" }}></div>
-      <div style={{ position: "absolute", bottom: "15%", right: "10%", width: 250, height: 250, background: "rgba(124,58,237,0.06)", borderRadius: "50%", filter: "blur(50px)" }}></div>
+      <div style={{ position: "absolute", bottom: "15%", right: "10%", width: 250, height: 250, background: "rgba(59,130,246,0.08)", borderRadius: "50%", filter: "blur(50px)" }}></div>
 
       <div className="unauth-content" style={{ maxWidth: 580, width: "100%", textAlign: "center", position: "relative", zIndex: 1 }}>
+
+        <Link to="/" style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 10,
+          textDecoration: "none",
+          marginBottom: 20,
+        }}>
+          <div style={{
+            width: 44,
+            height: 44,
+            borderRadius: 11,
+            overflow: "hidden",
+            boxShadow: "0 4px 12px rgba(59,130,246,0.2)",
+            border: "2px solid rgba(59,130,246,0.15)",
+          }}>
+            <img src={PlatformLogo} alt="shop.design" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          </div>
+          <span style={{ fontSize: 17, fontWeight: 900, color: "#111" }}>
+            shop<span style={{ color: "#3B82F6" }}>.</span>design
+          </span>
+        </Link>
 
         <div style={{ position: "relative", display: "inline-block", marginBottom: 24 }}>
           <div className="unauth-shield" style={{
@@ -197,7 +220,7 @@ const Unauthorized = () => {
           margin: "0 0 8px",
           lineHeight: 1.7,
         }}>
-          You don't have permission to access this page.
+          You don't have permission to access this page on shop.design.
         </p>
 
         {user && (
@@ -217,7 +240,7 @@ const Unauthorized = () => {
               borderRadius: "50%",
               background: isAdmin ? "linear-gradient(135deg, #EF4444, #DC2626)"
                 : isVendor ? "linear-gradient(135deg, #7C3AED, #6D28D9)"
-                : "linear-gradient(135deg, #D85A30, #FF8C5A)",
+                : "linear-gradient(135deg, #3B82F6, #1E40AF)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -299,9 +322,9 @@ const Unauthorized = () => {
             to={getDashboard()}
             className="unauth-action"
             style={{
-              background: "linear-gradient(135deg, #D85A30, #FF8C5A)",
+              background: "linear-gradient(135deg, #3B82F6, #1E40AF)",
               color: "white",
-              boxShadow: "0 8px 24px rgba(216,90,48,0.35)",
+              boxShadow: "0 8px 24px rgba(59,130,246,0.35)",
             }}
           >
             🏠 {user ? "My Dashboard" : "Home Page"}
@@ -312,9 +335,9 @@ const Unauthorized = () => {
               to="/login"
               className="unauth-action"
               style={{
-                background: "linear-gradient(135deg, #111, #374151)",
+                background: "linear-gradient(135deg, #0F172A, #1E3A8A)",
                 color: "white",
-                boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
+                boxShadow: "0 8px 24px rgba(15,23,42,0.3)",
               }}
             >
               🔑 Sign In
@@ -360,9 +383,13 @@ const Unauthorized = () => {
           </span>
           <span style={{ color: "#E5E7EB" }}>•</span>
           <span style={{ fontSize: 12, color: "#6B7280" }}>
-            Need help? <Link to="/contact" style={{ color: "#D85A30", fontWeight: 700, textDecoration: "none" }}>Contact Support</Link>
+            Need help? <Link to="/contact" style={{ color: "#2563EB", fontWeight: 700, textDecoration: "none" }}>Contact Support</Link>
           </span>
         </div>
+
+        <p style={{ fontSize: 11, color: "#9CA3AF", textAlign: "center", marginTop: 20, textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 }}>
+          shop.design · A product of Quleep Pvt Ltd
+        </p>
       </div>
     </div>
   );

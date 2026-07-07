@@ -62,8 +62,6 @@ const updateCart = async (userId, updates) => {
   names["#updatedAt"] = "updatedAt";
   expressions.push("#updatedAt = :updatedAt");
 
-  if (expressions.length === 0) return null;
-
   const result = await docClient.send(new UpdateCommand({
     TableName: TABLE,
     Key: { userId },
@@ -79,7 +77,17 @@ const updateCart = async (userId, updates) => {
 const saveCart = async (cart) => {
   const item = {
     userId: cart.userId || cart.user,
-    items: cart.items || [],
+    items: (cart.items || []).map((i) => ({
+      product: String(i.product?._id || i.product || ""),
+      quantity: Number(i.quantity) || 1,
+      price: Number(i.price) || 0,
+      comparePrice: Number(i.comparePrice) || 0,
+      name: i.name || "",
+      image: i.image || "",
+      vendor: String(i.vendor?._id || i.vendor || ""),
+      storeName: i.storeName || "",
+      maxQuantity: Number(i.maxQuantity) || 99,
+    })),
     coupon: cart.coupon || {
       code: "",
       discount: 0,
@@ -88,10 +96,10 @@ const saveCart = async (cart) => {
       description: "",
       appliedAt: null,
     },
-    totalItems: cart.totalItems || 0,
-    subtotal: cart.subtotal || 0,
-    total: cart.total || 0,
-    createdAt: cart.createdAt || Date.now(),
+    totalItems: Number(cart.totalItems) || 0,
+    subtotal: Number(cart.subtotal) || 0,
+    total: Number(cart.total) || 0,
+    createdAt: cart.createdAt instanceof Date ? cart.createdAt.getTime() : (cart.createdAt || Date.now()),
     updatedAt: Date.now(),
   };
 
@@ -131,15 +139,15 @@ const formatCart = (item) => {
     user: item.userId,
     userId: item.userId,
     items: (item.items || []).map((i) => ({
-      product: i.product || "",
-      quantity: i.quantity || 1,
-      price: i.price || 0,
-      comparePrice: i.comparePrice || 0,
+      product: String(i.product?._id || i.product || ""),
+      quantity: Number(i.quantity) || 1,
+      price: Number(i.price) || 0,
+      comparePrice: Number(i.comparePrice) || 0,
       name: i.name || "",
       image: i.image || "",
-      vendor: i.vendor || "",
+      vendor: String(i.vendor?._id || i.vendor || ""),
       storeName: i.storeName || "",
-      maxQuantity: i.maxQuantity || 99,
+      maxQuantity: Number(i.maxQuantity) || 99,
     })),
     coupon: item.coupon || {
       code: "",
@@ -149,9 +157,9 @@ const formatCart = (item) => {
       description: "",
       appliedAt: null,
     },
-    totalItems: item.totalItems || 0,
-    subtotal: item.subtotal || 0,
-    total: item.total || 0,
+    totalItems: Number(item.totalItems) || 0,
+    subtotal: Number(item.subtotal) || 0,
+    total: Number(item.total) || 0,
     createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
     updatedAt: item.updatedAt ? new Date(item.updatedAt) : new Date(),
   };

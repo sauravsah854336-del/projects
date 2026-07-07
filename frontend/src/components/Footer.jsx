@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useSelector } from "react-redux";
+import PlatformLogo from "../assets/PlatformLogo.jpeg";
 
 const Footer = () => {
   const { user } = useSelector((state) => state.auth);
@@ -131,7 +132,7 @@ const Footer = () => {
 
             {!isVendor && !isAdmin && (
               <div>
-                <h4 className="text-sm font-extrabold text-white mb-4">Sell on E-Commerce</h4>
+                <h4 className="text-sm font-extrabold text-white mb-4">Sell on shop.design</h4>
                 <ul className="space-y-2.5 list-none p-0 m-0">
                   <li><Link to="/vendor/signup" className="text-blue-200/70 text-[13px] no-underline hover:text-white hover:underline transition-colors">Start Selling</Link></li>
                   <li><Link to="/vendor/login" className="text-blue-200/70 text-[13px] no-underline hover:text-white hover:underline transition-colors">Seller Login</Link></li>
@@ -146,14 +147,18 @@ const Footer = () => {
           <div className="py-8 border-b border-white/10">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl flex items-center justify-center text-white font-black text-base shadow-lg shadow-blue-500/30">
-                  E
-                </div>
-                <div>
-                  <p className="text-base font-black text-white m-0">E<span className="text-blue-400">·</span>Commerce</p>
-                  <p className="text-[10px] text-blue-300/50 m-0 uppercase tracking-wider font-bold">Multi-Vendor Marketplace</p>
-                </div>
-              </div>
+  <div className="w-12 h-12 rounded-xl overflow-hidden ring-2 ring-blue-400/40 shadow-lg shadow-blue-500/30">
+    <img src={PlatformLogo} alt="shop.design" className="w-full h-full object-cover" />
+  </div>
+  <div>
+    <p className="text-base font-black text-white m-0">
+      shop<span className="text-blue-400">.</span>design
+    </p>
+    <p className="text-[10px] text-blue-300/50 m-0 uppercase tracking-wider font-bold">
+      Design your space, delivered
+    </p>
+  </div>
+</div>
 
               <div className="flex items-center gap-4 flex-wrap justify-center">
                 <p className="text-[11px] text-blue-200/50 font-bold uppercase tracking-wider m-0">Connect with us</p>
@@ -211,8 +216,17 @@ const Footer = () => {
 
           <div className="py-5 flex flex-col sm:flex-row justify-between items-center gap-3">
             <p className="text-blue-300/40 text-xs m-0 text-center sm:text-left">
-              © {currentYear} <span className="text-white/70 font-semibold">E-Commerce</span> by Quleep Technologies. All rights reserved.
-            </p>
+  © {currentYear} <span className="text-white/70 font-semibold">shop.design</span> — A product of{" "}
+  <a
+    href="https://quleep.com"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="text-blue-300 hover:text-white font-semibold transition-colors no-underline hover:underline"
+  >
+    Quleep Pvt Ltd
+  </a>
+  . All rights reserved.
+</p>
             <div className="flex flex-wrap gap-4 items-center justify-center">
               {[
                 { to: "/policy/terms", label: "Terms" },

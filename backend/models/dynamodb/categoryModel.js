@@ -48,14 +48,16 @@ const getCategoryBySlug = async (slug) => {
 const getCategoriesByParent = async (parentId) => {
   const result = await docClient.send(new ScanCommand({
     TableName: TABLE,
-    FilterExpression: "parent = :pid AND isActive = :active",
+    FilterExpression: "isActive = :active",
     ExpressionAttributeValues: {
-      ":pid": parentId,
       ":active": true,
     },
   }));
 
-  const items = (result.Items || []).map(formatCategory);
+  const items = (result.Items || [])
+    .filter((item) => String(item.parent || "") === String(parentId || ""))
+    .map(formatCategory);
+
   items.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
   return items;
 };
@@ -106,8 +108,6 @@ const updateCategory = async (categoryId, updates) => {
   names["#updatedAt"] = "updatedAt";
   expressions.push("#updatedAt = :updatedAt");
 
-  if (expressions.length === 0) return null;
-
   const result = await docClient.send(new UpdateCommand({
     TableName: TABLE,
     Key: { categoryId },
@@ -130,7 +130,7 @@ const deleteCategory = async (categoryId) => {
 const findCategoryBySlugAndParent = async (slug, parentId) => {
   const all = await getAllCategories(true);
   return all.find(
-    (c) => c.slug === slug && (c.parent || "") === (parentId || "")
+    (c) => c.slug === slug && String(c.parent || "") === String(parentId || "")
   ) || null;
 };
 
@@ -163,7 +163,7 @@ const formatCategory = (item) => {
     slug: item.slug || "",
     description: item.description || "",
     image: item.image || "",
-    parent: item.parent || null,
+    parent: item.parent || "",
     isActive: item.isActive !== false,
     createdBy: item.createdBy || "",
     createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),

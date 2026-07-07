@@ -12,12 +12,13 @@ const {
 const {
   createVendor,
   getVendorByUserId,
-  getVendorByStoreName,
   findVendorByPAN,
   findVendorByGST,
   findVendorByStoreNameCaseInsensitive,
   updateVendor,
 } = require("../models/dynamodb/vendorModel");
+const { getAllOrders } = require("../models/dynamodb/orderModel");
+const { getAllProducts } = require("../models/dynamodb/productModel");
 
 const generateAccessToken = (user) => {
   return jwt.sign({ id: user._id || user.userId, role: user.role }, process.env.JWT_SECRET, {
@@ -131,7 +132,7 @@ const vendorSignup = async (req, res) => {
       return res.status(409).json({ success: false, message: "Email already registered" });
     }
 
-    const existStore = await findVendorByStoreNameCaseInsensitive(storeName.trim());
+    const existStore = await findVendorByStoreNameCaseInsensitive(storeName.trim(), null);
     if (existStore) {
       return res.status(409).json({ success: false, message: "Store name is already taken" });
     }
@@ -266,8 +267,6 @@ const vendorLogin = async (req, res) => {
     await updateUser(user._id, { lastLogin: new Date().toISOString() });
     await pushRefreshToken(user._id, { token: refreshToken, createdAt: new Date().toISOString() });
 
-    console.log(`✅ VENDOR Login: ${user.email} | Store: ${vendor.storeName}`);
-
     return res.status(200).json({
       success: true,
       message: "Login successful",
@@ -394,15 +393,20 @@ const updateVendorStore = async (req, res) => {
       return res.status(404).json({ success: false, message: "Vendor profile not found" });
     }
 
+    const vendorId = vendor.vendorId || vendor._id;
     const storeUpdates = {};
 
     if (storeName !== undefined) {
       if (storeName.trim().length < 3) {
         return res.status(400).json({ success: false, message: "Store name must be at least 3 characters" });
       }
-      const existing = await findVendorByStoreNameCaseInsensitive(storeName.trim());
-      if (existing && existing._id !== vendor._id) {
-        return res.status(409).json({ success: false, message: "Store name already taken" });
+      const normalizedNew = storeName.trim().replace(/\s+/g, " ").toLowerCase();
+      const normalizedCurrent = (vendor.storeName || "").trim().replace(/\s+/g, " ").toLowerCase();
+      if (normalizedNew !== normalizedCurrent) {
+        const existing = await findVendorByStoreNameCaseInsensitive(storeName.trim(), vendorId);
+        if (existing) {
+          return res.status(409).json({ success: false, message: "Store name already taken" });
+        }
       }
       storeUpdates.storeName = storeName.trim();
     }
@@ -450,7 +454,7 @@ const updateVendorStore = async (req, res) => {
       };
     }
 
-    const updatedVendor = await updateVendor(vendor._id, storeUpdates);
+    const updatedVendor = await updateVendor(vendorId, storeUpdates);
 
     return res.status(200).json({
       success: true,
@@ -512,7 +516,16 @@ const checkStoreName = async (req, res) => {
       return res.status(200).json({ available: false, message: "Store name must be at least 3 characters" });
     }
 
-    const existing = await findVendorByStoreNameCaseInsensitive(name.trim());
+    let excludeVendorId = null;
+
+    if (req.user?.id) {
+      const currentVendor = await getVendorByUserId(req.user.id);
+      if (currentVendor) {
+        excludeVendorId = currentVendor.vendorId || currentVendor._id;
+      }
+    }
+
+    const existing = await findVendorByStoreNameCaseInsensitive(name.trim(), excludeVendorId);
 
     return res.status(200).json({
       available: !existing,
@@ -520,6 +533,145 @@ const checkStoreName = async (req, res) => {
     });
   } catch (err) {
     return res.status(500).json({ available: false, message: "Failed to check" });
+  }
+};
+
+const getVendorStats = async (req, res) => {
+  try {
+    const vendor = await getVendorByUserId(req.user.id);
+
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor not found",
+      });
+    }
+
+    const vendorId = vendor.vendorId || vendor._id;
+
+    const orderResult = await getAllOrders({ vendorId, page: 1, limit: 10000 });
+    const orders = orderResult.items || [];
+
+    const productResult = await getAllProducts({
+      vendorId,
+      page: 1,
+      limit: 10000,
+    });
+    const products = productResult.items || [];
+
+    const totalOrders = orders.length;
+
+    const deliveredOrders = orders.filter((o) => (o.orderStatus || o.status) === "delivered");
+
+    const totalRevenue = deliveredOrders.reduce((sum, order) => {
+      const vendorItems = (order.items || []).filter(
+        (item) => String(item.vendor || item.vendorId || "") === String(vendorId)
+      );
+      const itemTotal = vendorItems.reduce(
+        (s, item) => s + (Number(item.price) || 0) * (Number(item.quantity) || 1),
+        0
+      );
+      return sum + itemTotal;
+    }, 0);
+
+    const commissionRate = (vendor.commission || 10) / 100;
+    const totalEarnings = totalRevenue * (1 - commissionRate);
+    const totalCommission = totalRevenue * commissionRate;
+
+    const monthlyRevenue = {};
+    const now = new Date();
+
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      monthlyRevenue[key] = 0;
+    }
+
+    deliveredOrders.forEach((order) => {
+      const date = new Date(order.createdAt);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      if (Object.prototype.hasOwnProperty.call(monthlyRevenue, key)) {
+        const vendorItems = (order.items || []).filter(
+          (item) => String(item.vendor || item.vendorId || "") === String(vendorId)
+        );
+        const itemTotal = vendorItems.reduce(
+          (s, item) => s + (Number(item.price) || 0) * (Number(item.quantity) || 1),
+          0
+        );
+        monthlyRevenue[key] += itemTotal;
+      }
+    });
+
+    const ordersByStatus = {};
+    orders.forEach((order) => {
+      const status = order.orderStatus || order.status || "pending";
+      ordersByStatus[status] = (ordersByStatus[status] || 0) + 1;
+    });
+
+    const productSales = {};
+    orders.forEach((order) => {
+      (order.items || [])
+        .filter((item) => String(item.vendor || item.vendorId || "") === String(vendorId))
+        .forEach((item) => {
+          const pid = String(item.product || item.productId || "");
+          if (!pid) return;
+          if (!productSales[pid]) {
+            productSales[pid] = {
+              productId: pid,
+              name: item.name || "",
+              image: item.image || "",
+              totalQty: 0,
+              totalRevenue: 0,
+            };
+          }
+          productSales[pid].totalQty += Number(item.quantity) || 1;
+          productSales[pid].totalRevenue += (Number(item.price) || 0) * (Number(item.quantity) || 1);
+        });
+    });
+
+    const topProducts = Object.values(productSales)
+      .sort((a, b) => b.totalRevenue - a.totalRevenue)
+      .slice(0, 5);
+
+    const totalProducts = products.length;
+    const activeProducts = products.filter((p) => p.isActive && p.status === "approved").length;
+    const lowStockProducts = products.filter((p) => (Number(p.stock) || 0) > 0 && (Number(p.stock) || 0) <= (Number(p.lowStockThreshold) || 5)).length;
+    const outOfStockProducts = products.filter((p) => (Number(p.stock) || 0) <= 0).length;
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        overview: {
+          totalOrders,
+          totalRevenue: Math.round(totalRevenue * 100) / 100,
+          totalEarnings: Math.round(totalEarnings * 100) / 100,
+          totalCommission: Math.round(totalCommission * 100) / 100,
+          commissionRate: vendor.commission || 10,
+          totalProducts,
+          activeProducts,
+          lowStockProducts,
+          outOfStockProducts,
+          pendingOrders: ordersByStatus["pending"] || 0,
+          processingOrders: ordersByStatus["processing"] || 0,
+          deliveredOrders: ordersByStatus["delivered"] || 0,
+          cancelledOrders: ordersByStatus["cancelled"] || 0,
+        },
+        monthlyRevenue: Object.entries(monthlyRevenue).map(([month, revenue]) => ({
+          month,
+          revenue: Math.round(revenue * 100) / 100,
+        })),
+        ordersByStatus,
+        topProducts,
+        vendorInfo: {
+          storeName: vendor.storeName,
+          approvalStatus: vendor.approvalStatus,
+          memberSince: vendor.createdAt,
+        },
+      },
+    });
+  } catch (err) {
+    console.error("getVendorStats error:", err);
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
@@ -531,4 +683,5 @@ module.exports = {
   updateVendorStore,
   changeVendorPassword,
   checkStoreName,
+  getVendorStats,
 };

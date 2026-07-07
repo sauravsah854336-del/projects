@@ -8,7 +8,6 @@ const {
   updateCategory: updateCategoryInDB,
   deleteCategory: deleteCategoryFromDB,
   findCategoryBySlugAndParent,
-  countCategories,
 } = require("../models/dynamodb/categoryModel");
 const { getAllProducts } = require("../models/dynamodb/productModel");
 
@@ -104,23 +103,24 @@ const getAllCategories = async (req, res) => {
 const getCategoryTree = async (req, res) => {
   try {
     const rootCategories = await getRootCategories();
+    const productResult = await getAllProducts({
+      status: "approved",
+      isActive: true,
+      page: 1,
+      limit: 10000,
+    });
+
+    const allProducts = productResult.items || [];
     const tree = [];
 
     for (const category of rootCategories) {
       const children = await getCategoriesByParent(category._id);
+      const categoryIds = [String(category._id), ...children.map((c) => String(c._id))];
 
-      const categoryIds = [category._id, ...children.map((c) => c._id)];
-
-      const productResult = await getAllProducts({
-        status: "approved",
-        isActive: true,
-        page: 1,
-        limit: 10000,
-      });
-
-      const productCount = productResult.items.filter(
-        (p) => categoryIds.includes(p.category?._id || p.category)
-      ).length;
+      const productCount = allProducts.filter((p) => {
+        const catId = String(p.category?._id || p.category?.categoryId || p.category || p.categoryId || "");
+        return categoryIds.includes(catId);
+      }).length;
 
       tree.push({
         _id: category._id,
@@ -137,6 +137,10 @@ const getCategoryTree = async (req, res) => {
           description: c.description,
           image: c.image,
           createdAt: c.createdAt,
+          productCount: allProducts.filter((p) => {
+            const catId = String(p.category?._id || p.category?.categoryId || p.category || p.categoryId || "");
+            return catId === String(c._id);
+          }).length,
         })),
       });
     }
@@ -157,15 +161,14 @@ const getSingleCategory = async (req, res) => {
       return res.status(404).json({ success: false, message: "Category not found" });
     }
 
-    let parentData = null;
     if (category.parent) {
-      parentData = await getCategoryById(category.parent);
+      const parentData = await getCategoryById(category.parent);
       if (parentData) {
         category.parent = { _id: parentData._id, name: parentData.name, slug: parentData.slug };
       }
     }
 
-    const subcategories = await getCategoriesByParent(category._id);
+    const subcategories = await getCategoriesByParent(String(category._id));
 
     return res.status(200).json({
       success: true,
@@ -255,14 +258,18 @@ const deleteCategory = async (req, res) => {
     }
 
     const productResult = await getAllProducts({
-      category: id,
       status: "approved",
       isActive: true,
       page: 1,
-      limit: 1,
+      limit: 10000,
     });
 
-    if (productResult.total > 0) {
+    const hasProducts = (productResult.items || []).some((p) => {
+      const catId = String(p.category?._id || p.category?.categoryId || p.category || p.categoryId || "");
+      return catId === String(id);
+    });
+
+    if (hasProducts) {
       return res.status(400).json({
         success: false,
         message: "Cannot delete: Products exist in this category.",

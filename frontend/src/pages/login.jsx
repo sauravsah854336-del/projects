@@ -9,6 +9,7 @@ import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { getGuestCartForMerge, clearGuestCart } from "../utils/guestCart";
 import { getGuestWishlistForMerge, clearGuestWishlist } from "../utils/guestWishlist";
 import { toast } from "../components/Toast";
+import PlatformLogo from "../assets/PlatformLogo.jpeg";
 
 const ErrorAlert = ({ message, action }) => (
   <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2.5">
@@ -136,12 +137,20 @@ const Login = () => {
 
           <div className="relative">
             <Link to="/" className="flex items-center gap-2.5 no-underline mb-8">
-              <div className="w-11 h-11 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl flex items-center justify-center text-white font-black text-lg shadow-lg shadow-blue-500/30">
-                E
+              <div className="w-12 h-12 rounded-xl overflow-hidden ring-2 ring-blue-400/40 shadow-lg shadow-blue-500/30 shrink-0">
+                <img
+                  src={PlatformLogo}
+                  alt="shop.design"
+                  className="w-full h-full object-cover"
+                />
               </div>
               <div>
-                <p className="text-base font-black text-white m-0">E<span className="text-blue-400">·</span>Commerce</p>
-                <p className="text-[9px] text-blue-300/50 m-0 uppercase tracking-wider font-bold">Marketplace</p>
+                <p className="text-base font-black text-white m-0 leading-tight">
+                  shop<span className="text-blue-400">.</span>design
+                </p>
+                <p className="text-[9px] text-blue-300/60 m-0 uppercase tracking-wider font-bold">
+                  Design your space
+                </p>
               </div>
             </Link>
 
@@ -149,13 +158,13 @@ const Login = () => {
               Welcome back!
             </h2>
             <p className="text-sm text-blue-200/60 m-0 mb-8 leading-relaxed max-w-xs">
-              Sign in to access your orders, wishlist, and personalized shopping experience.
+              Sign in to access your orders, wishlist, and continue designing your dream space.
             </p>
 
             <div className="grid grid-cols-3 gap-3">
               {[
-                { value: "50K+", label: "Products", icon: "📦" },
-                { value: "1200+", label: "Sellers", icon: "🏪" },
+                { value: "260+", label: "Products", icon: "📦" },
+                { value: "25+", label: "Sellers", icon: "🏪" },
                 { value: "99%", label: "Happy", icon: "😊" },
               ].map((stat) => (
                 <div key={stat.label} className="bg-white/5 border border-white/10 rounded-xl p-3 text-center">
@@ -178,16 +187,31 @@ const Login = () => {
                 </div>
               ))}
             </div>
+
+            <div className="mt-8 pt-6 border-t border-white/10">
+              <p className="text-[10px] text-blue-300/40 m-0 uppercase tracking-wider font-bold">
+                A product of
+              </p>
+              <p className="text-xs text-blue-200/70 font-bold m-0 mt-0.5">
+                Quleep Pvt Ltd
+              </p>
+            </div>
           </div>
         </div>
 
         <div className="p-6 sm:p-8 lg:p-10">
           <div className="lg:hidden text-center mb-6">
             <Link to="/" className="inline-flex items-center gap-2 no-underline mb-3">
-              <div className="w-9 h-9 bg-gradient-to-br from-[#0F172A] to-[#1E3A8A] rounded-lg flex items-center justify-center text-white font-black text-sm shadow-md">
-                E
+              <div className="w-10 h-10 rounded-lg overflow-hidden ring-2 ring-blue-500/20 shadow-md shrink-0">
+                <img
+                  src={PlatformLogo}
+                  alt="shop.design"
+                  className="w-full h-full object-cover"
+                />
               </div>
-              <span className="text-base font-extrabold text-gray-900">Commerce</span>
+              <span className="text-base font-extrabold text-gray-900">
+                shop<span className="text-blue-600">.</span>design
+              </span>
             </Link>
           </div>
 
