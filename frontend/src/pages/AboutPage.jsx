@@ -243,7 +243,7 @@ const AboutPage = () => {
                   "Bhutani Alphathum, 1432 B-Wing, Sector 90, Noida – 201305",
               },
               { label: "Email", value: "info@quleep.in" },
-              { label: "Phone", value: "+91 98830 19518" },
+              { label: "Phone", value: "+91 9804999555" },
               {
                 label: "Website",
                 value: "www.quleep.in",

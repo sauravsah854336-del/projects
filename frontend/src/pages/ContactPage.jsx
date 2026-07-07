@@ -134,8 +134,8 @@ const ContactPage = () => {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           {[
             { icon: "📧", title: "Email", value: "info@quleep.in", href: "mailto:info@quleep.in" },
-            { icon: "📞", title: "Call", value: "+91 98830 19518", href: "tel:+919883019518" },
-            { icon: "💚", title: "WhatsApp", value: "Chat Now", href: "https://wa.me/919883019518" },
+            { icon: "📞", title: "Call", value: "+91 9804999555", href: "tel:+919804999555" },
+            { icon: "💚", title: "WhatsApp", value: "Chat Now", href: "https://wa.me/9804999555" },
             { icon: "📍", title: "Office", value: "Noida, India", href: "#office" },
           ].map((item) => (
             <a

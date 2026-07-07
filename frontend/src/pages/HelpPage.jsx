@@ -364,7 +364,7 @@ const HelpPage = () => {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {[
               { icon: "📧", title: "Email Us", sub: "Reply within 2 hours", value: "info@quleep.in", href: "mailto:info@quleep.in", color: "text-blue-600" },
-              { icon: "📞", title: "Call Us", sub: "Mon-Sat, 9AM-6PM IST", value: "+91 98830 19518", href: "tel:+919883019518", color: "text-green-600" },
+              { icon: "📞", title: "Call Us", sub: "Mon-Sat, 9AM-6PM IST", value: "+91 9804999555", href: "tel:+919883019518", color: "text-green-600" },
               { icon: "💬", title: "Contact Form", sub: "Send a detailed message", value: "Open Form →", href: "/contact", color: "text-blue-600", isLink: true },
               { icon: "💚", title: "WhatsApp", sub: "Quick chat support", value: "Chat Now →", href: "https://wa.me/919883019518", color: "text-green-600" },
             ].map((item) => {

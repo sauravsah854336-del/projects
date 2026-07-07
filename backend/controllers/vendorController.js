@@ -538,25 +538,16 @@ const checkStoreName = async (req, res) => {
 
 const getVendorStats = async (req, res) => {
   try {
-    console.log("\n🚀🚀🚀 VENDOR STATS API CALLED 🚀🚀🚀");
-    console.log("👤 req.user:", JSON.stringify(req.user, null, 2));
-
     const vendor = await getVendorByUserId(req.user.id);
 
     if (!vendor) {
-      console.log("❌ NO VENDOR FOUND for userId:", req.user.id);
       return res.status(404).json({
         success: false,
         message: "Vendor not found",
       });
     }
 
-    console.log("\n✅ VENDOR FOUND:");
-    console.log("  vendorId:", vendor.vendorId);
-    console.log("  _id:", vendor._id);
-    console.log("  id:", vendor.id);
-    console.log("  userId:", vendor.userId);
-    console.log("  storeName:", vendor.storeName);
+    const vendorId = String(vendor.vendorId || vendor._id);
 
     const vendorIdVariations = [
       String(vendor.vendorId || ""),
@@ -565,66 +556,24 @@ const getVendorStats = async (req, res) => {
       String(vendor.userId || ""),
     ].filter(Boolean);
 
-    console.log("\n🔑 All possible vendor IDs to match:", vendorIdVariations);
-
     const orderResult = await getAllOrders({ page: 1, limit: 100000 });
     const allOrders = orderResult.items || [];
-
-    console.log(`\n📦 TOTAL ORDERS IN DB: ${allOrders.length}`);
-
-    if (allOrders.length > 0) {
-      console.log("\n🔍 FIRST 3 ORDERS - SAMPLE ITEMS:");
-      allOrders.slice(0, 3).forEach((order, idx) => {
-        console.log(`\n--- Order ${idx + 1} (${order.orderNumber || order._id}) ---`);
-        console.log(`  orderStatus: ${order.orderStatus}`);
-        console.log(`  paymentStatus: ${order.paymentStatus}`);
-        console.log(`  total: ${order.total}`);
-        console.log(`  items count: ${order.items?.length || 0}`);
-        (order.items || []).forEach((item, i) => {
-          console.log(`  Item ${i + 1}:`);
-          console.log(`    - product: ${item.product}`);
-          console.log(`    - name: ${item.name}`);
-          console.log(`    - vendor: ${item.vendor}`);
-          console.log(`    - vendorId: ${item.vendorId}`);
-          console.log(`    - vendorStore: ${item.vendorStore}`);
-          console.log(`    - price: ${item.price}`);
-          console.log(`    - quantity: ${item.quantity}`);
-        });
-      });
-    }
-
-    const vendorOrders = allOrders.filter((order) =>
-      (order.items || []).some((item) => {
-        const itemVendorValues = [
-          String(item.vendor || ""),
-          String(item.vendorId || ""),
-          String(item.vendorStore || ""),
-        ];
-        return itemVendorValues.some((val) =>
-          vendorIdVariations.includes(val)
-        );
-      })
-    );
-
-    console.log(`\n✅ MATCHED VENDOR ORDERS: ${vendorOrders.length}`);
 
     const productResult = await getAllProducts({ page: 1, limit: 100000 });
     const allProducts = productResult.items || [];
 
-    console.log(`\n📦 TOTAL PRODUCTS IN DB: ${allProducts.length}`);
+    const isVendorMatch = (item) => {
+      const values = [
+        String(item.vendor || ""),
+        String(item.vendorId || ""),
+        String(item.vendorStore || ""),
+      ];
+      return values.some((v) => vendorIdVariations.includes(v));
+    };
 
-    if (allProducts.length > 0) {
-      console.log("\n🔍 FIRST 3 PRODUCTS - VENDOR FIELDS:");
-      allProducts.slice(0, 3).forEach((p, idx) => {
-        console.log(`\n--- Product ${idx + 1} (${p.name}) ---`);
-        console.log(`  _id: ${p._id}`);
-        console.log(`  productId: ${p.productId}`);
-        console.log(`  vendorId: ${p.vendorId}`);
-        console.log(`  vendor: ${p.vendor}`);
-        console.log(`  vendorStoreId: ${p.vendorStoreId}`);
-        console.log(`  status: ${p.status}`);
-      });
-    }
+    const vendorOrders = allOrders.filter((order) =>
+      (order.items || []).some(isVendorMatch)
+    );
 
     const vendorProducts = allProducts.filter((p) => {
       const productVendorValues = [
@@ -636,17 +585,6 @@ const getVendorStats = async (req, res) => {
         vendorIdVariations.includes(val)
       );
     });
-
-    console.log(`\n✅ MATCHED VENDOR PRODUCTS: ${vendorProducts.length}`);
-
-    const isVendorMatch = (item) => {
-      const values = [
-        String(item.vendor || ""),
-        String(item.vendorId || ""),
-        String(item.vendorStore || ""),
-      ];
-      return values.some((v) => vendorIdVariations.includes(v));
-    };
 
     const calculateVendorRevenue = (orderList) => {
       return orderList.reduce((sum, order) => {
@@ -664,34 +602,30 @@ const getVendorStats = async (req, res) => {
       (o) => o.orderStatus === "delivered"
     );
 
-    console.log(`\n📊 Vendor orders by status breakdown:`);
-    const statusCount = {};
-    vendorOrders.forEach((o) => {
-      const s = o.orderStatus || "unknown";
-      statusCount[s] = (statusCount[s] || 0) + 1;
-    });
-    console.log(statusCount);
-
     const totalRevenueFromDelivered = calculateVendorRevenue(deliveredOrders);
     const totalRevenueFromAll = calculateVendorRevenue(vendorOrders);
 
-    console.log(`\n💰 Revenue from DELIVERED only: ₹${totalRevenueFromDelivered}`);
-    console.log(`💰 Revenue from ALL orders: ₹${totalRevenueFromAll}`);
-
-    const totalRevenue = totalRevenueFromDelivered > 0
-      ? totalRevenueFromDelivered
-      : totalRevenueFromAll;
+    const totalRevenue =
+      totalRevenueFromDelivered > 0
+        ? totalRevenueFromDelivered
+        : totalRevenueFromAll;
 
     const now = new Date();
     const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+    const lastMonthEnd = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      0,
+      23,
+      59,
+      59
+    );
     const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    const ordersForRevenue = totalRevenueFromDelivered > 0
-      ? deliveredOrders
-      : vendorOrders;
+    const ordersForRevenue =
+      totalRevenueFromDelivered > 0 ? deliveredOrders : vendorOrders;
 
     const thisMonthRevenue = calculateVendorRevenue(
       ordersForRevenue.filter((o) => new Date(o.createdAt) >= thisMonthStart)
@@ -736,6 +670,7 @@ const getVendorStats = async (req, res) => {
     const last7DaysCount = vendorOrders.filter(
       (o) => new Date(o.createdAt) >= last7Days
     ).length;
+
     const last30DaysCount = vendorOrders.filter(
       (o) => new Date(o.createdAt) >= last30Days
     ).length;
@@ -761,18 +696,16 @@ const getVendorStats = async (req, res) => {
 
     const productSales = {};
     vendorOrders.forEach((order) => {
-      (order.items || [])
-        .filter(isVendorMatch)
-        .forEach((item) => {
-          const pid = String(item.product || item.productId || "");
-          if (!pid) return;
-          if (!productSales[pid]) {
-            productSales[pid] = { productId: pid, totalQty: 0, totalRevenue: 0 };
-          }
-          productSales[pid].totalQty += Number(item.quantity) || 1;
-          productSales[pid].totalRevenue +=
-            (Number(item.price) || 0) * (Number(item.quantity) || 1);
-        });
+      (order.items || []).filter(isVendorMatch).forEach((item) => {
+        const pid = String(item.product || item.productId || "");
+        if (!pid) return;
+        if (!productSales[pid]) {
+          productSales[pid] = { productId: pid, totalQty: 0, totalRevenue: 0 };
+        }
+        productSales[pid].totalQty += Number(item.quantity) || 1;
+        productSales[pid].totalRevenue +=
+          (Number(item.price) || 0) * (Number(item.quantity) || 1);
+      });
     });
 
     const topProducts = Object.values(productSales)
@@ -833,17 +766,12 @@ const getVendorStats = async (req, res) => {
       },
     };
 
-    console.log("\n📤 FINAL RESPONSE:");
-    console.log(JSON.stringify(responseData, null, 2));
-    console.log("\n===================================\n");
-
     return res.status(200).json({
       success: true,
       data: responseData,
     });
   } catch (err) {
-    console.error("\n❌❌❌ getVendorStats CRASHED:", err);
-    console.error(err.stack);
+    console.error("getVendorStats error:", err);
     return res.status(500).json({ success: false, message: err.message });
   }
 };

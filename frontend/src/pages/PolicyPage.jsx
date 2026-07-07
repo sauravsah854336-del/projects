@@ -23,7 +23,7 @@ const policies = {
       { heading: "Damaged or Wrong Products", content: "If you receive a product that is significantly damaged during shipping or completely different from what was ordered, please contact our support team at info@quleep.in within 24 hours of delivery with clear photos and your order number. Such cases will be reviewed individually and addressed on a case-by-case basis at the platform's discretion." },
       { heading: "Order Cancellation", content: "You can cancel your order before it is shipped. Once an order has been dispatched, cancellation is not possible. To cancel, go to My Orders → Select Order → Click Cancel Order. Cancelled orders (before payment processing) will not be charged." },
       { heading: "Product Warranty", content: "Some products may come with a manufacturer's warranty. Warranty claims should be directed to the manufacturer directly using the details provided in the product package. shop.design is not responsible for handling warranty claims." },
-      { heading: "Contact Support", content: "For any queries related to your order or product, please contact our support team at info@quleep.in or +91 98830 19518. We're here to help you make informed purchase decisions." },
+      { heading: "Contact Support", content: "For any queries related to your order or product, please contact our support team at info@quleep.in or +91 9804999555. We're here to help you make informed purchase decisions." },
     ],
   },
   privacy: {
@@ -126,7 +126,7 @@ const policies = {
     icon: "⚖️",
     sections: [
       { heading: "Grievance Redressal Mechanism", content: "In accordance with the Information Technology Act, 2000 and the Consumer Protection Act, 2019, shop.design has established a grievance redressal mechanism for resolving user complaints related to products, services, orders, payments, and privacy concerns." },
-      { heading: "Grievance Officer", content: "Name: Quleep Support Team. Email: grievance@quleep.in. Phone: +91 98830 19518. Address: Bhutani Alphathum, 1432 B-Wing, Sector 90, Noida – 201305, Uttar Pradesh, India. Working Hours: Monday to Saturday, 9:00 AM to 6:00 PM IST." },
+      { heading: "Grievance Officer", content: "Name: Quleep Support Team. Email: grievance@quleep.in. Phone: +91 9804999555. Address: Bhutani Alphathum, 1432 B-Wing, Sector 90, Noida – 201305, Uttar Pradesh, India. Working Hours: Monday to Saturday, 9:00 AM to 6:00 PM IST." },
       { heading: "How to File a Grievance", content: "Step 1: Contact our customer support via email at grievance@quleep.in with your order number, account details, and a clear description of your complaint. Step 2: You will receive an acknowledgment within 24 hours with a unique grievance ID. Step 3: Our team will investigate and provide a resolution within 15 business days." },
       { heading: "Types of Grievances", content: "We handle grievances related to: Order-related issues, Payment disputes, Account issues, Damaged or wrong product deliveries, Vendor-related complaints, Privacy and data protection concerns, and Platform-related technical issues." },
       { heading: "Resolution Timeframes", content: "Acknowledgment: Within 24 hours. Initial Response: Within 48 hours. Final Resolution: Within 15 business days for standard grievances, 30 business days for complex cases." },
@@ -164,7 +164,7 @@ const policies = {
       { heading: "Our Commitment", content: "shop.design employs advanced fraud detection systems, machine learning algorithms, and a dedicated security team to identify and prevent fraudulent activities." },
       { heading: "Types of Fraud We Monitor", content: "Payment fraud, Account takeover, Seller fraud, Buyer fraud, Identity theft, Phishing attempts, and Manipulation of promotions and coupons." },
       { heading: "Prevention Measures", content: "Real-time transaction monitoring, Two-factor authentication, Device fingerprinting, Behavioral analytics, Address verification, and Manual review of suspicious transactions." },
-      { heading: "Reporting Fraud", content: "Report suspicious activity to fraud@quleep.in or call +91 98830 19518. Include order number, description of suspicious activity, and screenshots if available." },
+      { heading: "Reporting Fraud", content: "Report suspicious activity to fraud@quleep.in or call +91 9804999555. Include order number, description of suspicious activity, and screenshots if available." },
       { heading: "Buyer Protection", content: "Protection against unauthorized transactions, Secure payment processing, and Verified vendor listings. Please note: This does not include a general returns policy — all sales on shop.design are final." },
       { heading: "Consequences", content: "Immediate account suspension, Forfeiture of pending payments, Permanent ban, Reporting to law enforcement, and Civil legal action." },
     ],
@@ -176,7 +176,7 @@ const policies = {
       { heading: "Our Commitment", content: "shop.design is committed to ensuring digital accessibility for people with disabilities. We aim to comply with WCAG 2.1 Level AA guidelines." },
       { heading: "Accessibility Features", content: "Keyboard navigation support, Screen reader compatibility, High contrast mode, Resizable text, Alternative text for images, Clear navigation structure, and Focus indicators." },
       { heading: "Known Limitations", content: "Some third-party content may not be fully accessible. Certain interactive features (3D viewer, AR) may have limited accessibility. PDF invoices are being updated for screen reader compatibility." },
-      { heading: "Feedback", content: "Contact us at accessibility@quleep.in or +91 98830 19518. We aim to respond within 2 business days and provide resolution within 10 business days." },
+      { heading: "Feedback", content: "Contact us at accessibility@quleep.in or +91 9804999555. We aim to respond within 2 business days and provide resolution within 10 business days." },
     ],
   },
 };
