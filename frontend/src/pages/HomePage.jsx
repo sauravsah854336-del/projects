@@ -663,87 +663,161 @@ const Home = () => {
   return (
     <div className="bg-gray-50 min-h-screen">
 
-      {/* ═══════════════════════════════════════════════════════ */}
-      {/* COUPON BAR - BLUE THEME (only this section)          */}
-      {/* ═══════════════════════════════════════════════════════ */}
-      {activeCoupons.length > 0 && canShop && (
-        <section className="bg-gradient-to-r from-[#0F172A] via-[#1E3A8A] to-[#0F172A] py-3 px-4 sm:px-6 shadow-lg shadow-blue-900/20 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-32 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 left-1/3 w-48 h-24 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+      {canShop && (
+  <section className="bg-gradient-to-r from-[#0F172A] via-[#1E3A8A] to-[#0F172A] py-4 px-4 sm:px-6 shadow-lg shadow-blue-900/20 relative overflow-hidden">
+    <div className="absolute top-0 right-0 w-64 h-32 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="absolute bottom-0 left-1/3 w-48 h-24 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="absolute top-0 left-0 w-32 h-32 bg-yellow-500/5 rounded-full blur-2xl pointer-events-none" />
 
-          <div className="max-w-7xl mx-auto flex items-center gap-3 relative">
-            <div className="hidden sm:flex items-center gap-2.5 shrink-0 pr-3 border-r border-white/10">
-              <div className="w-9 h-9 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-lg flex items-center justify-center text-lg shadow-md shadow-yellow-400/30">
-                🎟️
-              </div>
-              <div>
-                <p className="text-yellow-300 text-[10px] font-extrabold uppercase tracking-wider m-0 leading-none">
-                  Save More
-                </p>
-                <p className="text-white text-xs font-bold m-0 leading-tight">
-                  {activeCoupons.length} Active Coupon{activeCoupons.length > 1 ? "s" : ""}
-                </p>
-              </div>
-            </div>
-
-            <span className="sm:hidden text-white text-lg shrink-0">🎟️</span>
-
-            <div
-              className="flex gap-2 overflow-x-auto flex-1 scrollbar-hide"
-              style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-            >
-              {activeCoupons.slice(0, 6).map((coupon) => {
-                const isCopied = couponCopied === coupon.code;
-                return (
-                  <button
-                    key={coupon.code}
-                    onClick={() => copyCoupon(coupon.code)}
-                    className={`flex items-center gap-2 border rounded-full px-3 py-1.5 transition-all cursor-pointer shrink-0 group ${
-                      isCopied
-                        ? "bg-green-500 border-green-400 shadow-lg shadow-green-500/40"
-                        : "bg-white/10 hover:bg-white/20 border-white/20 hover:border-blue-300/50"
-                    }`}
-                    title={`Click to copy: ${coupon.code}`}
-                  >
-                    <span
-                      className={`text-[10px] font-extrabold px-2 py-0.5 rounded ${
-                        isCopied
-                          ? "bg-white text-green-700"
-                          : "bg-gradient-to-r from-yellow-400 to-amber-400 text-gray-900"
-                      }`}
-                    >
-                      {isCopied ? "✓ COPIED" : coupon.code}
-                    </span>
-                    <span className="text-white text-[11px] font-semibold whitespace-nowrap">
-                      {coupon.discountType === "percentage" && `${coupon.discountValue}% off`}
-                      {coupon.discountType === "fixed" && `${currentCountry?.currency?.symbol || "₹"}${coupon.discountValue} off`}
-                      {coupon.discountType === "free_shipping" && "Free Shipping"}
-                    </span>
-                    {!isCopied && (
-                      <svg className="w-3 h-3 text-white/50 group-hover:text-white transition-colors shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <rect x="9" y="9" width="13" height="13" rx="2" />
-                        <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-                      </svg>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            <Link
-              to="/cart"
-              className="hidden sm:flex items-center gap-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-[11px] font-extrabold no-underline px-3 py-1.5 rounded-full transition-all shrink-0 whitespace-nowrap shadow-md shadow-blue-500/30"
-            >
-              Apply in Cart
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path d="M9 5l7 7-7 7" strokeLinecap="round" />
-              </svg>
-            </Link>
+    <div className="max-w-7xl mx-auto flex items-center gap-3 relative">
+      <div className="hidden md:flex items-center gap-2.5 shrink-0 pr-4 border-r border-white/15">
+        <div className="relative">
+          <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 via-amber-400 to-orange-500 rounded-xl flex items-center justify-center text-xl shadow-lg shadow-yellow-500/40">
+            🎟️
           </div>
-        </section>
-      )}
+          <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-[#0F172A] animate-pulse"></span>
+        </div>
+        <div>
+          <p className="text-yellow-300 text-[10px] font-black uppercase tracking-widest m-0 leading-none flex items-center gap-1">
+            <span className="animate-pulse">🔥</span> HOT DEALS
+          </p>
+          <p className="text-white text-xs font-black m-0 leading-tight mt-0.5">
+            Grab Your Coupons Now
+          </p>
+        </div>
+      </div>
 
-      {/* Everything else - ORIGINAL ORANGE THEME */}
+      <span className="md:hidden flex items-center gap-1 text-white shrink-0">
+        <span className="text-xl animate-pulse">🎟️</span>
+        <span className="text-[10px] font-black text-yellow-300 uppercase">HOT</span>
+      </span>
+
+      <div
+        className="flex gap-2 overflow-x-auto flex-1 scrollbar-hide"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+      >
+        {[
+          {
+            code: "WELCOME50",
+            discount: "50% OFF",
+            subtitle: "New users only",
+            gradient: "from-pink-500 to-rose-600",
+            badge: "🎁 WELCOME",
+            minOrder: "₹499",
+          },
+          {
+            code: "SAVE200",
+            discount: "₹200 OFF",
+            subtitle: "Orders above ₹999",
+            gradient: "from-blue-500 to-indigo-600",
+            badge: "💰 SAVE BIG",
+            minOrder: "₹999",
+          },
+          {
+            code: "FREESHIP",
+            discount: "FREE SHIP",
+            subtitle: "No minimum order",
+            gradient: "from-green-500 to-emerald-600",
+            badge: "🚚 FREE",
+            minOrder: "Any",
+          },
+          {
+            code: "MEGA30",
+            discount: "30% OFF",
+            subtitle: "Up to ₹500 off",
+            gradient: "from-purple-500 to-violet-600",
+            badge: "⚡ MEGA",
+            minOrder: "₹799",
+          },
+          {
+            code: "FIRST100",
+            discount: "₹100 OFF",
+            subtitle: "First order only",
+            gradient: "from-orange-500 to-red-600",
+            badge: "🎉 FIRST",
+            minOrder: "₹299",
+          },
+          {
+            code: "FLAT15",
+            discount: "15% OFF",
+            subtitle: "Sitewide discount",
+            gradient: "from-cyan-500 to-teal-600",
+            badge: "✨ FLAT",
+            minOrder: "₹599",
+          },
+        ].map((coupon) => {
+          const isCopied = couponCopied === coupon.code;
+          return (
+            <button
+              key={coupon.code}
+              onClick={() => copyCoupon(coupon.code)}
+              className={`group flex items-center gap-2.5 rounded-xl px-3 py-2 transition-all cursor-pointer shrink-0 border-2 relative overflow-hidden ${
+                isCopied
+                  ? "bg-green-500 border-green-400 shadow-lg shadow-green-500/50 scale-105"
+                  : `bg-gradient-to-br ${coupon.gradient} border-white/20 hover:border-white/40 hover:scale-[1.03] shadow-md hover:shadow-xl`
+              }`}
+              title={`Min order: ${coupon.minOrder} · Click to copy`}
+            >
+              {!isCopied && (
+                <div className="absolute inset-0 bg-white/0 group-hover:bg-white/10 transition-colors" />
+              )}
+
+              <div className="relative flex items-center gap-2.5">
+                <div className="flex flex-col items-start leading-none">
+                  <span className="text-white text-[8px] font-black uppercase tracking-wider opacity-90 mb-0.5">
+                    {isCopied ? "✓ COPIED!" : coupon.badge}
+                  </span>
+                  <span
+                    className={`font-black text-white ${
+                      isCopied ? "text-[13px]" : "text-[13px]"
+                    } tracking-tight`}
+                  >
+                    {isCopied ? coupon.code : coupon.discount}
+                  </span>
+                </div>
+
+                <div className="border-l-2 border-dashed border-white/30 h-8 pl-2.5">
+                  <div className="flex flex-col justify-center h-full">
+                    <span className="bg-white text-gray-900 text-[10px] font-black px-2 py-0.5 rounded whitespace-nowrap tracking-wide">
+                      {coupon.code}
+                    </span>
+                    <span className="text-white/80 text-[8px] font-semibold mt-0.5 whitespace-nowrap">
+                      {coupon.subtitle}
+                    </span>
+                  </div>
+                </div>
+
+                {!isCopied && (
+                  <svg
+                    className="w-3.5 h-3.5 text-white/70 group-hover:text-white transition-colors shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2.5}
+                  >
+                    <rect x="9" y="9" width="13" height="13" rx="2" />
+                    <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                  </svg>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      <Link
+        to="/cart"
+        className="hidden lg:flex items-center gap-1.5 bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-500 hover:to-amber-600 text-gray-900 text-xs font-black no-underline px-4 py-2 rounded-xl transition-all shrink-0 whitespace-nowrap shadow-md shadow-yellow-500/30 hover:shadow-yellow-500/50 hover:scale-[1.03] border-2 border-yellow-300"
+      >
+        Apply Now
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+          <path d="M9 5l7 7-7 7" strokeLinecap="round" />
+        </svg>
+      </Link>
+    </div>
+  </section>
+)}
+
       <ShopByCategorySection
         categories={categories}
         isLoading={categoriesLoading}
