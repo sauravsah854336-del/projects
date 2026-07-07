@@ -83,7 +83,7 @@ export const productApi = authApi.injectEndpoints({
       invalidatesTags: ["AdminProducts", "Products", "VendorStats"],
     }),
     getVendorStats: builder.query({
-      query: () => "/products/vendor/stats",
+      query: () => "/vendor/stats",
       providesTags: ["VendorStats"],
     }),
   }),

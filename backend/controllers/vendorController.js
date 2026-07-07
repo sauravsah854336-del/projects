@@ -538,139 +538,312 @@ const checkStoreName = async (req, res) => {
 
 const getVendorStats = async (req, res) => {
   try {
+    console.log("\n🚀🚀🚀 VENDOR STATS API CALLED 🚀🚀🚀");
+    console.log("👤 req.user:", JSON.stringify(req.user, null, 2));
+
     const vendor = await getVendorByUserId(req.user.id);
 
     if (!vendor) {
+      console.log("❌ NO VENDOR FOUND for userId:", req.user.id);
       return res.status(404).json({
         success: false,
         message: "Vendor not found",
       });
     }
 
-    const vendorId = vendor.vendorId || vendor._id;
+    console.log("\n✅ VENDOR FOUND:");
+    console.log("  vendorId:", vendor.vendorId);
+    console.log("  _id:", vendor._id);
+    console.log("  id:", vendor.id);
+    console.log("  userId:", vendor.userId);
+    console.log("  storeName:", vendor.storeName);
 
-    const orderResult = await getAllOrders({ vendorId, page: 1, limit: 10000 });
-    const orders = orderResult.items || [];
+    const vendorIdVariations = [
+      String(vendor.vendorId || ""),
+      String(vendor._id || ""),
+      String(vendor.id || ""),
+      String(vendor.userId || ""),
+    ].filter(Boolean);
 
-    const productResult = await getAllProducts({
-      vendorId,
-      page: 1,
-      limit: 10000,
-    });
-    const products = productResult.items || [];
+    console.log("\n🔑 All possible vendor IDs to match:", vendorIdVariations);
 
-    const totalOrders = orders.length;
+    const orderResult = await getAllOrders({ page: 1, limit: 100000 });
+    const allOrders = orderResult.items || [];
 
-    const deliveredOrders = orders.filter((o) => (o.orderStatus || o.status) === "delivered");
+    console.log(`\n📦 TOTAL ORDERS IN DB: ${allOrders.length}`);
 
-    const totalRevenue = deliveredOrders.reduce((sum, order) => {
-      const vendorItems = (order.items || []).filter(
-        (item) => String(item.vendor || item.vendorId || "") === String(vendorId)
-      );
-      const itemTotal = vendorItems.reduce(
-        (s, item) => s + (Number(item.price) || 0) * (Number(item.quantity) || 1),
-        0
-      );
-      return sum + itemTotal;
-    }, 0);
-
-    const commissionRate = (vendor.commission || 10) / 100;
-    const totalEarnings = totalRevenue * (1 - commissionRate);
-    const totalCommission = totalRevenue * commissionRate;
-
-    const monthlyRevenue = {};
-    const now = new Date();
-
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      monthlyRevenue[key] = 0;
+    if (allOrders.length > 0) {
+      console.log("\n🔍 FIRST 3 ORDERS - SAMPLE ITEMS:");
+      allOrders.slice(0, 3).forEach((order, idx) => {
+        console.log(`\n--- Order ${idx + 1} (${order.orderNumber || order._id}) ---`);
+        console.log(`  orderStatus: ${order.orderStatus}`);
+        console.log(`  paymentStatus: ${order.paymentStatus}`);
+        console.log(`  total: ${order.total}`);
+        console.log(`  items count: ${order.items?.length || 0}`);
+        (order.items || []).forEach((item, i) => {
+          console.log(`  Item ${i + 1}:`);
+          console.log(`    - product: ${item.product}`);
+          console.log(`    - name: ${item.name}`);
+          console.log(`    - vendor: ${item.vendor}`);
+          console.log(`    - vendorId: ${item.vendorId}`);
+          console.log(`    - vendorStore: ${item.vendorStore}`);
+          console.log(`    - price: ${item.price}`);
+          console.log(`    - quantity: ${item.quantity}`);
+        });
+      });
     }
 
-    deliveredOrders.forEach((order) => {
-      const date = new Date(order.createdAt);
-      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-      if (Object.prototype.hasOwnProperty.call(monthlyRevenue, key)) {
-        const vendorItems = (order.items || []).filter(
-          (item) => String(item.vendor || item.vendorId || "") === String(vendorId)
+    const vendorOrders = allOrders.filter((order) =>
+      (order.items || []).some((item) => {
+        const itemVendorValues = [
+          String(item.vendor || ""),
+          String(item.vendorId || ""),
+          String(item.vendorStore || ""),
+        ];
+        return itemVendorValues.some((val) =>
+          vendorIdVariations.includes(val)
         );
+      })
+    );
+
+    console.log(`\n✅ MATCHED VENDOR ORDERS: ${vendorOrders.length}`);
+
+    const productResult = await getAllProducts({ page: 1, limit: 100000 });
+    const allProducts = productResult.items || [];
+
+    console.log(`\n📦 TOTAL PRODUCTS IN DB: ${allProducts.length}`);
+
+    if (allProducts.length > 0) {
+      console.log("\n🔍 FIRST 3 PRODUCTS - VENDOR FIELDS:");
+      allProducts.slice(0, 3).forEach((p, idx) => {
+        console.log(`\n--- Product ${idx + 1} (${p.name}) ---`);
+        console.log(`  _id: ${p._id}`);
+        console.log(`  productId: ${p.productId}`);
+        console.log(`  vendorId: ${p.vendorId}`);
+        console.log(`  vendor: ${p.vendor}`);
+        console.log(`  vendorStoreId: ${p.vendorStoreId}`);
+        console.log(`  status: ${p.status}`);
+      });
+    }
+
+    const vendorProducts = allProducts.filter((p) => {
+      const productVendorValues = [
+        String(p.vendorId || ""),
+        String(p.vendor || ""),
+        String(p.vendorStoreId || ""),
+      ];
+      return productVendorValues.some((val) =>
+        vendorIdVariations.includes(val)
+      );
+    });
+
+    console.log(`\n✅ MATCHED VENDOR PRODUCTS: ${vendorProducts.length}`);
+
+    const isVendorMatch = (item) => {
+      const values = [
+        String(item.vendor || ""),
+        String(item.vendorId || ""),
+        String(item.vendorStore || ""),
+      ];
+      return values.some((v) => vendorIdVariations.includes(v));
+    };
+
+    const calculateVendorRevenue = (orderList) => {
+      return orderList.reduce((sum, order) => {
+        const vendorItems = (order.items || []).filter(isVendorMatch);
         const itemTotal = vendorItems.reduce(
-          (s, item) => s + (Number(item.price) || 0) * (Number(item.quantity) || 1),
+          (s, item) =>
+            s + (Number(item.price) || 0) * (Number(item.quantity) || 1),
           0
         );
-        monthlyRevenue[key] += itemTotal;
+        return sum + itemTotal;
+      }, 0);
+    };
+
+    const deliveredOrders = vendorOrders.filter(
+      (o) => o.orderStatus === "delivered"
+    );
+
+    console.log(`\n📊 Vendor orders by status breakdown:`);
+    const statusCount = {};
+    vendorOrders.forEach((o) => {
+      const s = o.orderStatus || "unknown";
+      statusCount[s] = (statusCount[s] || 0) + 1;
+    });
+    console.log(statusCount);
+
+    const totalRevenueFromDelivered = calculateVendorRevenue(deliveredOrders);
+    const totalRevenueFromAll = calculateVendorRevenue(vendorOrders);
+
+    console.log(`\n💰 Revenue from DELIVERED only: ₹${totalRevenueFromDelivered}`);
+    console.log(`💰 Revenue from ALL orders: ₹${totalRevenueFromAll}`);
+
+    const totalRevenue = totalRevenueFromDelivered > 0
+      ? totalRevenueFromDelivered
+      : totalRevenueFromAll;
+
+    const now = new Date();
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+    const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const ordersForRevenue = totalRevenueFromDelivered > 0
+      ? deliveredOrders
+      : vendorOrders;
+
+    const thisMonthRevenue = calculateVendorRevenue(
+      ordersForRevenue.filter((o) => new Date(o.createdAt) >= thisMonthStart)
+    );
+    const lastMonthRevenue = calculateVendorRevenue(
+      ordersForRevenue.filter((o) => {
+        const d = new Date(o.createdAt);
+        return d >= lastMonthStart && d <= lastMonthEnd;
+      })
+    );
+
+    let monthlyGrowth = 0;
+    if (lastMonthRevenue > 0) {
+      monthlyGrowth = Math.round(
+        ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100
+      );
+    } else if (thisMonthRevenue > 0) {
+      monthlyGrowth = 100;
+    }
+
+    const daily = {};
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      daily[d.toISOString().split("T")[0]] = 0;
+    }
+
+    ordersForRevenue
+      .filter((o) => new Date(o.createdAt) >= last7Days)
+      .forEach((order) => {
+        const key = new Date(order.createdAt).toISOString().split("T")[0];
+        if (daily[key] !== undefined) {
+          const vendorItems = (order.items || []).filter(isVendorMatch);
+          daily[key] += vendorItems.reduce(
+            (s, item) =>
+              s + (Number(item.price) || 0) * (Number(item.quantity) || 1),
+            0
+          );
+        }
+      });
+
+    const last7DaysCount = vendorOrders.filter(
+      (o) => new Date(o.createdAt) >= last7Days
+    ).length;
+    const last30DaysCount = vendorOrders.filter(
+      (o) => new Date(o.createdAt) >= last30Days
+    ).length;
+
+    const ordersByStatus = {
+      pending: 0,
+      confirmed: 0,
+      processing: 0,
+      shipped: 0,
+      out_for_delivery: 0,
+      delivered: 0,
+      cancelled: 0,
+      returned: 0,
+      payment_pending: 0,
+    };
+
+    vendorOrders.forEach((order) => {
+      const status = order.orderStatus || order.status || "pending";
+      if (Object.prototype.hasOwnProperty.call(ordersByStatus, status)) {
+        ordersByStatus[status]++;
       }
     });
 
-    const ordersByStatus = {};
-    orders.forEach((order) => {
-      const status = order.orderStatus || order.status || "pending";
-      ordersByStatus[status] = (ordersByStatus[status] || 0) + 1;
-    });
-
     const productSales = {};
-    orders.forEach((order) => {
+    vendorOrders.forEach((order) => {
       (order.items || [])
-        .filter((item) => String(item.vendor || item.vendorId || "") === String(vendorId))
+        .filter(isVendorMatch)
         .forEach((item) => {
           const pid = String(item.product || item.productId || "");
           if (!pid) return;
           if (!productSales[pid]) {
-            productSales[pid] = {
-              productId: pid,
-              name: item.name || "",
-              image: item.image || "",
-              totalQty: 0,
-              totalRevenue: 0,
-            };
+            productSales[pid] = { productId: pid, totalQty: 0, totalRevenue: 0 };
           }
           productSales[pid].totalQty += Number(item.quantity) || 1;
-          productSales[pid].totalRevenue += (Number(item.price) || 0) * (Number(item.quantity) || 1);
+          productSales[pid].totalRevenue +=
+            (Number(item.price) || 0) * (Number(item.quantity) || 1);
         });
     });
 
     const topProducts = Object.values(productSales)
       .sort((a, b) => b.totalRevenue - a.totalRevenue)
-      .slice(0, 5);
+      .slice(0, 5)
+      .map((sale) => {
+        const product = vendorProducts.find(
+          (p) => String(p._id || p.productId) === sale.productId
+        );
+        return {
+          _id: sale.productId,
+          name: product?.name || "Unknown Product",
+          price: product?.price || 0,
+          images: product?.images || [],
+          averageRating: product?.averageRating || 0,
+          totalReviews: product?.totalReviews || 0,
+          totalSold: sale.totalQty,
+          totalRevenue: sale.totalRevenue,
+        };
+      });
 
-    const totalProducts = products.length;
-    const activeProducts = products.filter((p) => p.isActive && p.status === "approved").length;
-    const lowStockProducts = products.filter((p) => (Number(p.stock) || 0) > 0 && (Number(p.stock) || 0) <= (Number(p.lowStockThreshold) || 5)).length;
-    const outOfStockProducts = products.filter((p) => (Number(p.stock) || 0) <= 0).length;
+    const responseData = {
+      revenue: {
+        total: Math.round(totalRevenue * 100) / 100,
+        thisMonth: Math.round(thisMonthRevenue * 100) / 100,
+        lastMonth: Math.round(lastMonthRevenue * 100) / 100,
+        monthlyGrowth,
+        daily,
+      },
+      orders: {
+        total: vendorOrders.length,
+        confirmed: ordersByStatus.confirmed || 0,
+        processing: ordersByStatus.processing || 0,
+        shipped: ordersByStatus.shipped || 0,
+        delivered: ordersByStatus.delivered || 0,
+        cancelled: ordersByStatus.cancelled || 0,
+        pending: ordersByStatus.pending || 0,
+        last7Days: last7DaysCount,
+        last30Days: last30DaysCount,
+      },
+      products: {
+        total: vendorProducts.length,
+        approved: vendorProducts.filter((p) => p.status === "approved").length,
+        lowStock: vendorProducts.filter(
+          (p) =>
+            (Number(p.stock) || 0) > 0 &&
+            (Number(p.stock) || 0) <= (Number(p.lowStockThreshold) || 5)
+        ).length,
+        outOfStock: vendorProducts.filter((p) => (Number(p.stock) || 0) <= 0)
+          .length,
+      },
+      topProducts,
+      store: {
+        storeName: vendor.storeName,
+        commission: vendor.commission || 10,
+        approvalStatus: vendor.approvalStatus,
+        memberSince: vendor.createdAt,
+      },
+    };
+
+    console.log("\n📤 FINAL RESPONSE:");
+    console.log(JSON.stringify(responseData, null, 2));
+    console.log("\n===================================\n");
 
     return res.status(200).json({
       success: true,
-      data: {
-        overview: {
-          totalOrders,
-          totalRevenue: Math.round(totalRevenue * 100) / 100,
-          totalEarnings: Math.round(totalEarnings * 100) / 100,
-          totalCommission: Math.round(totalCommission * 100) / 100,
-          commissionRate: vendor.commission || 10,
-          totalProducts,
-          activeProducts,
-          lowStockProducts,
-          outOfStockProducts,
-          pendingOrders: ordersByStatus["pending"] || 0,
-          processingOrders: ordersByStatus["processing"] || 0,
-          deliveredOrders: ordersByStatus["delivered"] || 0,
-          cancelledOrders: ordersByStatus["cancelled"] || 0,
-        },
-        monthlyRevenue: Object.entries(monthlyRevenue).map(([month, revenue]) => ({
-          month,
-          revenue: Math.round(revenue * 100) / 100,
-        })),
-        ordersByStatus,
-        topProducts,
-        vendorInfo: {
-          storeName: vendor.storeName,
-          approvalStatus: vendor.approvalStatus,
-          memberSince: vendor.createdAt,
-        },
-      },
+      data: responseData,
     });
   } catch (err) {
-    console.error("getVendorStats error:", err);
+    console.error("\n❌❌❌ getVendorStats CRASHED:", err);
+    console.error(err.stack);
     return res.status(500).json({ success: false, message: err.message });
   }
 };
