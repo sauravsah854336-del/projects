@@ -34,6 +34,7 @@ import AuthVerifier from "./components/AuthVerifier";
 import Layout from "./components/Layout";
 import ScrollToTop from "./components/ScrollToTop";
 import ToastContainer from "./components/Toast";
+import VendorSalesReportPage from "./pages/VendorSalesReportPage";
 
 function App() {
   return (
@@ -191,6 +192,15 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={["vendor"]}>
                   <VendorProfilePage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/vendor/sales-report"
+              element={
+                <ProtectedRoute allowedRoles={["vendor"]}>
+                  <VendorSalesReportPage />
                 </ProtectedRoute>
               }
             />

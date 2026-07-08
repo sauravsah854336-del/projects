@@ -35,7 +35,7 @@ const formatDate = (d) =>
   });
 
 const orderStatusConfig = {
-   payment_pending: {
+  payment_pending: {
     bg: "bg-orange-100",
     text: "text-orange-800",
     label: "Payment Pending",
@@ -1001,6 +1001,8 @@ const VendorDashboard = () => {
                   {pendingOrdersCount > 1 ? "s" : ""}
                 </button>
               )}
+
+
               <button
                 onClick={() => navigate("/vendor/profile")}
                 className="flex items-center gap-2 bg-white/10 border border-white/20 text-white text-sm font-semibold px-4 py-2.5 rounded-xl cursor-pointer hover:bg-white/20 transition font-[inherit]"
@@ -1092,11 +1094,23 @@ const VendorDashboard = () => {
                 badge: pendingOrdersCount,
               },
               { key: "reviews", label: "Reviews", icon: "⭐" },
+              {
+                key: "sales-report",
+                label: "Sales Report",
+                icon: "📈",
+                isExternal: true,
+              },
             ].map((tab) => (
               <TabBtn
                 key={tab.key}
                 active={activeTab === tab.key}
-                onClick={() => setActiveTab(tab.key)}
+                onClick={() => {
+                  if (tab.isExternal) {
+                    navigate("/vendor/sales-report");
+                  } else {
+                    setActiveTab(tab.key);
+                  }
+                }}
                 icon={tab.icon}
                 label={tab.label}
                 badge={tab.badge}
@@ -1502,6 +1516,75 @@ const VendorDashboard = () => {
                         </p>
                       </div>
                     )}
+                  </div>
+                </div>
+
+                {/* Sales Report CTA Banner */}
+                <div className="bg-gradient-to-br from-[#4338ca] via-[#4f46e5] to-[#6366f1] rounded-2xl p-5 sm:p-6 shadow-lg shadow-indigo-200 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-64 h-32 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+                  <div className="absolute bottom-0 left-1/3 w-48 h-24 bg-white/5 rounded-full blur-3xl pointer-events-none" />
+
+                  <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 bg-white/20 backdrop-blur-sm border border-white/30 rounded-2xl flex items-center justify-center text-2xl shrink-0">
+                        📊
+                      </div>
+                      <div>
+                        <h3 className="text-base sm:text-lg font-black text-white m-0">
+                          Detailed Sales Report
+                        </h3>
+                        <p className="text-xs text-indigo-100 m-0 mt-0.5">
+                          Download PDF, Excel or CSV reports with complete
+                          analytics
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 flex-wrap">
+                      <button
+                        onClick={() => navigate("/vendor/sales-report")}
+                        className="flex items-center gap-2 bg-white text-[#4f46e5] border-none rounded-xl px-5 py-2.5 text-sm font-extrabold cursor-pointer shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all font-[inherit] whitespace-nowrap"
+                      >
+                        View Full Report
+                        <svg
+                          width="14"
+                          height="14"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M9 5l7 7-7 7" strokeLinecap="round" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="relative mt-4 pt-4 border-t border-white/20 grid grid-cols-3 gap-3">
+                    <div className="text-center">
+                      <p className="text-lg font-extrabold text-white m-0">
+                        📄
+                      </p>
+                      <p className="text-[10px] text-indigo-100 mt-1 m-0 font-semibold">
+                        PDF Export
+                      </p>
+                    </div>
+                    <div className="text-center border-x border-white/20">
+                      <p className="text-lg font-extrabold text-white m-0">
+                        📊
+                      </p>
+                      <p className="text-[10px] text-indigo-100 mt-1 m-0 font-semibold">
+                        Excel Sheets
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-lg font-extrabold text-white m-0">
+                        📋
+                      </p>
+                      <p className="text-[10px] text-indigo-100 mt-1 m-0 font-semibold">
+                        CSV Data
+                      </p>
+                    </div>
                   </div>
                 </div>
               </>

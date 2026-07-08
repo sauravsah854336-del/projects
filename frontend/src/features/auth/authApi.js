@@ -133,6 +133,16 @@ export const authApi = createApi({
       query: () => "/admin/stats",
       providesTags: ["AdminStats"],
     }),
+    adminGetSalesReport: builder.query({
+  query: (params) => {
+    const q = new URLSearchParams();
+    if (params?.dateFrom) q.set("dateFrom", params.dateFrom);
+    if (params?.dateTo) q.set("dateTo", params.dateTo);
+    if (params?.groupBy) q.set("groupBy", params.groupBy);
+    return `/admin/sales-report?${q.toString()}`;
+  },
+  providesTags: ["AdminStats"],
+}),
     getAllAdmins: builder.query({
       query: () => "/admin/admins",
       providesTags: ["Admins"],
@@ -195,6 +205,19 @@ export const authApi = createApi({
       query: () => "/vendor/stats",
       providesTags: ["VendorStats"],
     }),
+    getSalesReport: builder.query({
+  query: (params) => {
+    const q = new URLSearchParams();
+    if (params?.dateFrom) q.set("dateFrom", params.dateFrom);
+    if (params?.dateTo) q.set("dateTo", params.dateTo);
+    if (params?.status) q.set("status", params.status);
+    if (params?.groupBy) q.set("groupBy", params.groupBy);
+    if (params?._t) q.set("_t", params._t);
+    return `/vendor/sales-report?${q.toString()}`;
+  },
+  providesTags: ["VendorStats"],
+  keepUnusedDataFor: 0,
+}),
     getPendingVendors: builder.query({
       query: () => "/admin/vendors/pending",
       providesTags: ["Vendors"],
@@ -299,6 +322,7 @@ export const {
   useResetPasswordMutation,
   useResendOTPMutation,
   useGetAdminStatsQuery,
+  useAdminGetSalesReportQuery,
   useGetAllAdminsQuery,
   useCreateAdminMutation,
   useGetAdminProfileQuery,
@@ -309,6 +333,7 @@ export const {
   useUpdateVendorStoreMutation,
   useChangeVendorPasswordMutation,
   useGetVendorStatsQuery,
+  useGetSalesReportQuery,
   useGetPendingVendorsQuery,
   useGetAllVendorsQuery,
   useApproveVendorMutation,

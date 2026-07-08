@@ -1167,17 +1167,18 @@ const AdminDashboard = () => {
   };
 
   const tabs = [
-    { key: "overview", label: "Overview", icon: "📊" },
-    { key: "analytics", label: "Analytics", icon: "📈" },
-    { key: "vendors", label: "Vendors", icon: "🏪", badge: pendingVendorCount },
-    { key: "customers", label: "Customers", icon: "👥" },
-    { key: "admins", label: "Admins", icon: "👑" },
-    { key: "categories", label: "Categories", icon: "📂" },
-    { key: "products", label: "Products", icon: "📦" },
-    { key: "orders", label: "Orders", icon: "🛒" },
-    { key: "coupons", label: "Coupons", icon: "🎟️" },
-    { key: "reviews", label: "Reviews", icon: "⭐" },
-  ];
+  { key: "overview", label: "Overview", icon: "📊" },
+  { key: "analytics", label: "Analytics", icon: "📈" },
+  { key: "vendors", label: "Vendors", icon: "🏪", badge: pendingVendorCount },
+  { key: "customers", label: "Customers", icon: "👥" },
+  { key: "admins", label: "Admins", icon: "👑" },
+  { key: "categories", label: "Categories", icon: "📂" },
+  { key: "products", label: "Products", icon: "📦" },
+  { key: "orders", label: "Orders", icon: "🛒" },
+  { key: "coupons", label: "Coupons", icon: "🎟️" },
+  { key: "reviews", label: "Reviews", icon: "⭐" },
+  { key: "sales-report", label: "Sales Report", icon: "📊", isExternal: true },
+];
 
   return (
     <div className="bg-gray-50 min-h-screen">
@@ -1292,17 +1293,23 @@ const AdminDashboard = () => {
           )}
 
           <div className="flex gap-1.5 mt-6 flex-wrap">
-            {tabs.map((tab) => (
-              <TabBtn
-                key={tab.key}
-                active={activeTab === tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                icon={tab.icon}
-                label={tab.label}
-                badge={tab.badge}
-              />
-            ))}
-          </div>
+  {tabs.map((tab) => (
+    <TabBtn
+      key={tab.key}
+      active={activeTab === tab.key}
+      onClick={() => {
+        if (tab.isExternal) {
+          navigate("/admin/sales-report");
+        } else {
+          setActiveTab(tab.key);
+        }
+      }}
+      icon={tab.icon}
+      label={tab.label}
+      badge={tab.badge}
+    />
+  ))}
+</div>
         </div>
       </div>
 

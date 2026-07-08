@@ -776,6 +776,241 @@ const getVendorStats = async (req, res) => {
   }
 };
 
+const getSalesReport = async (req, res) => {
+  try {
+    const vendor = await getVendorByUserId(req.user.id);
+    if (!vendor) {
+      return res.status(404).json({ success: false, message: "Vendor not found" });
+    }
+
+    const vendorIdVariations = [
+      String(vendor.vendorId || ""),
+      String(vendor._id || ""),
+      String(vendor.id || ""),
+      String(vendor.userId || ""),
+    ].filter(Boolean);
+
+    const {
+      dateFrom,
+      dateTo,
+      status = "all",
+      groupBy = "day",
+    } = req.query;
+
+    console.log(`\n📊 SALES REPORT DEBUG:`);
+    console.log(`   Vendor variations:`, vendorIdVariations);
+
+    const orderResult = await getAllOrders({ page: 1, limit: 100000 });
+    const allOrders = orderResult.items || [];
+
+    console.log(`   Total orders in DB: ${allOrders.length}`);
+
+    const isVendorMatch = (item) => {
+      const values = [
+        String(item.vendor || ""),
+        String(item.vendorId || ""),
+        String(item.vendorStore || ""),
+      ];
+      return values.some((v) => vendorIdVariations.includes(v));
+    };
+
+    let vendorOrders = allOrders.filter((order) =>
+      (order.items || []).some(isVendorMatch)
+    );
+
+    console.log(`   Vendor's orders (matched): ${vendorOrders.length}`);
+
+    if (vendorOrders.length === 0 && allOrders.length > 0) {
+      console.log(`   ⚠️ SAMPLE ORDER ITEM:`, JSON.stringify(allOrders[0]?.items?.[0], null, 2));
+    }
+
+    if (dateFrom) {
+      const from = new Date(dateFrom);
+      vendorOrders = vendorOrders.filter((o) => new Date(o.createdAt) >= from);
+    }
+    if (dateTo) {
+      const to = new Date(dateTo);
+      to.setHours(23, 59, 59, 999);
+      vendorOrders = vendorOrders.filter((o) => new Date(o.createdAt) <= to);
+    }
+    if (status !== "all") {
+      vendorOrders = vendorOrders.filter((o) => o.orderStatus === status);
+    }
+
+    console.log(`   After date/status filter: ${vendorOrders.length}`);
+
+    const commissionRate = (vendor.commission || 10) / 100;
+
+    const productResult = await getAllProducts({ page: 1, limit: 100000 });
+    const allProducts = (productResult.items || []).filter((p) => {
+      const productVendorValues = [
+        String(p.vendorId || ""),
+        String(p.vendor || ""),
+        String(p.vendorStoreId || ""),
+      ];
+      return productVendorValues.some((val) =>
+        vendorIdVariations.includes(val)
+      );
+    });
+
+    const salesData = vendorOrders.map((order) => {
+      const vendorItems = (order.items || []).filter(isVendorMatch);
+
+      const grossAmount = vendorItems.reduce(
+        (sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1),
+        0
+      );
+
+      const commission = grossAmount * commissionRate;
+      const netEarning = grossAmount - commission;
+      const totalQty = vendorItems.reduce((sum, i) => sum + (Number(i.quantity) || 1), 0);
+
+      return {
+        orderId: order.orderId,
+        orderNumber: order.orderNumber,
+        date: order.createdAt,
+        customer: order.shippingAddress?.fullName || "Unknown",
+        customerCity: order.shippingAddress?.city || "",
+        customerState: order.shippingAddress?.state || "",
+        itemCount: vendorItems.length,
+        totalQuantity: totalQty,
+        grossAmount: Math.round(grossAmount * 100) / 100,
+        commission: Math.round(commission * 100) / 100,
+        netEarning: Math.round(netEarning * 100) / 100,
+        commissionRate: vendor.commission || 10,
+        paymentMethod: order.paymentMethod || "online",
+        paymentStatus: order.paymentStatus || "pending",
+        orderStatus: order.orderStatus || "pending",
+        couponCode: order.couponCode || "",
+        products: vendorItems.map((item) => ({
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+          total: (item.price || 0) * (item.quantity || 1),
+        })),
+      };
+    });
+
+    const paidOrders = salesData.filter(
+      (s) =>
+        s.paymentStatus === "paid" ||
+        s.paymentStatus === "completed" ||
+        s.paymentStatus === "success"
+    );
+    const deliveredOrders = salesData.filter((s) => s.orderStatus === "delivered");
+
+    const revenueOrders = paidOrders.length > 0 ? paidOrders : salesData;
+
+    const totalGross = revenueOrders.reduce((sum, s) => sum + s.grossAmount, 0);
+    const totalCommission = revenueOrders.reduce((sum, s) => sum + s.commission, 0);
+    const totalNet = revenueOrders.reduce((sum, s) => sum + s.netEarning, 0);
+    const totalQty = revenueOrders.reduce((sum, s) => sum + s.totalQuantity, 0);
+
+    console.log(`   Paid orders: ${paidOrders.length}`);
+    console.log(`   Total revenue: ₹${totalGross}`);
+
+    const chartData = {};
+    revenueOrders.forEach((order) => {
+      const date = new Date(order.date);
+      let key;
+      if (groupBy === "month") {
+        key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      } else if (groupBy === "week") {
+        const weekStart = new Date(date);
+        weekStart.setDate(date.getDate() - date.getDay());
+        key = weekStart.toISOString().split("T")[0];
+      } else {
+        key = date.toISOString().split("T")[0];
+      }
+
+      if (!chartData[key]) {
+        chartData[key] = { period: key, orders: 0, gross: 0, net: 0 };
+      }
+      chartData[key].orders++;
+      chartData[key].gross += order.grossAmount;
+      chartData[key].net += order.netEarning;
+    });
+
+    const productSales = {};
+    revenueOrders.forEach((order) => {
+      order.products.forEach((p) => {
+        if (!productSales[p.name]) {
+          productSales[p.name] = { name: p.name, qty: 0, revenue: 0 };
+        }
+        productSales[p.name].qty += p.quantity;
+        productSales[p.name].revenue += p.total;
+      });
+    });
+
+    const topProducts = Object.values(productSales)
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 10);
+
+    const statusBreakdown = {
+      pending: salesData.filter((s) => s.orderStatus === "pending").length,
+      confirmed: salesData.filter((s) => s.orderStatus === "confirmed").length,
+      processing: salesData.filter((s) => s.orderStatus === "processing").length,
+      shipped: salesData.filter((s) => s.orderStatus === "shipped").length,
+      delivered: salesData.filter((s) => s.orderStatus === "delivered").length,
+      cancelled: salesData.filter((s) => s.orderStatus === "cancelled").length,
+    };
+
+    const stateBreakdown = {};
+    revenueOrders.forEach((order) => {
+      const state = order.customerState || "Unknown";
+      if (!stateBreakdown[state]) {
+        stateBreakdown[state] = { state, orders: 0, revenue: 0 };
+      }
+      stateBreakdown[state].orders++;
+      stateBreakdown[state].revenue += order.grossAmount;
+    });
+
+    const topStates = Object.values(stateBreakdown)
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        summary: {
+          totalOrders: salesData.length,
+          totalPaidOrders: paidOrders.length,
+          totalDeliveredOrders: deliveredOrders.length,
+          totalGross: Math.round(totalGross * 100) / 100,
+          totalCommission: Math.round(totalCommission * 100) / 100,
+          totalNet: Math.round(totalNet * 100) / 100,
+          totalQuantity: totalQty,
+          averageOrderValue: revenueOrders.length > 0
+            ? Math.round((totalGross / revenueOrders.length) * 100) / 100
+            : 0,
+          commissionRate: vendor.commission || 10,
+          totalProducts: allProducts.length,
+          conversionRate: salesData.length > 0
+            ? Math.round((deliveredOrders.length / salesData.length) * 100)
+            : 0,
+        },
+        vendor: {
+          storeName: vendor.storeName,
+          commission: vendor.commission || 10,
+          memberSince: vendor.createdAt,
+        },
+        orders: salesData.slice(0, 100),
+        chartData: Object.values(chartData).sort((a, b) =>
+          a.period.localeCompare(b.period)
+        ),
+        topProducts,
+        topStates,
+        statusBreakdown,
+        dateRange: { from: dateFrom, to: dateTo },
+        generatedAt: new Date().toISOString(),
+      },
+    });
+  } catch (err) {
+    console.error("getSalesReport error:", err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 module.exports = {
   vendorSignup,
   vendorLogin,
@@ -785,4 +1020,5 @@ module.exports = {
   changeVendorPassword,
   checkStoreName,
   getVendorStats,
+  getSalesReport,
 };

@@ -20,11 +20,13 @@ const {
   unblockCustomer,
   deleteCustomer,
   getAdminStats,
+  adminGetSalesReport
 } = require("../controllers/adminController");
 
 const router = express.Router();
 
 router.get("/stats", protect, authorized("admin"), getAdminStats);
+router.get("/sales-report", protect, authorized("admin"), adminGetSalesReport);
 
 router.get("/profile", protect, authorized("admin"), getAdminProfile);
 router.put("/profile", protect, authorized("admin"), updateAdminProfile);

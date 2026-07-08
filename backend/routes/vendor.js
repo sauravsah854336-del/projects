@@ -10,6 +10,7 @@ const {
   changeVendorPassword,
   checkStoreName,
   getVendorStats,
+  getSalesReport
 } = require("../controllers/vendorController");
 
 const router = express.Router();
@@ -22,5 +23,6 @@ router.put("/profile", protect, authorized("vendor"), updateVendorProfile);
 router.put("/store", protect, authorized("vendor"), updateVendorStore);
 router.put("/change-password", protect, authorized("vendor"), changeVendorPassword);
 router.get("/stats", protect, authorized("vendor"), getVendorStats);
+router.get("/sales-report", protect, authorized("vendor"), getSalesReport);
 
 module.exports = router;
